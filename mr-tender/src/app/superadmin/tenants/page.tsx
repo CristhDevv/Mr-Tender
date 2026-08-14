@@ -9,7 +9,11 @@ interface Tenant {
   country: string; status: string; created_at: string;
 }
 
-const EMPTY_FORM = { name: '', slug: '', owner_email: '', owner_name: '', phone: '', business_type: '', country: 'Colombia', status: 'trial' }
+const EMPTY_FORM = {
+  name: '', slug: '', owner_email: '', owner_name: '',
+  phone: '', business_type: '', country: 'Colombia', status: 'trial',
+  password: 'Soloc@li1'
+}
 
 const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
   active:    { bg: 'rgba(74,186,134,0.12)',  color: 'var(--accent-emerald)', label: 'Activo' },
@@ -38,6 +42,7 @@ export default function TenantsAdminPage() {
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('all')
   const [error, setError] = useState<string | null>(null)
+  const [createdInfo, setCreatedInfo] = useState<{ email: string; pass: string } | null>(null)
 
   // Modal state
   const [modal, setModal] = useState<'create' | 'edit' | null>(null)
@@ -54,10 +59,15 @@ export default function TenantsAdminPage() {
     setLoading(false)
   }
 
-  function openCreate() { setForm(EMPTY_FORM); setModal('create') }
+  function openCreate() { setForm(EMPTY_FORM); setModal('create'); setCreatedInfo(null) }
   function openEdit(t: Tenant) {
-    setForm({ name: t.name, slug: t.slug, owner_email: t.owner_email, owner_name: t.owner_name || '', phone: t.phone || '', business_type: t.business_type || '', country: t.country, status: t.status })
-    setEditingId(t.id); setModal('edit')
+    setForm({
+      name: t.name, slug: t.slug, owner_email: t.owner_email,
+      owner_name: t.owner_name || '', phone: t.phone || '',
+      business_type: t.business_type || '', country: t.country,
+      status: t.status, password: ''
+    })
+    setEditingId(t.id); setModal('edit'); setCreatedInfo(null)
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -69,9 +79,11 @@ export default function TenantsAdminPage() {
           p_name: form.name, p_slug: form.slug.toLowerCase().replace(/\s+/g, '-'),
           p_owner_email: form.owner_email, p_owner_name: form.owner_name,
           p_phone: form.phone, p_business_type: form.business_type,
-          p_country: form.country, p_status: form.status
+          p_country: form.country, p_status: form.status,
+          p_password: form.password || 'Soloc@li1'
         })
         if (error) throw error
+        setCreatedInfo({ email: form.owner_email, pass: form.password || 'Soloc@li1' })
       } else if (modal === 'edit' && editingId) {
         const { error } = await supabase.rpc('superadmin_update_tenant', {
           p_tenant_id: editingId, p_name: form.name, p_owner_name: form.owner_name,
@@ -79,9 +91,20 @@ export default function TenantsAdminPage() {
           p_business_type: form.business_type, p_country: form.country
         })
         if (error) throw error
+
+        // If password provided in edit, update user password too
+        if (form.password) {
+          await supabase.rpc('superadmin_create_user', {
+            p_email: form.owner_email,
+            p_password: form.password,
+            p_full_name: form.owner_name,
+            p_role: 'admin',
+            p_tenant_id: editingId
+          })
+        }
       }
       await fetchTenants()
-      setModal(null)
+      if (modal !== 'create') setModal(null)
     } catch (err: any) {
       alert('Error: ' + err.message)
     } finally { setSaving(false) }
@@ -202,7 +225,7 @@ export default function TenantsAdminPage() {
       {/* Modal Create/Edit */}
       {modal && (
         <div style={MODAL_STYLE} onClick={e => e.target === e.currentTarget && setModal(null)}>
-          <form onSubmit={handleSave} style={PANEL_STYLE}>
+          <div style={PANEL_STYLE}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 {modal === 'create' ? '+ Nuevo Negocio' : '✎ Editar Negocio'}
@@ -210,58 +233,84 @@ export default function TenantsAdminPage() {
               <button type="button" onClick={() => setModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Nombre del Negocio *</label>
-                <input type="text" className="input-neu" value={form.name} onChange={e => setF('name')(e.target.value)} placeholder="Tienda Los Cedritos" required style={{ width: '100%' }} />
-              </div>
-              {modal === 'create' && (
-                <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Slug (subdominio) *</label>
-                  <input type="text" className="input-neu" value={form.slug} onChange={e => setF('slug')(e.target.value)} placeholder="cedritos" required style={{ width: '100%' }} />
-                </div>
-              )}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Propietario *</label>
-                <input type="text" className="input-neu" value={form.owner_name} onChange={e => setF('owner_name')(e.target.value)} placeholder="Juan García" required style={{ width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Email Propietario *</label>
-                <input type="email" className="input-neu" value={form.owner_email} onChange={e => setF('owner_email')(e.target.value)} placeholder="juan@negocio.com" required style={{ width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Teléfono</label>
-                <input type="text" className="input-neu" value={form.phone} onChange={e => setF('phone')(e.target.value)} placeholder="+57 300 000 0000" style={{ width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Tipo de Negocio</label>
-                <input type="text" className="input-neu" value={form.business_type} onChange={e => setF('business_type')(e.target.value)} placeholder="Retail, Farmacia..." style={{ width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>País</label>
-                <select className="input-neu" value={form.country} onChange={e => setF('country')(e.target.value)} style={{ width: '100%' }}>
-                  {['Colombia', 'Mexico', 'Peru', 'Venezuela', 'Argentina', 'Chile', 'Ecuador', 'Bolivia'].map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              {modal === 'create' && (
-                <div>
-                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Estado inicial</label>
-                  <select className="input-neu" value={form.status} onChange={e => setF('status')(e.target.value)} style={{ width: '100%' }}>
-                    <option value="trial">En Prueba</option>
-                    <option value="active">Activo</option>
-                    <option value="suspended">Suspendido</option>
-                  </select>
-                </div>
-              )}
-            </div>
+            {createdInfo ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16, textAlign: 'center', padding: '10px 0' }}>
+                <div style={{ fontSize: '3rem' }}>🎉</div>
+                <h3 style={{ fontWeight: 800, color: 'var(--accent-emerald)', margin: 0 }}>¡Negocio y Usuario Creados Exitosamente!</h3>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>El usuario puede iniciar sesión **inmediatamente sin confirmar correo** con los siguientes accesos:</p>
 
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
-              <button type="button" onClick={() => setModal(null)} className="btn-neu btn-ghost" style={{ padding: '10px 20px' }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-primary" disabled={saving} style={{ padding: '10px 24px' }}>
-                {saving ? 'Guardando...' : modal === 'create' ? 'Crear Negocio' : 'Guardar Cambios'}
-              </button>
-            </div>
-          </form>
+                <div className="neu-card" style={{ padding: 16, background: 'var(--bg-deep)', display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'left' }}>
+                  <div><strong>Email:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--accent-blue)' }}>{createdInfo.email}</span></div>
+                  <div><strong>Contraseña:</strong> <span style={{ fontFamily: 'monospace', color: 'var(--accent-purple)' }}>{createdInfo.pass}</span></div>
+                  <div><strong>Estado Email:</strong> <span style={{ color: 'var(--accent-emerald)', fontWeight: 700 }}>✓ Auto-Confirmado</span></div>
+                </div>
+
+                <button onClick={() => setModal(null)} className="btn-neu btn-primary" style={{ padding: '10px 24px', marginTop: 10 }}>Cerrar</button>
+              </div>
+            ) : (
+              <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Nombre del Negocio *</label>
+                    <input type="text" className="input-neu" value={form.name} onChange={e => setF('name')(e.target.value)} placeholder="Tienda Los Cedritos" required style={{ width: '100%' }} />
+                  </div>
+                  {modal === 'create' && (
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Slug (subdominio) *</label>
+                      <input type="text" className="input-neu" value={form.slug} onChange={e => setF('slug')(e.target.value)} placeholder="cedritos" required style={{ width: '100%' }} />
+                    </div>
+                  )}
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Propietario *</label>
+                    <input type="text" className="input-neu" value={form.owner_name} onChange={e => setF('owner_name')(e.target.value)} placeholder="Juan García" required style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Email Propietario *</label>
+                    <input type="email" className="input-neu" value={form.owner_email} onChange={e => setF('owner_email')(e.target.value)} placeholder="juan@negocio.com" required style={{ width: '100%' }} />
+                  </div>
+
+                  <div style={{ gridColumn: 'span 2' }}>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent-purple)', marginBottom: 6 }}>
+                      {modal === 'create' ? '🔑 Contraseña de Acceso para el Usuario *' : '🔑 Cambiar Contraseña del Usuario (opcional)'}
+                    </label>
+                    <input type="text" className="input-neu" value={form.password} onChange={e => setF('password')(e.target.value)} placeholder="Soloc@li1" required={modal === 'create'} style={{ width: '100%', fontFamily: 'monospace' }} />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Teléfono</label>
+                    <input type="text" className="input-neu" value={form.phone} onChange={e => setF('phone')(e.target.value)} placeholder="+57 300 000 0000" style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Tipo de Negocio</label>
+                    <input type="text" className="input-neu" value={form.business_type} onChange={e => setF('business_type')(e.target.value)} placeholder="Retail, Farmacia..." style={{ width: '100%' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>País</label>
+                    <select className="input-neu" value={form.country} onChange={e => setF('country')(e.target.value)} style={{ width: '100%' }}>
+                      {['Colombia', 'Mexico', 'Peru', 'Venezuela', 'Argentina', 'Chile', 'Ecuador', 'Bolivia'].map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  {modal === 'create' && (
+                    <div>
+                      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Estado inicial</label>
+                      <select className="input-neu" value={form.status} onChange={e => setF('status')(e.target.value)} style={{ width: '100%' }}>
+                        <option value="trial">En Prueba</option>
+                        <option value="active">Activo</option>
+                        <option value="suspended">Suspendido</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
+                  <button type="button" onClick={() => setModal(null)} className="btn-neu btn-ghost" style={{ padding: '10px 20px' }}>Cancelar</button>
+                  <button type="submit" className="btn-neu btn-primary" disabled={saving} style={{ padding: '10px 24px' }}>
+                    {saving ? 'Guardando...' : modal === 'create' ? 'Crear Negocio y Usuario' : 'Guardar Cambios'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
       )}
     </div>
