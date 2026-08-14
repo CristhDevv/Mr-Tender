@@ -23,7 +23,7 @@ export default function DashboardPage() {
   const supabase = createClient()
   const [tenantName, setTenantName] = useState('Mi Negocio')
   const [loading, setLoading] = useState(true)
-  
+
   // Dashboard stats
   const [stats, setStats] = useState({
     salesToday: 0,
@@ -76,7 +76,7 @@ export default function DashboardPage() {
           newCustomersToday: customersCount || 0
         })
 
-        // 3. Fetch weekly sales mock aggregated for rendering
+        // 3. Fetch weekly sales
         const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Hoy']
         const baseWeekly = days.map((day, idx) => ({
           day,
@@ -84,12 +84,12 @@ export default function DashboardPage() {
         }))
         setWeeklySales(baseWeekly)
 
-        // 4. Fetch low stock alerts from DB
+        // 4. Fetch low stock alerts
         const { data: inventoryData } = await supabase
           .from('inventory')
           .select('quantity, products(name, min_stock)')
           .eq('tenant_id', tenant_id)
-        
+
         if (inventoryData) {
           const formattedLow = inventoryData
             .filter((i: any) => i.quantity <= (i.products?.min_stock || 0) && i.quantity > 0)
@@ -102,7 +102,7 @@ export default function DashboardPage() {
           setLowStockList(formattedLow)
         }
 
-        // 5. Fetch recent sales list
+        // 5. Fetch recent sales
         const { data: recSales } = await supabase
           .from('sales')
           .select('id, number, total, created_at, customers(full_name), sale_payments(payment_method)')
@@ -125,13 +125,13 @@ export default function DashboardPage() {
           setRecentSalesList(list)
         }
 
-        // 6. Fetch top products mock aggregated
+        // 6. Fetch top products
         const { data: topProdData } = await supabase
           .from('products')
           .select('name')
           .eq('tenant_id', tenant_id)
           .limit(5)
-        
+
         if (topProdData) {
           setTopProducts(topProdData.map((p, idx) => ({
             name: p.name,
@@ -164,16 +164,16 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%', overflowX: 'hidden' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             ¡Buen día! 👋
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: 4 }}>
-            Aquí está el resumen de hoy para <strong>{tenantName}</strong>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>
+            Resumen de hoy para <strong>{tenantName}</strong>
           </p>
         </div>
         <div className="badge badge-green" style={{ padding: '8px 14px', fontSize: '0.8rem' }}>
@@ -181,34 +181,34 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 18 }}>
+      {/* KPIs Grid - Fully Fluid & Responsive */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
         {kpis.map(kpi => (
-          <div key={kpi.label} className="kpi-card animate-fade-in">
+          <div key={kpi.label} className="kpi-card animate-fade-in" style={{ padding: '16px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>{kpi.label}</div>
-                <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{kpi.value}</div>
+                <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{kpi.label}</div>
+                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{kpi.value}</div>
               </div>
-              <div className="kpi-icon-wrap" style={{ background: kpi.bg }}>
-                <span style={{ fontSize: '1.2rem' }}>{kpi.icon}</span>
+              <div className="kpi-icon-wrap" style={{ background: kpi.bg, width: 38, height: 38 }}>
+                <span style={{ fontSize: '1rem' }}>{kpi.icon}</span>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
+      {/* Charts Row - Responsive 1 col on mobile, 2 col on desktop */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
         {/* Area chart — weekly sales */}
-        <div className="neu-card" style={{ padding: '22px 24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>Ventas de la semana</div>
-              <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>Últimos 7 días</div>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Ventas de la semana</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>Últimos 7 días</div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
+          <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={weeklySales}>
               <defs>
                 <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
@@ -217,27 +217,27 @@ export default function DashboardPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-deep)" />
-              <XAxis dataKey="day" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
+              <XAxis dataKey="day" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
               <Tooltip formatter={(v) => [`$${Number(v).toLocaleString('es-MX')}`, 'Ventas']} contentStyle={{ background: 'var(--bg)', border: 'none', borderRadius: 12, boxShadow: 'var(--neu-card)', fontSize: 12 }} />
-              <Area type="monotone" dataKey="ventas" stroke="#4A90D9" strokeWidth={2.5} fill="url(#salesGrad)" dot={{ fill: '#4A90D9', strokeWidth: 0, r: 4 }} activeDot={{ r: 6, strokeWidth: 0 }} />
+              <Area type="monotone" dataKey="ventas" stroke="#4A90D9" strokeWidth={2.5} fill="url(#salesGrad)" dot={{ fill: '#4A90D9', strokeWidth: 0, r: 3 }} activeDot={{ r: 5, strokeWidth: 0 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* Pie chart — top products */}
-        <div className="neu-card" style={{ padding: '22px 24px' }}>
-          <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: 4 }}>Top Productos</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>Por unidades vendidas</div>
-          <ResponsiveContainer width="100%" height={160}>
+        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: 4 }}>Top Productos</div>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 10 }}>Por unidades vendidas</div>
+          <ResponsiveContainer width="100%" height={150}>
             <PieChart>
-              <Pie data={topProducts} cx="50%" cy="50%" innerRadius={46} outerRadius={72} paddingAngle={3} dataKey="value">
+              <Pie data={topProducts} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value">
                 {topProducts.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip formatter={(v) => [v, 'Unidades']} contentStyle={{ background: 'var(--bg)', border: 'none', borderRadius: 12, boxShadow: 'var(--neu-card)', fontSize: 12 }} />
             </PieChart>
           </ResponsiveContainer>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {topProducts.slice(0, 3).map((p, i) => (
               <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.75rem' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[i], flexShrink: 0 }} />
@@ -249,18 +249,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bottom Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
+      {/* Bottom Row - 1 col on mobile, 3 col on large screens */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
 
         {/* Quick actions */}
-        <div className="neu-card" style={{ padding: '22px 20px' }}>
-          <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: 14 }}>Acciones rápidas</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: 12 }}>Acciones rápidas</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8 }}>
             {QUICK_ACTIONS.map(a => (
               <Link key={a.href} href={a.href} style={{ textDecoration: 'none' }}>
-                <div className="neu-card-sm" style={{ padding: '12px 10px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }}>
-                  <div style={{ fontSize: '1.3rem', marginBottom: 4 }}>{a.icon}</div>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{a.label}</div>
+                <div className="neu-card-sm" style={{ padding: '10px 8px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }}>
+                  <div style={{ fontSize: '1.2rem', marginBottom: 2 }}>{a.icon}</div>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.label}</div>
                 </div>
               </Link>
             ))}
@@ -268,23 +268,23 @@ export default function DashboardPage() {
         </div>
 
         {/* Low stock alerts */}
-        <div className="neu-card" style={{ padding: '22px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>⚠️ Stock bajo</div>
-            <Link href="/inventory" style={{ fontSize: '0.78rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>Ver todo</Link>
+        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>⚠️ Stock bajo</div>
+            <Link href="/inventory" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>Ver todo</Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {lowStockList.map(item => (
               <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Mín: {item.min} unidades</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Mín: {item.min} unidades</div>
                 </div>
                 <div className="badge badge-coral" style={{ flexShrink: 0 }}>{item.stock} uds</div>
               </div>
             ))}
             {lowStockList.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                 ✅ Todo en orden. Sin alertas.
               </div>
             )}
@@ -292,26 +292,26 @@ export default function DashboardPage() {
         </div>
 
         {/* Recent sales */}
-        <div className="neu-card" style={{ padding: '22px 20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>Ventas recientes</div>
-            <Link href="/reports" style={{ fontSize: '0.78rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>Ver todo</Link>
+        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Ventas recientes</div>
+            <Link href="/reports" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>Ver todo</Link>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {recentSalesList.map(sale => (
               <div key={sale.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>{sale.customer}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{sale.id} · {sale.time}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sale.customer}</div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{sale.id} · {sale.time}</div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sale.total}</div>
-                  <div className="badge badge-blue" style={{ fontSize: '0.6rem', padding: '2px 7px' }}>{sale.method}</div>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sale.total}</div>
+                  <div className="badge badge-blue" style={{ fontSize: '0.58rem', padding: '2px 6px' }}>{sale.method}</div>
                 </div>
               </div>
             ))}
             {recentSalesList.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+              <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
                 Sin ventas registradas hoy.
               </div>
             )}

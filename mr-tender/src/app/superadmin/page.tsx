@@ -58,7 +58,7 @@ export default function SuperadminDashboard() {
       </div>
 
       {/* Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
         <div className="neu-card" style={{ padding: '22px 24px' }}>
           <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: 4 }}>MRR — Últimos 6 meses</div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 16 }}>Monthly Recurring Revenue (USD)</div>

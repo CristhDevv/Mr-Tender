@@ -490,8 +490,11 @@ body {
 /* ── Responsive ── */
 @media (max-width: 768px) {
   :root { --sidebar-w: 0px; }
+  body { overflow-x: hidden; width: 100vw; }
   .sidebar { transform: translateX(-260px); }
   .sidebar.open { transform: translateX(0); --sidebar-w: 260px; }
-  .app-content { margin-left: 0 !important; }
-  .page-container { padding: 16px 16px 32px; }
+  .app-content { margin-left: 0 !important; width: 100vw; overflow-x: hidden; }
+  .page-container { padding: 14px 14px 32px; width: 100vw; overflow-x: hidden; }
+  .topbar { padding: 0 14px; }
+  .modal-box { width: 94vw !important; padding: 20px 16px !important; }
 }
