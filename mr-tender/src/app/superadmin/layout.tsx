@@ -28,13 +28,13 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
   return (
     <div className="app-layout">
       <aside className="sidebar">
-        <div style={{ padding: '20px 18px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <Link href="/superadmin" style={{ textDecoration: 'none', padding: '20px 18px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 20, boxShadow: '4px 4px 10px rgba(139,114,190,0.4)', flexShrink: 0 }}>M</div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</div>
             <div style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600 }}>⚡ Superadmin</div>
           </div>
-        </div>
+        </Link>
         <div className="divider" style={{ margin: '0 16px 12px' }} />
         <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
           {SUPERADMIN_NAV.map(item => (
@@ -52,12 +52,17 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
       </aside>
 
       <div className="app-content">
-        <header className="topbar">
+        <header className="topbar" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <Link href="/superadmin" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, boxShadow: '3px 3px 8px rgba(139,114,190,0.4)', flexShrink: 0 }}>M</div>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</span>
+          </Link>
+          <div style={{ width: 1, height: 20, background: 'var(--border-color)', margin: '0 4px' }} />
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
               {SUPERADMIN_NAV.find(i => i.href === pathname)?.label || 'Superadmin'}
             </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--accent-purple)', fontWeight: 600 }}>Panel de Plataforma</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--accent-purple)', fontWeight: 600 }}>Panel de Plataforma</div>
           </div>
         </header>
         <main style={{ flex: 1, padding: '28px', maxWidth: 1400, width: '100%' }}>

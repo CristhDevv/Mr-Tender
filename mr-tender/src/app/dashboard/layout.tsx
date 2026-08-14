@@ -47,14 +47,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* ── SIDEBAR ── */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        {/* Brand */}
-        <div style={{ padding: '20px 18px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Clickable Brand Logo -> /dashboard */}
+        <Link href="/dashboard" onClick={() => setSidebarOpen(false)} style={{ textDecoration: 'none', padding: '20px 18px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
           <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 20, boxShadow: '4px 4px 10px rgba(74,144,217,0.4)', flexShrink: 0 }}>M</div>
           <div>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Panel de administración</div>
           </div>
-        </div>
+        </Link>
 
         <div className="divider" style={{ margin: '0 16px 12px' }} />
 
@@ -89,14 +89,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ── MAIN ── */}
       <div className="app-content">
         {/* Topbar */}
-        <header className="topbar">
+        <header className="topbar" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <button className="btn-neu btn-ghost btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display: 'none' }}>☰</button>
+
+          {/* Clickable Brand logo in Topbar -> /dashboard */}
+          <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, boxShadow: '3px 3px 8px rgba(74,144,217,0.4)', flexShrink: 0 }}>M</div>
+            <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</span>
+          </Link>
+
+          <div style={{ width: 1, height: 20, background: 'var(--border-color)', margin: '0 4px' }} />
+
           <div style={{ flex: 1 }}>
-            <div style={{ fontWeight: 700, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
               {NAV_ITEMS.find(i => i.href === pathname)?.label || 'Dashboard'}
             </div>
           </div>
-          <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '9px 18px', fontSize: '0.85rem' }}>
+
+          <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem' }}>
             + Nueva venta
           </Link>
         </header>
