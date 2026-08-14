@@ -1,0 +1,30 @@
+{
+  "name": "mr-tender-mobile",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@react-navigation/native": "^7.3.16",
+    "@react-navigation/stack": "^7.10.22",
+    "@supabase/supabase-js": "^2.112.3",
+    "expo": "~57.0.12",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.2",
+    "react-native-safe-area-context": "^5.9.0",
+    "react-native-screens": "^4.27.0",
+    "zustand": "^5.0.15"
+  },
+  "devDependencies": {
+    "@types/react": "~19.2.2",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web",
+    "test": "vitest run"
+  },
+  "private": true
+}
