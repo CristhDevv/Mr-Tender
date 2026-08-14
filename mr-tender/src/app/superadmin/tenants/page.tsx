@@ -101,21 +101,14 @@ export default function TenantsAdminPage() {
     setTenants(prev => prev.map(t => t.id === id ? { ...t, status: next } : t))
   }
 
-  const F = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setForm(f => ({ ...f, [k]: e.target.value }))
+  const setF = (key: keyof typeof EMPTY_FORM) => (val: string) =>
+    setForm(f => ({ ...f, [key]: val }))
 
   const filtered = tenants.filter(t => {
     const ms = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.owner_email.toLowerCase().includes(search.toLowerCase())
     const mf = filterStatus === 'all' || t.status === filterStatus
     return ms && mf
   })
-
-  const LabelInput = ({ label, field, type = 'text', placeholder = '' }: { label: string; field: keyof typeof form; type?: string; placeholder?: string }) => (
-    <div>
-      <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>{label}</label>
-      <input type={type} className="input-neu" value={form[field]} onChange={F(field)} placeholder={placeholder} style={{ width: '100%' }} />
-    </div>
-  )
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -218,22 +211,42 @@ export default function TenantsAdminPage() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div style={{ gridColumn: 'span 2' }}><LabelInput label="Nombre del Negocio *" field="name" placeholder="Tienda Los Cedritos" /></div>
-              {modal === 'create' && <div style={{ gridColumn: 'span 2' }}><LabelInput label="Slug (subdominio) *" field="slug" placeholder="cedritos" /></div>}
-              <LabelInput label="Propietario *" field="owner_name" placeholder="Juan García" />
-              <LabelInput label="Email Propietario *" field="owner_email" type="email" placeholder="juan@negocio.com" />
-              <LabelInput label="Teléfono" field="phone" placeholder="+57 300 000 0000" />
-              <LabelInput label="Tipo de Negocio" field="business_type" placeholder="Retail, Farmacia..." />
+              <div style={{ gridColumn: 'span 2' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Nombre del Negocio *</label>
+                <input type="text" className="input-neu" value={form.name} onChange={e => setF('name')(e.target.value)} placeholder="Tienda Los Cedritos" required style={{ width: '100%' }} />
+              </div>
+              {modal === 'create' && (
+                <div style={{ gridColumn: 'span 2' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Slug (subdominio) *</label>
+                  <input type="text" className="input-neu" value={form.slug} onChange={e => setF('slug')(e.target.value)} placeholder="cedritos" required style={{ width: '100%' }} />
+                </div>
+              )}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Propietario *</label>
+                <input type="text" className="input-neu" value={form.owner_name} onChange={e => setF('owner_name')(e.target.value)} placeholder="Juan García" required style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Email Propietario *</label>
+                <input type="email" className="input-neu" value={form.owner_email} onChange={e => setF('owner_email')(e.target.value)} placeholder="juan@negocio.com" required style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Teléfono</label>
+                <input type="text" className="input-neu" value={form.phone} onChange={e => setF('phone')(e.target.value)} placeholder="+57 300 000 0000" style={{ width: '100%' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Tipo de Negocio</label>
+                <input type="text" className="input-neu" value={form.business_type} onChange={e => setF('business_type')(e.target.value)} placeholder="Retail, Farmacia..." style={{ width: '100%' }} />
+              </div>
               <div>
                 <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>País</label>
-                <select className="input-neu" value={form.country} onChange={F('country')} style={{ width: '100%' }}>
+                <select className="input-neu" value={form.country} onChange={e => setF('country')(e.target.value)} style={{ width: '100%' }}>
                   {['Colombia', 'Mexico', 'Peru', 'Venezuela', 'Argentina', 'Chile', 'Ecuador', 'Bolivia'].map(c => <option key={c}>{c}</option>)}
                 </select>
               </div>
               {modal === 'create' && (
                 <div>
                   <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Estado inicial</label>
-                  <select className="input-neu" value={form.status} onChange={F('status')} style={{ width: '100%' }}>
+                  <select className="input-neu" value={form.status} onChange={e => setF('status')(e.target.value)} style={{ width: '100%' }}>
                     <option value="trial">En Prueba</option>
                     <option value="active">Activo</option>
                     <option value="suspended">Suspendido</option>
