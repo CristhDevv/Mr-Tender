@@ -2,6 +2,8 @@
 import { useState, useCallback, useEffect } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import CameraScanner from '@/components/CameraScanner'
+import { findMasterProduct } from '@/lib/catalog/colombia-products'
 
 interface Product {
   id: string
@@ -54,6 +56,7 @@ export default function POSClient() {
   const [loading, setLoading] = useState(false)
   const [saleNumber, setSaleNumber] = useState('')
   const [error, setError] = useState('')
+  const [showScanner, setShowScanner] = useState(false)
 
   // Customers state
   const [customerList, setCustomerList] = useState<Customer[]>([])
@@ -216,6 +219,25 @@ export default function POSClient() {
   const total = subtotal - discountAmt
   const change = paymentMethod === 'cash' ? Math.max(0, Number(receivedAmount) - total) : 0
 
+  // Handle Barcode scan in POS
+  function handleCameraScan(code: string) {
+    const cleanCode = code.trim()
+    setSearch(cleanCode)
+
+    // Search in current inventory
+    const foundInInventory = products.find(p => p.sku === cleanCode || p.name.toLowerCase().includes(cleanCode.toLowerCase()))
+    if (foundInInventory) {
+      addToCart(foundInInventory)
+      return
+    }
+
+    // Check Colombia master catalog
+    const master = findMasterProduct(cleanCode)
+    if (master) {
+      alert(`✨ Producto detectado: "${master.name}". No está en tu inventario local aún. Puedes registrarlo rápido con la cámara en 'Nuevo Producto'.`)
+    }
+  }
+
   async function processSale() {
     if (!sessionInfo) return
     setError('')
@@ -361,10 +383,15 @@ export default function POSClient() {
 
       {/* ── LEFT: Products ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
-        {/* Search */}
-        <div className="input-group">
-          <span className="input-icon" style={{ fontSize: '1rem' }}>🔍</span>
-          <input className="input-neu" placeholder="Buscar producto por nombre o código..." value={search} onChange={e => setSearch(e.target.value)} />
+        {/* Search & Camera scanner */}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <div className="input-group" style={{ flex: 1 }}>
+            <span className="input-icon" style={{ fontSize: '1rem' }}>🔍</span>
+            <input className="input-neu" placeholder="Buscar producto por nombre o código..." value={search} onChange={e => setSearch(e.target.value)} />
+          </div>
+          <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} style={{ padding: '10px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+            📷 Escanear
+          </button>
         </div>
 
         {/* Categories */}
@@ -392,7 +419,7 @@ export default function POSClient() {
           {filtered.length === 0 && (
             <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔍</div>
-              <div>{search.trim() === '' ? 'Escribe para buscar un producto o número de producto' : 'No se encontraron coincidencias'}</div>
+              <div>{search.trim() === '' ? 'Escribe o escanea un código para buscar un producto' : 'No se encontraron coincidencias'}</div>
             </div>
           )}
         </div>
@@ -582,6 +609,14 @@ export default function POSClient() {
           </>
         )}
       </div>
+
+      {/* Camera Scanner Modal */}
+      {showScanner && (
+        <CameraScanner
+          onScan={(code) => handleCameraScan(code)}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   )
 }

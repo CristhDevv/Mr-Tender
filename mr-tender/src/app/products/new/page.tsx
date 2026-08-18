@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import CameraScanner from '@/components/CameraScanner'
+import { findMasterProduct } from '@/lib/catalog/colombia-products'
 
 interface Category {
   id: string
@@ -17,6 +19,8 @@ export default function NewProductPage() {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [foundBadge, setFoundBadge] = useState('')
+  const [showScanner, setShowScanner] = useState(false)
   const [tenantInfo, setTenantInfo] = useState<{ tenant_id: string; warehouse_id: string } | null>(null)
 
   useEffect(() => {
@@ -126,6 +130,52 @@ export default function NewProductPage() {
 
   const set = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }))
 
+  // Lookup in Colombia Master Catalog
+  async function handleCodeLookup(code: string) {
+    const cleanCode = code.trim()
+    setForm(f => ({ ...f, sku: cleanCode }))
+    if (!cleanCode) return
+
+    const master = findMasterProduct(cleanCode)
+    if (master) {
+      setFoundBadge(`✨ ¡Encontrado! ${master.emoji} ${master.name}`)
+      
+      // Auto-fill fields
+      setForm(f => ({
+        ...f,
+        sku: cleanCode,
+        name: master.name,
+        price: master.suggestedPrice.toString(),
+        cost: master.suggestedCost.toString(),
+      }))
+
+      // Auto-match or create category
+      if (tenantInfo?.tenant_id) {
+        const existingCat = categories.find(c => c.name.toLowerCase() === master.category.toLowerCase())
+        if (existingCat) {
+          setForm(f => ({ ...f, categoryId: existingCat.id }))
+        } else {
+          try {
+            const slug = master.category.toLowerCase().replace(/[^a-z0-9]/g, '-')
+            const { data: newCat } = await supabase
+              .from('categories')
+              .insert({ tenant_id: tenantInfo.tenant_id, name: master.category, slug })
+              .select('id, name')
+              .single()
+            if (newCat) {
+              setCategories(prev => [...prev, newCat])
+              setForm(f => ({ ...f, categoryId: newCat.id }))
+            }
+          } catch (e) {
+            console.error('Error auto-creating category:', e)
+          }
+        }
+      }
+    } else {
+      setFoundBadge('')
+    }
+  }
+
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!tenantInfo) return
@@ -195,16 +245,50 @@ export default function NewProductPage() {
         <button className="btn-neu btn-ghost" onClick={() => router.back()} style={{ padding: '8px 14px', fontSize: '0.85rem', marginBottom: 14 }}>← Volver</button>
         <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Nuevo Producto</h1>
       </div>
+
       <form onSubmit={handleSave} className="neu-card" style={{ padding: '28px' }}>
+        
+        {/* Found badge notification */}
+        {foundBadge && (
+          <div style={{ marginBottom: 18, background: 'var(--accent-green-lt)', color: 'var(--accent-green)', padding: '12px 16px', borderRadius: 'var(--radius-md)', fontWeight: 700, fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: 8 }}>
+            {foundBadge}
+          </div>
+        )}
+
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 18 }}>
+          
+          {/* SKU / Barcode with Camera Scanner Button */}
           <div style={{ gridColumn: '1/-1' }}>
-            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Nombre del producto</label>
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>
+              Código de Barras / SKU (Escanea o digita)
+            </label>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input
+                className="input-neu"
+                placeholder="Ej: 7702001001018"
+                value={form.sku}
+                onChange={e => handleCodeLookup(e.target.value)}
+                style={{ flex: 1, fontWeight: 700 }}
+              />
+              <button
+                type="button"
+                className="btn-neu btn-primary"
+                onClick={() => setShowScanner(true)}
+                style={{ padding: '10px 16px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                📷 Escanear con cámara
+              </button>
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6 }}>
+              💡 Al escanear productos colombianos conocidos (Chocolatina Jet, Poker, Coca-Cola, etc.) los datos se autocompletarán.
+            </div>
+          </div>
+
+          <div style={{ gridColumn: '1/-1' }}>
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Nombre del producto *</label>
             <input className="input-neu" placeholder="Ej: Coca-Cola 2L" value={form.name} onChange={e => set('name')(e.target.value)} required />
           </div>
-          <div>
-            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>SKU / Código</label>
-            <input className="input-neu" placeholder="COC-2L" value={form.sku} onChange={e => set('sku')(e.target.value)} />
-          </div>
+
           <div>
             <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Categoría</label>
             <select className="input-neu" value={form.categoryId} onChange={e => set('categoryId')(e.target.value)}>
@@ -212,20 +296,24 @@ export default function NewProductPage() {
               {categories.length === 0 && <option value="">Sin categorías</option>}
             </select>
           </div>
+
           <div>
-            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Precio de venta</label>
-            <input className="input-neu" type="number" step="0.01" placeholder="0.00" value={form.price} onChange={e => set('price')(e.target.value)} required />
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Precio de venta *</label>
+            <input className="input-neu" type="number" step="100" placeholder="0" value={form.price} onChange={e => set('price')(e.target.value)} required style={{ fontWeight: 700 }} />
           </div>
+
           <div>
-            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Costo</label>
-            <input className="input-neu" type="number" step="0.01" placeholder="0.00" value={form.cost} onChange={e => set('cost')(e.target.value)} required />
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Costo de compra *</label>
+            <input className="input-neu" type="number" step="100" placeholder="0" value={form.cost} onChange={e => set('cost')(e.target.value)} required />
           </div>
+
           <div style={{ gridColumn: '1/-1' }}>
             <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Inventario inicial</label>
             <input className="input-neu" type="number" placeholder="0" value={form.initialStock} onChange={e => set('initialStock')(e.target.value)} />
           </div>
+
           <div style={{ gridColumn: '1/-1' }}>
-            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Descripción</label>
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Descripción (Opcional)</label>
             <input className="input-neu" placeholder="Descripción opcional" value={form.description} onChange={e => set('description')(e.target.value)} />
           </div>
         </div>
@@ -243,6 +331,14 @@ export default function NewProductPage() {
           </button>
         </div>
       </form>
+
+      {/* Camera Scanner Modal */}
+      {showScanner && (
+        <CameraScanner
+          onScan={(code) => handleCodeLookup(code)}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   )
 }
