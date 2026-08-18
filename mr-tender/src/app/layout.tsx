@@ -1,14 +1,27 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 
+export const viewport: Viewport = {
+  themeColor: '#4A90E2',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+}
+
 export const metadata: Metadata = {
-  title: { default: 'Mr Tender — ERP para tu negocio', template: '%s | Mr Tender' },
-  description: 'Plataforma ERP cloud-native para gestionar tu negocio desde el celular. POS, inventario, clientes, finanzas y más en un solo toque.',
-  keywords: ['ERP', 'punto de venta', 'POS', 'inventario', 'negocios', 'SaaS'],
+  title: { default: 'Mr Tender — ERP & POS para tu negocio 🇨🇴', template: '%s | Mr Tender' },
+  description: 'Punto de venta y control de inventario para tiendas de barrio, micromercados y pequeños negocios en Colombia.',
+  keywords: ['ERP', 'punto de venta', 'POS', 'inventario', 'tienda de barrio', 'Colombia'],
   authors: [{ name: 'Mr Tender' }],
+  manifest: '/manifest.webmanifest',
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/icon.png',
+    apple: '/apple-icon.png',
+  },
   openGraph: {
     type: 'website',
-    locale: 'es_MX',
+    locale: 'es_CO',
     siteName: 'Mr Tender',
   },
 }
