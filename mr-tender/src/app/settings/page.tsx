@@ -52,38 +52,40 @@ export default function SettingsPage() {
         if (!user) return
 
         const tenant_id = user.user_metadata?.tenant_id
+        if (!tenant_id) return
         setTenantId(tenant_id)
 
         const { data, error: fetchErr } = await supabase
           .from('tenant_settings')
           .select('*')
           .eq('tenant_id', tenant_id)
-          .single()
+          .limit(1)
 
         if (fetchErr) throw fetchErr
 
-        if (data) {
+        if (data && data.length > 0) {
+          const row = data[0]
           setForm({
-            businessName: data.business_name || '',
-            tradeName: data.trade_name || '',
-            taxId: data.tax_id || '',
-            phone: data.phone || '',
-            email: data.email || '',
-            address: data.address || '',
-            currency: data.currency || 'COP',
-            taxName: data.tax_name || 'IVA',
-            taxRate: String(data.tax_rate || '19.00'),
-            invoiceSeries: data.invoice_series || 'F',
-            receiptSeries: data.receipt_series || 'R',
-            dianNit: data.tax_id || '',
-            dianRegimen: data.dian_regimen || 'No Responsable de IVA',
-            dianResolution: data.dian_resolution || '18760000001',
-            dianPrefix: data.dian_prefix || 'SETP',
-            dianRangeFrom: data.dian_from || '1',
-            dianRangeTo: data.dian_to || '5000',
-            dianSoftwareId: data.dian_software_id || '',
-            nequiPhone: data.whatsapp || data.phone || '',
-            daviplataPhone: data.phone || '',
+            businessName: row.business_name || '',
+            tradeName: row.trade_name || '',
+            taxId: row.tax_id || '',
+            phone: row.phone || '',
+            email: row.email || '',
+            address: row.address || '',
+            currency: row.currency || 'COP',
+            taxName: row.tax_name || 'IVA',
+            taxRate: String(row.tax_rate || '19.00'),
+            invoiceSeries: row.invoice_series || 'F',
+            receiptSeries: row.receipt_series || 'R',
+            dianNit: row.tax_id || '',
+            dianRegimen: row.dian_regimen || 'No Responsable de IVA',
+            dianResolution: row.dian_resolution || '18760000001',
+            dianPrefix: row.dian_prefix || 'SETP',
+            dianRangeFrom: row.dian_from || '1',
+            dianRangeTo: row.dian_to || '5000',
+            dianSoftwareId: row.dian_software_id || '',
+            nequiPhone: row.whatsapp || row.phone || '',
+            daviplataPhone: row.phone || '',
             bancolombiaKey: '',
           })
         }
@@ -102,33 +104,36 @@ export default function SettingsPage() {
   }
 
   async function handleSave() {
+    if (!tenantId) return
     setError('')
     setSaved(false)
     try {
-      const { error: updateErr } = await supabase
-        .from('tenant_settings')
-        .update({
-          business_name: form.businessName,
-          trade_name: form.tradeName,
-          tax_id: form.taxId || form.dianNit,
-          phone: form.phone || form.nequiPhone,
-          whatsapp: form.nequiPhone,
-          address: form.address,
-          currency: form.currency,
-          tax_name: form.taxName,
-          tax_rate: Number(form.taxRate),
-          invoice_series: form.invoiceSeries,
-          receipt_series: form.receiptSeries,
-          dian_regimen: form.dianRegimen,
-          dian_resolution: form.dianResolution,
-          dian_prefix: form.dianPrefix,
-          dian_from: form.dianRangeFrom,
-          dian_to: form.dianRangeTo,
-          dian_software_id: form.dianSoftwareId,
-        })
-        .eq('tenant_id', tenantId)
+      const payload = {
+        tenant_id: tenantId,
+        business_name: form.businessName,
+        trade_name: form.tradeName,
+        tax_id: form.taxId || form.dianNit,
+        phone: form.phone || form.nequiPhone,
+        whatsapp: form.nequiPhone,
+        address: form.address,
+        currency: form.currency,
+        tax_name: form.taxName,
+        tax_rate: Number(form.taxRate),
+        invoice_series: form.invoiceSeries,
+        receipt_series: form.receiptSeries,
+        dian_regimen: form.dianRegimen,
+        dian_resolution: form.dianResolution,
+        dian_prefix: form.dianPrefix,
+        dian_from: form.dianRangeFrom,
+        dian_to: form.dianRangeTo,
+        dian_software_id: form.dianSoftwareId,
+      }
 
-      if (updateErr) throw updateErr
+      const { error: upsertErr } = await supabase
+        .from('tenant_settings')
+        .upsert(payload, { onConflict: 'tenant_id' })
+
+      if (upsertErr) throw upsertErr
 
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
@@ -198,10 +203,12 @@ export default function SettingsPage() {
   const CurrentSectionIcon = currentSection.Icon
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
-      <div>
-        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Configuración</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Ajustes generales, datos de facturación DIAN, Nequi y moneda</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%', overflowX: 'hidden' }}>
+      
+      {/* Header */}
+      <div style={{ marginBottom: 4 }}>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 2px' }}>Configuración</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0, lineHeight: 1.3 }}>Ajustes generales, datos de facturación DIAN, Nequi y moneda</p>
       </div>
 
       {/* Responsive Wrapping Navigation Tabs */}
@@ -212,7 +219,7 @@ export default function SettingsPage() {
           return (
             <button key={s.title} onClick={() => setActiveSection(i)}
               className="btn-neu"
-              style={{ padding: '8px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6, background: isActive ? 'var(--accent-blue)' : 'var(--bg)', color: isActive ? '#fff' : 'var(--text-secondary)', boxShadow: isActive ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
+              style={{ padding: '8px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6, background: isActive ? 'var(--accent-blue)' : 'var(--bg)', color: isActive ? '#fff' : 'var(--text-secondary)', boxShadow: isActive ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
               <SectionIcon size={15} strokeWidth={2} style={{ color: isActive ? '#fff' : 'inherit' }} />
               <span style={{ fontWeight: isActive ? 700 : 500 }}>{s.title}</span>
             </button>
@@ -221,18 +228,18 @@ export default function SettingsPage() {
       </div>
 
       {/* Form Content */}
-      <div className="neu-card" style={{ padding: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: 12 }}>
-          <CurrentSectionIcon size={18} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
+      <div className="neu-card" style={{ padding: '18px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: 8 }}>
+          <CurrentSectionIcon size={17} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
           <span>{currentSection.title}</span>
         </div>
 
-        <div className="divider" style={{ margin: '8px 0 16px' }} />
+        <div className="divider" style={{ margin: '6px 0 14px' }} />
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
           {currentSection.fields.map(field => (
             <div key={field.key}>
-              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{field.label}</label>
+              <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{field.label}</label>
               {field.type === 'select' ? (
                 <select className="input-neu" value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }}>
                   {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
@@ -250,7 +257,7 @@ export default function SettingsPage() {
           </div>
         )}
 
-        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
+        <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
           {saved && <div className="badge badge-green" style={{ padding: '8px 14px', fontSize: '0.78rem' }}>✓ Guardado</div>}
           <button className="btn-neu btn-primary" style={{ padding: '10px 22px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }} onClick={handleSave}>
             <Save size={15} strokeWidth={2.5} />
