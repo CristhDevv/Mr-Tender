@@ -480,15 +480,15 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20, width: '100%' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, height: 'calc(100vh - 100px)', overflow: 'hidden' }}>
 
-      {/* ── LEFT: Products ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, overflow: 'hidden' }}>
+      {/* ── LEFT: Products Search Panel (Fixed viewport height, internal scroll) ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflow: 'hidden' }}>
         {/* Search & Camera scanner */}
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
           <div className="input-group" style={{ flex: 1 }}>
             <span className="input-icon" style={{ fontSize: '1rem' }}>🔍</span>
-            <input className="input-neu" placeholder="Buscar producto por nombre o código..." value={search} onChange={e => setSearch(e.target.value)} />
+            <input className="input-neu" placeholder="Buscar por nombre o código EAN..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
           </div>
           <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} style={{ padding: '10px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
             📷 Escanear
@@ -496,109 +496,120 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
         </div>
 
         {/* Categories */}
-        <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4 }}>
+        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
           {categories.map(c => (
             <button key={c} className="btn-neu" onClick={() => setCategory(c)}
-              style={{ padding: '7px 14px', fontSize: '0.78rem', whiteSpace: 'nowrap', flexShrink: 0, background: category === c ? 'var(--accent-blue)' : 'var(--bg)', color: category === c ? '#fff' : 'var(--text-secondary)', boxShadow: category === c ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
+              style={{ padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0, background: category === c ? 'var(--accent-blue)' : 'var(--bg)', color: category === c ? '#fff' : 'var(--text-secondary)', boxShadow: category === c ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
               {c}
             </button>
           ))}
         </div>
 
-        {/* Product grid */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 12, alignContent: 'start', paddingRight: 4 }}>
+        {/* Product grid results */}
+        <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, alignContent: 'start', paddingRight: 4 }}>
           {filtered.map(product => (
-            <button key={product.id} className="pos-product-btn" onClick={() => addToCart(product)}>
-              <div style={{ fontSize: '2rem', marginBottom: 4 }}>{product.emoji}</div>
-              <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.3 }}>{product.name}</div>
+            <button key={product.id} className="pos-product-btn" onClick={() => addToCart(product)} style={{ padding: '12px 10px' }}>
+              <div style={{ fontSize: '1.8rem', marginBottom: 2 }}>{product.emoji}</div>
+              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>{product.name}</div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                <span style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--accent-blue)' }}>{formatCurrency(product.price)}</span>
-                <span style={{ fontSize: '0.68rem', color: product.stock <= 5 ? 'var(--accent-coral)' : 'var(--text-muted)' }}>{product.stock} uds</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-blue)' }}>{formatCurrency(product.price)}</span>
+                <span style={{ fontSize: '0.65rem', color: product.stock <= 5 ? 'var(--accent-coral)' : 'var(--text-muted)' }}>{product.stock} uds</span>
               </div>
             </button>
           ))}
           {filtered.length === 0 && (
-            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔍</div>
-              <div>{search.trim() === '' ? 'Escribe o escanea un código para buscar un producto' : 'No se encontraron coincidencias'}</div>
+              <div style={{ fontSize: '0.85rem' }}>{search.trim() === '' ? 'Escribe o escanea un producto para buscar' : 'No se encontraron coincidencias'}</div>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── RIGHT: Cart ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }} className="neu-card">
+      {/* ── RIGHT: Minimalist High-Density Cart (Fixed viewport height, internal scroll) ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="neu-card">
 
         {step === 'cart' && (
           <>
             {/* Cart header */}
-            <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--bg-deep)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>🛒 Carrito</span>
-                {cart.length > 0 && (
-                  <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '5px 10px', fontSize: '0.75rem', color: 'var(--accent-coral)' }}>Limpiar</button>
-                )}
-              </div>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--bg-deep)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>🛒 Carrito ({cart.reduce((s, i) => s + i.quantity, 0)})</span>
+              {cart.length > 0 && (
+                <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--accent-coral)' }}>Limpiar todo</button>
+              )}
             </div>
 
-            {/* Cart items */}
+            {/* High-Density Minimalist Cart Items List (NO IMAGES, NO EMOJIS) */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
               {cart.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-muted)' }}>
-                  <div style={{ fontSize: '2.5rem', marginBottom: 10 }}>🛍</div>
-                  <div style={{ fontSize: '0.875rem' }}>Toca un producto para agregarlo</div>
+                <div style={{ textAlign: 'center', padding: '60px 16px', color: 'var(--text-muted)' }}>
+                  <div style={{ fontSize: '2.2rem', marginBottom: 8 }}>🛍</div>
+                  <div style={{ fontSize: '0.85rem' }}>Escanea o busca productos para añadirlos</div>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {cart.map(item => (
-                    <div key={item.id} className="neu-flat" style={{ padding: '10px 12px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: '1.3rem' }}>{item.emoji}</span>
+                    <div key={item.id} className="neu-flat" style={{ padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 'var(--radius-sm)' }}>
+                      
+                      {/* Product Name & Unit price (NO IMAGE / EMOJI) */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{formatCurrency(item.price)} c/u</div>
+                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {item.name}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          {formatCurrency(item.price)} c/u
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - 1)} style={{ fontSize: '1rem', fontWeight: 700 }}>−</button>
-                        <span style={{ width: 22, textAlign: 'center', fontWeight: 700, fontSize: '0.9rem' }}>{item.quantity}</span>
-                        <button className="btn-neu btn-icon-sm btn-primary" onClick={() => updateQty(item.id, item.quantity + 1)} style={{ fontSize: '1rem', fontWeight: 700 }}>+</button>
+
+                      {/* Quantity Controls */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
+                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - 1)} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.85rem', fontWeight: 800 }}>−</button>
+                        <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 800, fontSize: '0.85rem' }}>{item.quantity}</span>
+                        <button className="btn-neu btn-icon-sm btn-primary" onClick={() => updateQty(item.id, item.quantity + 1)} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.85rem', fontWeight: 800 }}>+</button>
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 60 }}>
-                        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{formatCurrency(item.lineTotal)}</div>
-                        <button onClick={() => removeFromCart(item.id)} style={{ fontSize: '0.7rem', color: 'var(--accent-coral)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}>Quitar</button>
+
+                      {/* Line Total */}
+                      <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 65 }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent-blue)' }}>{formatCurrency(item.lineTotal)}</div>
                       </div>
+
+                      {/* Remove Button */}
+                      <button onClick={() => removeFromCart(item.id)} style={{ padding: '2px 4px', fontSize: '0.8rem', color: 'var(--accent-coral)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 800 }} title="Quitar">
+                        ✕
+                      </button>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Discount */}
+            {/* Discount Input */}
             {cart.length > 0 && (
-              <div style={{ padding: '10px 16px', borderTop: '1px solid var(--bg-deep)' }}>
+              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--bg-deep)', flexShrink: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>Descuento %</span>
-                  <input className="input-neu" type="number" min={0} max={100} value={discount || ''} onChange={e => setDiscount(Number(e.target.value))} placeholder="0" style={{ padding: '8px 12px', fontSize: '0.875rem' }} />
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>Descuento %</span>
+                  <input className="input-neu" type="number" min={0} max={100} value={discount || ''} onChange={e => setDiscount(Number(e.target.value))} placeholder="0" style={{ padding: '6px 10px', fontSize: '0.82rem' }} />
                 </div>
               </div>
             )}
 
-            {/* Totals */}
-            <div style={{ padding: '14px 18px', borderTop: '1px solid var(--bg-deep)', background: 'var(--bg-deep)', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+            {/* Totals & Checkout Button */}
+            <div style={{ padding: '14px 18px', borderTop: '1px solid var(--bg-deep)', background: 'var(--bg-deep)', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
                   <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
                 </div>
                 {discount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.82rem', color: 'var(--accent-coral)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--accent-coral)' }}>
                     <span>Descuento ({discount}%)</span><span>-{formatCurrency(discountAmt)}</span>
                   </div>
                 )}
                 <div className="divider" style={{ margin: '4px 0' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.15rem', color: 'var(--text-primary)' }}>
                   <span>Total</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span>
                 </div>
               </div>
-              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => setStep('payment')} style={{ width: '100%', padding: '14px', fontSize: '0.95rem', justifyContent: 'center' }}>
+              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => setStep('payment')} style={{ width: '100%', padding: '13px', fontSize: '0.95rem', justifyContent: 'center' }}>
                 💳 Cobrar {formatCurrency(total)}
               </button>
             </div>
@@ -608,17 +619,17 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
         {/* ── PAYMENT STEP ── */}
         {step === 'payment' && (
           <>
-            <div style={{ padding: '18px 20px 14px', borderBottom: '1px solid var(--bg-deep)' }}>
-              <button className="btn-neu btn-ghost" onClick={() => setStep('cart')} style={{ padding: '6px 12px', fontSize: '0.8rem', marginBottom: 8 }}>← Volver</button>
-              <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>Método de pago</div>
-              <div style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-blue)', marginTop: 4 }}>{formatCurrency(total)}</div>
+            <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--bg-deep)', flexShrink: 0 }}>
+              <button className="btn-neu btn-ghost" onClick={() => setStep('cart')} style={{ padding: '4px 10px', fontSize: '0.78rem', marginBottom: 6 }}>← Volver al Carrito</button>
+              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Método de Pago</div>
+              <div style={{ fontWeight: 900, fontSize: '1.5rem', color: 'var(--accent-blue)', marginTop: 2 }}>{formatCurrency(total)}</div>
             </div>
 
-            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
               
               {/* Customer Selector */}
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
                   👤 Cliente de la Venta
                 </label>
                 <select className="input-neu" value={selectedCustomer?.id || ''} onChange={e => {
@@ -637,13 +648,13 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
               {/* Payment methods grid */}
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
                   Forma de Pago
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   {PAYMENT_METHODS.map(pm => (
                     <button key={pm.key} className="btn-neu" onClick={() => { setPaymentMethod(pm.key); setError(''); }}
-                      style={{ padding: '12px 10px', fontSize: '0.82rem', flexDirection: 'column', gap: 4, height: 60, justifyContent: 'center', background: paymentMethod === pm.key ? 'var(--accent-blue)' : 'var(--bg)', color: paymentMethod === pm.key ? '#fff' : 'var(--text-secondary)', boxShadow: paymentMethod === pm.key ? '4px 4px 12px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
+                      style={{ padding: '10px 8px', fontSize: '0.8rem', flexDirection: 'column', gap: 2, height: 56, justifyContent: 'center', background: paymentMethod === pm.key ? 'var(--accent-blue)' : 'var(--bg)', color: paymentMethod === pm.key ? '#fff' : 'var(--text-secondary)', boxShadow: paymentMethod === pm.key ? '4px 4px 12px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
                       {pm.label}
                     </button>
                   ))}
@@ -653,12 +664,12 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
               {/* Cash received input */}
               {paymentMethod === 'cash' && (
                 <div>
-                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Efectivo recibido</div>
-                  <input className="input-neu" type="number" placeholder={total.toFixed(2)} value={receivedAmount} onChange={e => setReceivedAmount(e.target.value)} style={{ fontSize: '1.1rem', fontWeight: 700, textAlign: 'right' }} />
+                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Efectivo recibido</div>
+                  <input className="input-neu" type="number" placeholder={total.toFixed(2)} value={receivedAmount} onChange={e => setReceivedAmount(e.target.value)} style={{ fontSize: '1.05rem', fontWeight: 700, textAlign: 'right' }} />
                   {Number(receivedAmount) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10, padding: '10px 14px', background: 'var(--accent-green-lt)', borderRadius: 'var(--radius-sm)' }}>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--accent-green)' }}>Cambio</span>
-                      <span style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--accent-green)' }}>{formatCurrency(change)}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, padding: '8px 12px', background: 'var(--accent-green-lt)', borderRadius: 'var(--radius-sm)' }}>
+                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-green)' }}>Cambio</span>
+                      <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--accent-green)' }}>{formatCurrency(change)}</span>
                     </div>
                   )}
                 </div>
@@ -666,9 +677,9 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
               {/* Quick amount buttons for cash */}
               {paymentMethod === 'cash' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
                   {[2000, 5000, 10000, 20000, 50000, Math.ceil(total / 1000) * 1000].map(amt => (
-                    <button key={amt} className="btn-neu" onClick={() => setReceivedAmount(String(amt))} style={{ padding: '8px', fontSize: '0.82rem', fontWeight: 700 }}>
+                    <button key={amt} className="btn-neu" onClick={() => setReceivedAmount(String(amt))} style={{ padding: '7px', fontSize: '0.78rem', fontWeight: 700 }}>
                       ${amt.toLocaleString()}
                     </button>
                   ))}
@@ -677,23 +688,23 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
               {/* Nequi / Daviplata Transfer QR & Receipt Reference */}
               {paymentMethod === 'transfer' && (
-                <div style={{ background: 'var(--accent-purple-lt)', padding: '14px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ background: 'var(--accent-purple-lt)', padding: '12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.82rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 6 }}>
                     📱 Pago con Nequi / Daviplata
                   </div>
                   
                   {/* QR Image Box */}
-                  <div style={{ background: '#fff', padding: 10, borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, margin: '0 auto', maxWidth: 160 }}>
+                  <div style={{ background: '#fff', padding: 8, borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, margin: '0 auto', maxWidth: 140 }}>
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=Nequi-Pay-${total}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=Nequi-Pay-${total}`}
                       alt="QR Pago Nequi"
-                      style={{ width: 110, height: 110 }}
+                      style={{ width: 100, height: 100 }}
                     />
-                    <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700 }}>Escanea por {formatCurrency(total)}</span>
+                    <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Escanea por {formatCurrency(total)}</span>
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
                       Nº de Comprobante / Aprobación *
                     </label>
                     <input
@@ -702,7 +713,7 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
                       value={transferRef}
                       onChange={e => { setTransferRef(e.target.value); setError(''); }}
                       required
-                      style={{ fontWeight: 700 }}
+                      style={{ fontWeight: 700, padding: '8px 10px', fontSize: '0.82rem' }}
                     />
                   </div>
                 </div>
@@ -710,17 +721,17 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
               {/* Fiao Details & Validation */}
               {paymentMethod === 'fiao' && (
-                <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '12px 14px', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '12px', borderRadius: 'var(--radius-md)' }}>
                   {selectedCustomer ? (
                     <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-blue)' }}>💬 Fiar a: {selectedCustomer.full_name}</div>
-                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-blue)' }}>💬 Fiar a: {selectedCustomer.full_name}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.3 }}>
                         Deuda actual: <strong>{formatCurrency(selectedCustomer.credit_used)}</strong><br />
                         Cupo disponible: <strong>{formatCurrency(selectedCustomer.credit_limit - selectedCustomer.credit_used)}</strong> de {formatCurrency(selectedCustomer.credit_limit)}
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: '0.82rem', color: 'var(--accent-coral)', fontWeight: 600 }}>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--accent-coral)', fontWeight: 600 }}>
                       ⚠️ Selecciona un cliente arriba para poder fiarle esta compra.
                     </div>
                   )}
@@ -728,15 +739,15 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
               )}
 
               {error && (
-                <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
+                <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
                   ⚠ {error}
                 </div>
               )}
             </div>
 
-            <div style={{ padding: '16px 18px', borderTop: '1px solid var(--bg-deep)' }}>
+            <div style={{ padding: '14px 18px', borderTop: '1px solid var(--bg-deep)', flexShrink: 0 }}>
               <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
-                style={{ width: '100%', padding: '15px', fontSize: '1rem', justifyContent: 'center' }}>
+                style={{ width: '100%', padding: '14px', fontSize: '0.95rem', justifyContent: 'center' }}>
                 {loading ? '⏳ Procesando...' : paymentMethod === 'fiao' ? `💬 Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `📱 Confirmar Transferencia (${formatCurrency(total)})` : '✓ Confirmar pago'}
               </button>
             </div>
