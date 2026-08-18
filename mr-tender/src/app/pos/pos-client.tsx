@@ -151,7 +151,7 @@ export default function POSClient() {
     loadData()
   }, [])
 
-  const filtered = products.filter(p => {
+  const filtered = search.trim() === '' ? [] : products.filter(p => {
     const matchCat = category === 'Todos' || p.category === category
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
     return matchCat && matchSearch
@@ -312,7 +312,7 @@ export default function POSClient() {
           {filtered.length === 0 && (
             <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔍</div>
-              <div>No se encontraron productos</div>
+              <div>{search.trim() === '' ? 'Escribe para buscar un producto o número de producto' : 'No se encontraron coincidencias'}</div>
             </div>
           )}
         </div>

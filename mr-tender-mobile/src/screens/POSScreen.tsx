@@ -89,7 +89,7 @@ export default function POSScreen({ navigation }: any) {
     loadData()
   }, [tenantId])
 
-  const filtered = products.filter(p => {
+  const filtered = search.trim() === '' ? [] : products.filter(p => {
     const matchCat = category === 'Todos' || p.category === category
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase())
     return matchCat && matchSearch
@@ -202,7 +202,7 @@ export default function POSScreen({ navigation }: any) {
       {/* Main Grid */}
       <View style={styles.main}>
         <FlatList data={filtered} keyExtractor={item => item.id} numColumns={2}
-          columnWrapperStyle={styles.row}
+          columnWrapperStyle={filtered.length > 0 ? styles.row : undefined}
           renderItem={({ item }) => (
             <TouchableOpacity style={styles.prodCard} onPress={() => addToCart(item)}>
               <Text style={styles.prodEmoji}>{item.emoji}</Text>
@@ -210,7 +210,17 @@ export default function POSScreen({ navigation }: any) {
               <Text style={styles.prodPrice}>${item.price.toFixed(2)}</Text>
               <Text style={styles.prodStock}>{item.stock} disponibles</Text>
             </TouchableOpacity>
-          )} />
+          )}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Text style={{ fontSize: 32, marginBottom: 10, textAlign: 'center' }}>🔍</Text>
+              <Text style={styles.emptyText}>
+                {search.trim() === ''
+                  ? 'Escribe para buscar un producto o número de producto'
+                  : 'No se encontraron coincidencias'}
+              </Text>
+            </View>
+          } />
       </View>
 
       {/* Cart bottom sheet (Summary) */}
@@ -308,5 +318,7 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3
   },
-  payBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' }
+  payBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  emptyContainer: { padding: 40, alignItems: 'center', justifyContent: 'center' },
+  emptyText: { color: '#9CA3AF', fontSize: 14, fontWeight: '600', textAlign: 'center', lineHeight: 20 }
 })
