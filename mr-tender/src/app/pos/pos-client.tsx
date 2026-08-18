@@ -135,6 +135,7 @@ export default function POSClient() {
   const [discount, setDiscount] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [receivedAmount, setReceivedAmount] = useState('')
+  const [isFirstNumpadKey, setIsFirstNumpadKey] = useState(true)
   const [transferRef, setTransferRef] = useState('')
   const [step, setStep] = useState<'cart' | 'payment' | 'done'>('cart')
   const [loading, setLoading] = useState(false)
@@ -438,23 +439,37 @@ export default function POSClient() {
     localStorage.setItem('mr_tender_held_carts', JSON.stringify(updated))
   }
 
-  // Handle Touch Numpad
+  // Handle Touch Numpad (Instant overwrite on first keypress)
   function handleNumpadKey(key: string) {
     playSound('tap')
     if (key === 'C') {
       setReceivedAmount('')
+      setIsFirstNumpadKey(false)
     } else if (key === 'back') {
       setReceivedAmount(prev => prev.slice(0, -1))
+      setIsFirstNumpadKey(false)
     } else if (key === 'exact') {
       setReceivedAmount(String(total))
+      setIsFirstNumpadKey(true)
     } else if (key === '00') {
+      if (isFirstNumpadKey) {
+        setReceivedAmount('')
+        setIsFirstNumpadKey(false)
+        return
+      }
       if (!receivedAmount || receivedAmount === '0') return
-      setReceivedAmount(prev => prev + '00')
+      setReceivedAmount(prev => (prev + '00').slice(0, 9))
     } else {
-      setReceivedAmount(prev => {
-        if (prev === '0') return key
-        return (prev + key).slice(0, 9)
-      })
+      // Numerical digit ('0' - '9')
+      if (isFirstNumpadKey) {
+        setReceivedAmount(key)
+        setIsFirstNumpadKey(false)
+      } else {
+        setReceivedAmount(prev => {
+          if (!prev || prev === '0') return key
+          return (prev + key).slice(0, 9)
+        })
+      }
     }
   }
 
@@ -973,7 +988,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                   <span>Total</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span>
                 </div>
               </div>
-              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => { setReceivedAmount(String(total)); setStep('payment'); playSound('tap'); }} style={{ width: '100%', padding: '12px', fontSize: '0.9rem', justifyContent: 'center' }}>
+              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => { setReceivedAmount(String(total)); setIsFirstNumpadKey(true); setStep('payment'); playSound('tap'); }} style={{ width: '100%', padding: '12px', fontSize: '0.9rem', justifyContent: 'center' }}>
                 Cobrar {formatCurrency(total)}
               </button>
             </div>
@@ -1033,16 +1048,20 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             {/* CASH: Display + Touch Numpad */}
             {paymentMethod === 'cash' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0 }}>
-                <div style={{ background: 'var(--bg-deep)', padding: '8px 12px', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                  <div>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Efectivo Recibido</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                <div style={{ background: 'var(--bg-deep)', padding: '8px 10px', borderRadius: 'var(--radius-md)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                      Efectivo Recibido
+                    </div>
+                    <div style={{ fontSize: receivedAmount && receivedAmount.length > 7 ? '1rem' : '1.15rem', fontWeight: 900, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {receivedAmount ? formatCurrency(Number(receivedAmount)) : '$0'}
                     </div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Cambio / Vueltos</div>
-                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: change >= 0 && Number(receivedAmount) >= total ? 'var(--accent-green)' : 'var(--text-muted)' }}>
+                  <div style={{ textAlign: 'right', minWidth: 0 }}>
+                    <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+                      Cambio / Vueltos
+                    </div>
+                    <div style={{ fontSize: formatCurrency(change).length > 8 ? '1rem' : '1.15rem', fontWeight: 900, color: change >= 0 && Number(receivedAmount) >= total ? 'var(--accent-green)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {formatCurrency(change)}
                     </div>
                   </div>
@@ -1054,7 +1073,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                     Exacto
                   </button>
                   {[5000, 10000, 20000, 50000].map(amt => (
-                    <button key={amt} type="button" className="btn-neu" onClick={() => { setReceivedAmount(String(amt)); playSound('tap'); }} style={{ padding: '6px 2px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'center' }}>
+                    <button key={amt} type="button" className="btn-neu" onClick={() => { setReceivedAmount(String(amt)); setIsFirstNumpadKey(true); playSound('tap'); }} style={{ padding: '6px 2px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'center' }}>
                       ${amt / 1000}k
                     </button>
                   ))}
