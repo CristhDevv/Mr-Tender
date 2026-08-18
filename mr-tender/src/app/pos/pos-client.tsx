@@ -58,6 +58,7 @@ export default function POSClient() {
   const [saleNumber, setSaleNumber] = useState('')
   const [error, setError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
+  const [businessName, setBusinessName] = useState('MI TIENDA')
 
   // Customers state
   const [customerList, setCustomerList] = useState<Customer[]>([])
@@ -84,6 +85,17 @@ export default function POSClient() {
 
         const tenant_id = user.user_metadata?.tenant_id
         const user_id = user.id
+
+        // Get tenant settings
+        const { data: tSettings } = await supabase
+          .from('tenant_settings')
+          .select('business_name')
+          .eq('tenant_id', tenant_id)
+          .limit(1)
+
+        if (tSettings?.[0]?.business_name) {
+          setBusinessName(tSettings[0].business_name)
+        }
 
         // Get branch
         const { data: branches } = await supabase
@@ -278,7 +290,7 @@ export default function POSClient() {
       customer_id: selectedCustomer ? selectedCustomer.id : null,
       subtotal,
       discount_amount: discountAmt,
-      tax_amount: total * 0.16,
+      tax_amount: total * 0.19,
       tip_amount: 0,
       total,
       change_amount: change,
@@ -293,9 +305,9 @@ export default function POSClient() {
         original_price: item.price,
         discount_percentage: item.discount,
         discount_amount: item.lineTotal * (item.discount / 100),
-        tax_rate: 16.00,
-        tax_amount: item.lineTotal * 0.16,
-        subtotal: item.lineTotal / 1.16,
+        tax_rate: 19.00,
+        tax_amount: item.lineTotal * 0.19,
+        subtotal: item.lineTotal / 1.19,
         total: item.lineTotal,
         cost_price: item.cost,
         warehouse_id: sessionInfo.warehouse_id
@@ -351,6 +363,30 @@ export default function POSClient() {
     }
   }
 
+  function sendTicketWhatsApp() {
+    let rawPhone = selectedCustomer?.phone?.replace(/\D/g, '') || ''
+    const itemsText = cart.map(i => `• ${i.quantity}x ${i.name} (${formatCurrency(i.lineTotal)})`).join('\n')
+    const message = `🧾 *FACTURA POS / TICKET DE COMPRA*
+🏪 *${businessName}*
+📄 *Folio:* ${saleNumber}
+📅 *Fecha:* ${new Date().toLocaleString('es-CO')}
+
+${itemsText}
+
+💰 *TOTAL:* ${formatCurrency(total)}
+💳 *Pago:* ${paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'fiao' ? 'Fiao (Crédito)' : 'Nequi / Daviplata'}
+${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
+
+¡Muchas gracias por tu compra! 😊`
+
+    if (rawPhone) {
+      if (!rawPhone.startsWith('57') && rawPhone.length === 10) rawPhone = '57' + rawPhone
+      window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(message)}`, '_blank')
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank')
+    }
+  }
+
   function newSale() {
     setCart([])
     setDiscount(0)
@@ -363,28 +399,81 @@ export default function POSClient() {
 
   if (step === 'done') {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '70vh' }}>
-        <div className="neu-card animate-scale-in" style={{ padding: '52px 44px', textAlign: 'center', maxWidth: 420, width: '100%' }}>
-          <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>
-            {paymentMethod === 'fiao' ? '💬' : paymentMethod === 'transfer' ? '📱' : '✅'}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: 20 }}>
+        
+        {/* Printable Ticket Receipt (80mm Thermal Style) */}
+        <div id="pos-ticket" className="neu-card animate-scale-in" style={{ background: '#fff', color: '#0F172A', padding: '24px 20px', borderRadius: 16, width: '100%', maxWidth: 360, margin: '0 auto 20px', fontFamily: 'monospace', fontSize: '0.82rem', border: '1px solid #CBD5E1', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+          
+          {/* Header */}
+          <div style={{ textAlign: 'center', marginBottom: 12, borderBottom: '1px dashed #94A3B8', paddingBottom: 10 }}>
+            <div style={{ fontWeight: 900, fontSize: '1.1rem', letterSpacing: '-0.02em' }}>{businessName}</div>
+            <div style={{ fontSize: '0.7rem', color: '#475569' }}>NIT: 901.234.567-1 - Reg. DIAN</div>
+            <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Res. DIAN 18760000001 (SETP-1 al SETP-5000)</div>
+            <div style={{ fontSize: '0.68rem', color: '#64748B', marginTop: 2 }}>{new Date().toLocaleString('es-CO')}</div>
+            <div style={{ fontWeight: 800, fontSize: '0.9rem', marginTop: 4, color: '#1E293B' }}>Factura POS Nº: {saleNumber}</div>
           </div>
-          <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: 8 }}>
-            {paymentMethod === 'fiao' ? '¡Venta en Fiao Registrada!' : '¡Venta completada!'}
-          </h2>
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>Folio: <strong>{saleNumber}</strong></p>
-          {selectedCustomer && <p style={{ color: 'var(--accent-purple)', fontWeight: 600, marginBottom: 6 }}>Cliente: {selectedCustomer.full_name}</p>}
-          {transferRef && <p style={{ color: 'var(--accent-blue)', fontWeight: 600, marginBottom: 6 }}>Comprobante: {transferRef}</p>}
-          <p style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>Total: <strong>{formatCurrency(total)}</strong></p>
-          {change > 0 && <p style={{ color: 'var(--accent-green)', fontWeight: 700, fontSize: '1.1rem', marginBottom: 6 }}>Cambio: {formatCurrency(change)}</p>}
-          {paymentMethod === 'fiao' && selectedCustomer && (
-            <p style={{ color: 'var(--accent-coral)', fontWeight: 700, fontSize: '0.9rem', marginBottom: 6, background: 'var(--accent-coral-lt)', padding: '6px 12px', borderRadius: 'var(--radius-sm)' }}>
-              Nueva Deuda Total: {formatCurrency(selectedCustomer.credit_used)}
-            </p>
+
+          {/* Customer */}
+          {selectedCustomer && (
+            <div style={{ borderBottom: '1px dashed #94A3B8', paddingBottom: 8, marginBottom: 8, fontSize: '0.78rem' }}>
+              <div><strong>Cliente:</strong> {selectedCustomer.full_name}</div>
+              {selectedCustomer.phone && <div><strong>Tel:</strong> {selectedCustomer.phone}</div>}
+            </div>
           )}
-          <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
-            <button className="btn-neu" style={{ flex: 1, padding: '12px', fontSize: '0.875rem' }} onClick={() => alert('Ticket impreso / enviado')}>🖨 Ticket</button>
-            <button className="btn-neu btn-primary" style={{ flex: 2, padding: '12px', fontSize: '0.875rem' }} onClick={newSale}>+ Nueva venta</button>
+
+          {/* Items */}
+          <div style={{ borderBottom: '1px dashed #94A3B8', paddingBottom: 8, marginBottom: 8 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontWeight: 800, borderBottom: '1px solid #E2E8F0', paddingBottom: 4, marginBottom: 6, fontSize: '0.75rem' }}>
+              <span>Cant/Producto</span>
+              <span style={{ textAlign: 'right' }}>P.Unit</span>
+              <span style={{ textAlign: 'right' }}>Total</span>
+            </div>
+            {cart.map(item => (
+              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', marginBottom: 4, fontSize: '0.78rem' }}>
+                <div>{item.quantity}x {item.name}</div>
+                <div style={{ textAlign: 'right' }}>{formatCurrency(item.price)}</div>
+                <div style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(item.lineTotal)}</div>
+              </div>
+            ))}
           </div>
+
+          {/* Totals */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, borderBottom: '1px dashed #94A3B8', paddingBottom: 8, marginBottom: 8 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#64748B' }}><span>IVA Incluido (19%):</span><span>{formatCurrency(total * 0.19)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.05rem', marginTop: 4 }}><span>TOTAL:</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: '#475569', marginTop: 2 }}>
+              <span>Pago:</span>
+              <span style={{ fontWeight: 800 }}>{paymentMethod === 'cash' ? 'EFECTIVO' : paymentMethod === 'fiao' ? 'FIAO (CRÉDITO)' : paymentMethod === 'transfer' ? 'NEQUI' : 'TARJETA'}</span>
+            </div>
+            {change > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 800 }}><span>Cambio:</span><span>{formatCurrency(change)}</span></div>}
+          </div>
+
+          {/* DIAN CUFE & QR Sim */}
+          <div style={{ textAlign: 'center', marginTop: 8 }}>
+            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=CUFE-DIAN-${saleNumber}`} alt="QR DIAN" style={{ width: 70, height: 70, margin: '0 auto 4px' }} />
+            <div style={{ fontSize: '0.58rem', color: '#94A3B8', wordBreak: 'break-all' }}>
+              CUFE: c89f2a01490b8e7c102a99182bc837d7a1290317
+            </div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 700, marginTop: 4, color: '#475569' }}>
+              ¡Gracias por su compra en {businessName}! 🇨🇴
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div style={{ display: 'flex', gap: 10, maxWidth: 360, width: '100%', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn-neu" onClick={() => window.print()} style={{ flex: 1, padding: '12px', fontSize: '0.85rem', fontWeight: 700, justifyContent: 'center' }}>
+              🖨 Imprimir Ticket
+            </button>
+            <button className="btn-neu" onClick={sendTicketWhatsApp} style={{ flex: 1, padding: '12px', fontSize: '0.85rem', background: '#25D366', color: '#fff', fontWeight: 800, justifyContent: 'center' }}>
+              💬 WhatsApp
+            </button>
+          </div>
+          <button className="btn-neu btn-primary" onClick={newSale} style={{ padding: '14px', fontSize: '0.95rem', justifyContent: 'center' }}>
+            + Nueva venta
+          </button>
         </div>
       </div>
     )
