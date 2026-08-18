@@ -7,16 +7,28 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts'
+import {
+  DollarSign,
+  ShoppingCart,
+  BarChart3,
+  Users,
+  Package,
+  Truck,
+  ShoppingBag,
+  AlertTriangle,
+  CheckCircle2,
+  Plus
+} from 'lucide-react'
 
 const COLORS = ['#4A90D9', '#5CB85C', '#E8A030', '#8B72BE', '#E8745A']
 
 const QUICK_ACTIONS = [
-  { icon: '🛒', label: 'Nueva Venta', href: '/pos', color: 'var(--accent-blue)' },
-  { icon: '📦', label: 'Nuevo Producto', href: '/products/new', color: 'var(--accent-green)' },
-  { icon: '👥', label: 'Nuevo Cliente', href: '/customers', color: 'var(--accent-purple)' },
-  { icon: '🚚', label: 'Orden de Compra', href: '/purchases', color: 'var(--accent-amber)' },
-  { icon: '💰', label: 'Abrir Caja', href: '/cash', color: 'var(--accent-coral)' },
-  { icon: '📊', label: 'Ver Reportes', href: '/reports', color: 'var(--text-secondary)' },
+  { Icon: ShoppingCart, label: 'Nueva Venta', href: '/pos', color: 'var(--accent-blue)' },
+  { Icon: Package, label: 'Nuevo Producto', href: '/products/new', color: 'var(--accent-green)' },
+  { Icon: Users, label: 'Nuevo Cliente', href: '/customers', color: 'var(--accent-purple)' },
+  { Icon: Truck, label: 'Orden de Compra', href: '/purchases', color: 'var(--accent-amber)' },
+  { Icon: DollarSign, label: 'Abrir Caja', href: '/cash', color: 'var(--accent-coral)' },
+  { Icon: BarChart3, label: 'Ver Reportes', href: '/reports', color: 'var(--text-secondary)' },
 ]
 
 export default function DashboardPage() {
@@ -149,10 +161,10 @@ export default function DashboardPage() {
   }, [])
 
   const kpis = [
-    { label: 'Ventas hoy', value: formatCurrency(stats.salesToday), icon: '💰', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
-    { label: 'Pedidos hoy', value: formatNumber(stats.ordersToday), icon: '🛒', color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
-    { label: 'Ticket promedio', value: formatCurrency(stats.avgTicket), icon: '📊', color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
-    { label: 'Clientes nuevos', value: formatNumber(stats.newCustomersToday), icon: '👥', color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
+    { label: 'Ventas hoy', value: formatCurrency(stats.salesToday), Icon: DollarSign, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+    { label: 'Pedidos hoy', value: formatNumber(stats.ordersToday), Icon: ShoppingCart, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
+    { label: 'Ticket promedio', value: formatCurrency(stats.avgTicket), Icon: BarChart3, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
+    { label: 'Clientes nuevos', value: formatNumber(stats.newCustomersToday), Icon: Users, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
   ]
 
   if (loading) {
@@ -164,51 +176,55 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24, width: '100%', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%', overflowX: 'hidden' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            ¡Buen día! 👋
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            ¡Buen día!
           </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>
             Resumen de hoy para <strong>{tenantName}</strong>
           </p>
         </div>
-        <div className="badge badge-green" style={{ padding: '8px 14px', fontSize: '0.8rem' }}>
-          🟢 Caja abierta
+        <div className="badge badge-green" style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-green)' }} />
+          <span>Caja abierta</span>
         </div>
       </div>
 
-      {/* KPIs Grid - Fully Fluid & Responsive */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-        {kpis.map(kpi => (
-          <div key={kpi.label} className="kpi-card animate-fade-in" style={{ padding: '16px 18px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>{kpi.label}</div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{kpi.value}</div>
-              </div>
-              <div className="kpi-icon-wrap" style={{ background: kpi.bg, width: 38, height: 38 }}>
-                <span style={{ fontSize: '1rem' }}>{kpi.icon}</span>
+      {/* KPIs Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+        {kpis.map(kpi => {
+          const Icon = kpi.Icon
+          return (
+            <div key={kpi.label} className="kpi-card animate-fade-in" style={{ padding: '14px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div>
+                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{kpi.label}</div>
+                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{kpi.value}</div>
+                </div>
+                <div className="kpi-icon-wrap" style={{ background: kpi.bg, width: 34, height: 34 }}>
+                  <Icon size={16} strokeWidth={2} style={{ color: kpi.color }} />
+                </div>
               </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
 
-      {/* Charts Row - Responsive 1 col on mobile, 2 col on desktop */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 20 }}>
+      {/* Charts Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
         {/* Area chart — weekly sales */}
-        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className="neu-card" style={{ padding: '16px', minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
             <div>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Ventas de la semana</div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>Últimos 7 días</div>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ventas de la semana</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>Últimos 7 días</div>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={190}>
             <AreaChart data={weeklySales}>
               <defs>
                 <linearGradient id="salesGrad" x1="0" y1="0" x2="0" y2="1">
@@ -226,12 +242,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Pie chart — top products */}
-        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: 4 }}>Top Productos</div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 10 }}>Por unidades vendidas</div>
-          <ResponsiveContainer width="100%" height={150}>
+        <div className="neu-card" style={{ padding: '16px', minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: 2 }}>Top Productos</div>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8 }}>Por unidades vendidas</div>
+          <ResponsiveContainer width="100%" height={140}>
             <PieChart>
-              <Pie data={topProducts} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value">
+              <Pie data={topProducts} cx="50%" cy="50%" innerRadius={35} outerRadius={60} paddingAngle={3} dataKey="value">
                 {topProducts.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip formatter={(v) => [v, 'Unidades']} contentStyle={{ background: 'var(--bg)', border: 'none', borderRadius: 12, boxShadow: 'var(--neu-card)', fontSize: 12 }} />
@@ -239,7 +255,7 @@ export default function DashboardPage() {
           </ResponsiveContainer>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {topProducts.slice(0, 3).map((p, i) => (
-              <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.75rem' }}>
+              <div key={p.name} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: '0.72rem' }}>
                 <div style={{ width: 8, height: 8, borderRadius: '50%', background: COLORS[i], flexShrink: 0 }} />
                 <span style={{ color: 'var(--text-secondary)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
                 <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{p.value}</span>
@@ -249,69 +265,76 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bottom Row - 1 col on mobile, 3 col on large screens */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 20 }}>
+      {/* Bottom Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
 
         {/* Quick actions */}
-        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
-          <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: 12 }}>Acciones rápidas</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: 8 }}>
-            {QUICK_ACTIONS.map(a => (
-              <Link key={a.href} href={a.href} style={{ textDecoration: 'none' }}>
-                <div className="neu-card-sm" style={{ padding: '10px 8px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s' }}>
-                  <div style={{ fontSize: '1.2rem', marginBottom: 2 }}>{a.icon}</div>
-                  <div style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.label}</div>
-                </div>
-              </Link>
-            ))}
+        <div className="neu-card" style={{ padding: '16px', minWidth: 0 }}>
+          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: 10 }}>Acciones rápidas</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            {QUICK_ACTIONS.map(a => {
+              const ActionIcon = a.Icon
+              return (
+                <Link key={a.href} href={a.href} style={{ textDecoration: 'none' }}>
+                  <div className="neu-card-sm" style={{ padding: '10px 6px', textAlign: 'center', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <ActionIcon size={18} strokeWidth={2} style={{ color: a.color }} />
+                    <div style={{ fontSize: '0.68rem', fontWeight: 600, color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>{a.label}</div>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
         </div>
 
         {/* Low stock alerts */}
-        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>⚠️ Stock bajo</div>
-            <Link href="/inventory" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>Ver todo</Link>
+        <div className="neu-card" style={{ padding: '16px', minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertTriangle size={16} strokeWidth={2} style={{ color: 'var(--accent-amber)' }} />
+              <span>Stock bajo</span>
+            </div>
+            <Link href="/inventory" style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>Ver todo</Link>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {lowStockList.map(item => (
-              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div key={item.name} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Mín: {item.min} unidades</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.name}</div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Mín: {item.min} unidades</div>
                 </div>
-                <div className="badge badge-coral" style={{ flexShrink: 0 }}>{item.stock} uds</div>
+                <div className="badge badge-coral" style={{ flexShrink: 0, fontSize: '0.7rem' }}>{item.stock} uds</div>
               </div>
             ))}
             {lowStockList.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                ✅ Todo en orden. Sin alertas.
+              <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <CheckCircle2 size={16} strokeWidth={2} style={{ color: 'var(--accent-green)' }} />
+                <span>Todo en orden. Sin alertas.</span>
               </div>
             )}
           </div>
         </div>
 
         {/* Recent sales */}
-        <div className="neu-card" style={{ padding: '20px', minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Ventas recientes</div>
-            <Link href="/reports" style={{ fontSize: '0.75rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>Ver todo</Link>
+        <div className="neu-card" style={{ padding: '16px', minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ventas recientes</div>
+            <Link href="/reports" style={{ fontSize: '0.72rem', color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 600 }}>Ver todo</Link>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {recentSalesList.map(sale => (
               <div key={sale.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sale.customer}</div>
-                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{sale.id} · {sale.time}</div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{sale.customer}</div>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{sale.id} · {sale.time}</div>
                 </div>
                 <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sale.total}</div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>{sale.total}</div>
                   <div className="badge badge-blue" style={{ fontSize: '0.58rem', padding: '2px 6px' }}>{sale.method}</div>
                 </div>
               </div>
             ))}
             {recentSalesList.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+              <div style={{ textAlign: 'center', padding: '10px 0', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
                 Sin ventas registradas hoy.
               </div>
             )}

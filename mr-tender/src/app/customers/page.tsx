@@ -2,6 +2,19 @@
 import { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import {
+  Users,
+  Plus,
+  Search,
+  Phone,
+  DollarSign,
+  CreditCard,
+  MessageSquare,
+  ShoppingCart,
+  Award,
+  Check,
+  UserCheck
+} from 'lucide-react'
 
 interface DBCustomer {
   id: string
@@ -47,7 +60,6 @@ export default function CustomersPage() {
       const tid = user.user_metadata?.tenant_id
       setTenantId(tid)
 
-      // Get business name from tenant settings or metadata
       const { data: tSettings } = await supabase
         .from('tenant_settings')
         .select('business_name')
@@ -145,7 +157,7 @@ export default function CustomersPage() {
       setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, credit_used: newCreditUsed } : c))
       setShowAbonoModal(false)
       setAbonoAmount('')
-      alert(`✅ Abono registrado exitosamente. Deuda restante: ${formatCurrency(newCreditUsed)}`)
+      alert(`Abono registrado exitosamente. Deuda restante: ${formatCurrency(newCreditUsed)}`)
     } catch (err: any) {
       console.error('Error recording abono:', err)
       alert(err.message || 'No se pudo registrar el abono')
@@ -166,7 +178,7 @@ export default function CustomersPage() {
       rawPhone = '57' + rawPhone
     }
 
-    const message = `Hola ${selectedCustomer.full_name}, ¡un saludo de ${businessName}! 😊 Te recordamos que tu saldo fiao pendiente es de ${formatCurrency(selectedCustomer.credit_used)}. Puedes realizar tu pago o abono cuando gustes. ¡Muchas gracias por tu preferencia!`
+    const message = `Hola ${selectedCustomer.full_name}, un cordial saludo de ${businessName}. Te recordamos que tu saldo fiao pendiente es de ${formatCurrency(selectedCustomer.credit_used)}. Puedes realizar tu pago o abono cuando gustes. ¡Muchas gracias por tu preferencia!`
     const url = `https://wa.me/${rawPhone}?text=${encodeURIComponent(message)}`
     window.open(url, '_blank')
   }
@@ -174,160 +186,161 @@ export default function CustomersPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Cargando clientes...</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando clientes...</div>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', gap: 20, height: 'calc(100vh - 120px)', overflow: 'hidden' }}>
-      {/* Left Column: List */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-          <div>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Clientes & Libreta de Fiao</h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>{customers.length} clientes registrados</p>
-          </div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn-neu btn-primary" onClick={() => setShowNewModal(true)} style={{ padding: '10px 18px', fontSize: '0.85rem' }}>+ Nuevo cliente</button>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
+      
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+        <div>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Clientes & Libreta de Fiao</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>{customers.length} clientes registrados</p>
         </div>
-
-        <div className="input-group">
-          <span className="input-icon">🔍</span>
-          <input className="input-neu" placeholder="Buscar por nombre o teléfono..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-
-        <div className="neu-card" style={{ flex: 1, overflow: 'auto', padding: 0 }}>
-          <table className="table-neu">
-            <thead>
-              <tr>
-                <th>Cliente</th>
-                <th style={{ textAlign: 'right' }}>Fiao (Deuda)</th>
-                <th style={{ textAlign: 'right' }}>Cupo Crédito</th>
-                <th style={{ textAlign: 'center' }}>Pedidos</th>
-                <th style={{ textAlign: 'center' }}>Puntos</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(customer => {
-                const debt = Number(customer.credit_used || 0)
-                const limit = Number(customer.credit_limit || 0)
-                return (
-                  <tr key={customer.id} onClick={() => setSelected(customer.id)} style={{ cursor: 'pointer', background: selected === customer.id ? 'var(--accent-blue-lt)' : undefined }}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 34, height: 34, borderRadius: 10, background: debt > 0 ? 'var(--accent-coral-lt)' : 'var(--accent-purple-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', color: debt > 0 ? 'var(--accent-coral)' : 'var(--accent-purple)', flexShrink: 0 }}>
-                          {customer.full_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
-                        </div>
-                        <div>
-                          <div style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.875rem' }}>{customer.full_name}</div>
-                          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{customer.phone || 'Sin teléfono'}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 800, color: debt > 0 ? 'var(--accent-coral)' : 'var(--text-muted)' }}>
-                      {formatCurrency(debt)}
-                    </td>
-                    <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text-secondary)' }}>
-                      {formatCurrency(limit)}
-                    </td>
-                    <td style={{ textAlign: 'center' }}><span className="badge badge-gray">{customer.total_orders}</span></td>
-                    <td style={{ textAlign: 'center' }}><span className="badge badge-amber">⭐ {customer.points_balance}</span></td>
-                  </tr>
-                )
-              })}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={5} style={{ textAlign: 'center', padding: '32px', color: 'var(--text-muted)' }}>
-                    No se encontraron clientes
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <button className="btn-neu btn-primary" onClick={() => setShowNewModal(true)} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Plus size={15} strokeWidth={2.5} />
+          <span>Nuevo cliente</span>
+        </button>
       </div>
 
-      {/* Right Column: Detail Panel */}
-      {selectedCustomer && (
-        <div className="neu-card animate-scale-in" style={{ width: 320, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: 16, overflowY: 'auto', flexShrink: 0 }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ width: 56, height: 56, borderRadius: 16, background: selectedCustomer.credit_used > 0 ? 'var(--accent-coral-lt)' : 'var(--accent-purple-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.2rem', color: selectedCustomer.credit_used > 0 ? 'var(--accent-coral)' : 'var(--accent-purple)', margin: '0 auto 12px', boxShadow: 'var(--neu-raised)' }}>
-              {selectedCustomer.full_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
-            </div>
-            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>{selectedCustomer.full_name}</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>📱 {selectedCustomer.phone || 'Sin número registrado'}</div>
+      {/* Main Grid: Responsive 2-column on desktop, stacked on mobile */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
+        
+        {/* Left: Customer List */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="input-group">
+            <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
+            <input className="input-neu" placeholder="Buscar por nombre o teléfono..." value={search} onChange={e => setSearch(e.target.value)} style={{ fontSize: '0.85rem' }} />
           </div>
 
-          <div className="divider" />
+          <div className="neu-card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {filtered.map(customer => {
+              const debt = Number(customer.credit_used || 0)
+              const limit = Number(customer.credit_limit || 0)
+              const isSelected = selected === customer.id
 
-          {/* Fiao Summary Box */}
-          <div style={{ background: selectedCustomer.credit_used > 0 ? 'var(--accent-coral-lt)' : 'var(--bg-deep)', borderRadius: 'var(--radius-md)', padding: '14px', textAlign: 'center' }}>
-            <div style={{ fontSize: '0.72rem', fontWeight: 700, textTransform: 'uppercase', color: selectedCustomer.credit_used > 0 ? 'var(--accent-coral)' : 'var(--text-muted)', letterSpacing: '0.05em' }}>Saldo Fiado (Deuda)</div>
-            <div style={{ fontSize: '1.6rem', fontWeight: 900, color: selectedCustomer.credit_used > 0 ? 'var(--accent-coral)' : 'var(--accent-green)', marginTop: 2 }}>
-              {formatCurrency(selectedCustomer.credit_used)}
-            </div>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 4 }}>
-              Disponible: <strong>{formatCurrency(Math.max(0, selectedCustomer.credit_limit - selectedCustomer.credit_used))}</strong> de {formatCurrency(selectedCustomer.credit_limit)}
-            </div>
-          </div>
+              return (
+                <div key={customer.id} onClick={() => setSelected(customer.id)}
+                  className={`neu-flat ${isSelected ? 'active' : ''}`}
+                  style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, background: isSelected ? 'var(--accent-blue-lt)' : 'var(--bg)' }}>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, background: debt > 0 ? 'var(--accent-coral-lt)' : 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.78rem', color: debt > 0 ? 'var(--accent-coral)' : 'var(--accent-blue)', flexShrink: 0 }}>
+                      {customer.full_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{customer.full_name}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{customer.phone || 'Sin teléfono'}</div>
+                    </div>
+                  </div>
 
-          {/* Quick Fiao Actions */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {selectedCustomer.credit_used > 0 && (
-              <>
-                <button className="btn-neu btn-primary" onClick={() => setShowAbonoModal(true)} style={{ width: '100%', padding: '11px', fontSize: '0.85rem', justifyContent: 'center', background: 'var(--accent-green)', color: '#fff' }}>
-                  💵 Registrar Abono
-                </button>
-                <button className="btn-neu" onClick={sendWhatsAppReminder} style={{ width: '100%', padding: '11px', fontSize: '0.85rem', justifyContent: 'center', background: '#25D366', color: '#fff', fontWeight: 700 }}>
-                  💬 Cobrar por WhatsApp
-                </button>
-              </>
+                  <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: debt > 0 ? 'var(--accent-coral)' : 'var(--text-muted)' }}>
+                      {debt > 0 ? formatCurrency(debt) : 'Al día'}
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Cupo: {formatCurrency(limit)}</div>
+                  </div>
+                </div>
+              )
+            })}
+
+            {filtered.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
+                <Users size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+                <div style={{ fontSize: '0.85rem' }}>No se encontraron clientes</div>
+              </div>
             )}
-            <a href={`/pos?customer=${selectedCustomer.id}`} className="btn-neu btn-primary" style={{ width: '100%', padding: '11px', fontSize: '0.85rem', justifyContent: 'center', textDecoration: 'none', textAlign: 'center' }}>
-              🛒 Vender / Fiar en POS
-            </a>
           </div>
-
-          <div className="divider" />
-
-          {/* Stats list */}
-          {[
-            { label: 'Compras totales', value: formatCurrency(selectedCustomer.total_purchases), icon: '💰' },
-            { label: 'Pedidos totales', value: selectedCustomer.total_orders, icon: '🛒' },
-            { label: 'Puntos acumulados', value: `⭐ ${selectedCustomer.points_balance}`, icon: '🏆' },
-          ].map(item => (
-            <div key={item.label} className="neu-flat" style={{ padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{item.icon} {item.label}</span>
-              <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{item.value}</span>
-            </div>
-          ))}
         </div>
-      )}
 
-      {/* ── MODAL: Nuevo Cliente ── */}
+        {/* Right: Selected Customer Details Panel */}
+        {selectedCustomer && (
+          <div className="neu-card animate-scale-in" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: selectedCustomer.credit_used > 0 ? 'var(--accent-coral-lt)' : 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '1.05rem', color: selectedCustomer.credit_used > 0 ? 'var(--accent-coral)' : 'var(--accent-blue)', flexShrink: 0 }}>
+                {selectedCustomer.full_name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{selectedCustomer.full_name}</div>
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <Phone size={12} strokeWidth={2} />
+                  <span>{selectedCustomer.phone || 'Sin número registrado'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Fiao Balance Box */}
+            <div style={{ background: selectedCustomer.credit_used > 0 ? 'var(--accent-coral-lt)' : 'var(--bg-deep)', borderRadius: 'var(--radius-md)', padding: '12px', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, textTransform: 'uppercase', color: selectedCustomer.credit_used > 0 ? 'var(--accent-coral)' : 'var(--text-muted)', letterSpacing: '0.05em' }}>Saldo Fiado (Deuda)</div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: selectedCustomer.credit_used > 0 ? 'var(--accent-coral)' : 'var(--accent-green)', marginTop: 2 }}>
+                {formatCurrency(selectedCustomer.credit_used)}
+              </div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                Disponible: <strong>{formatCurrency(Math.max(0, selectedCustomer.credit_limit - selectedCustomer.credit_used))}</strong> de {formatCurrency(selectedCustomer.credit_limit)}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {selectedCustomer.credit_used > 0 && (
+                <>
+                  <button className="btn-neu btn-primary" onClick={() => setShowAbonoModal(true)} style={{ width: '100%', padding: '10px', fontSize: '0.82rem', justifyContent: 'center', background: 'var(--accent-green)', color: '#fff', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <DollarSign size={15} strokeWidth={2.5} />
+                    <span>Registrar Abono</span>
+                  </button>
+                  <button className="btn-neu" onClick={sendWhatsAppReminder} style={{ width: '100%', padding: '10px', fontSize: '0.82rem', justifyContent: 'center', background: '#25D366', color: '#fff', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <MessageSquare size={15} strokeWidth={2.2} />
+                    <span>Cobrar por WhatsApp</span>
+                  </button>
+                </>
+              )}
+              <a href={`/pos?customer=${selectedCustomer.id}`} className="btn-neu btn-primary" style={{ width: '100%', padding: '10px', fontSize: '0.82rem', justifyContent: 'center', textDecoration: 'none', textAlign: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <ShoppingCart size={15} strokeWidth={2.2} />
+                <span>Vender / Fiar en POS</span>
+              </a>
+            </div>
+
+            {/* Summary details */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
+              <div className="neu-flat" style={{ padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Compras totales:</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{formatCurrency(selectedCustomer.total_purchases)}</span>
+              </div>
+              <div className="neu-flat" style={{ padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Pedidos totales:</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{selectedCustomer.total_orders}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* Modal: New Customer */}
       {showNewModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <form onSubmit={handleCreateCustomer} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 420, padding: 28 }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 16 }}>➕ Registrar Nuevo Cliente</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <form onSubmit={handleCreateCustomer} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 400, padding: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 14 }}>Registrar Nuevo Cliente</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Nombre completo *</label>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Nombre completo *</label>
                 <input className="input-neu" placeholder="Ej: Doña María / Juan Pérez" value={newForm.fullName} onChange={e => setNewForm(f => ({ ...f, fullName: e.target.value }))} required />
               </div>
               <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Teléfono / WhatsApp</label>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Teléfono / WhatsApp</label>
                 <input className="input-neu" type="tel" placeholder="Ej: 3001234567" value={newForm.phone} onChange={e => setNewForm(f => ({ ...f, phone: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Cupo de Crédito (Fiao) $</label>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Cupo de Crédito (Fiao) $</label>
                 <input className="input-neu" type="number" step="5000" placeholder="150000" value={newForm.creditLimit} onChange={e => setNewForm(f => ({ ...f, creditLimit: e.target.value }))} required />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button type="button" className="btn-neu" onClick={() => setShowNewModal(false)} style={{ flex: 1, padding: 12 }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-primary" disabled={submitting} style={{ flex: 1, padding: 12 }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <button type="button" className="btn-neu" onClick={() => setShowNewModal(false)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+              <button type="submit" className="btn-neu btn-primary" disabled={submitting} style={{ flex: 1, padding: 10 }}>
                 {submitting ? 'Guardando...' : 'Guardar cliente'}
               </button>
             </div>
@@ -335,30 +348,29 @@ export default function CustomersPage() {
         </div>
       )}
 
-      {/* ── MODAL: Registrar Abono ── */}
+      {/* Modal: Abono */}
       {showAbonoModal && selectedCustomer && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <form onSubmit={handleRecordAbono} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 380, padding: 28 }}>
-            <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>💵 Registrar Abono de Fiao</h2>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', marginBottom: 16 }}>Cliente: <strong>{selectedCustomer.full_name}</strong> (Deuda: {formatCurrency(selectedCustomer.credit_used)})</p>
+          <form onSubmit={handleRecordAbono} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>Registrar Abono de Fiao</h2>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 14 }}>Cliente: <strong>{selectedCustomer.full_name}</strong> (Deuda: {formatCurrency(selectedCustomer.credit_used)})</p>
             
             <div>
-              <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>Monto del Abono $</label>
-              <input className="input-neu" type="number" step="1000" placeholder="Ej: 20000" value={abonoAmount} onChange={e => setAbonoAmount(e.target.value)} required autoFocus style={{ fontSize: '1.2rem', fontWeight: 800 }} />
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Monto del Abono $</label>
+              <input className="input-neu" type="number" step="1000" placeholder="Ej: 20000" value={abonoAmount} onChange={e => setAbonoAmount(e.target.value)} required autoFocus style={{ fontSize: '1.1rem', fontWeight: 800 }} />
             </div>
 
-            {/* Quick Abono Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginTop: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 10 }}>
               {[10000, 20000, 50000].map(amt => (
-                <button key={amt} type="button" className="btn-neu" onClick={() => setAbonoAmount(String(amt))} style={{ padding: '8px', fontSize: '0.78rem', fontWeight: 700 }}>
+                <button key={amt} type="button" className="btn-neu" onClick={() => setAbonoAmount(String(amt))} style={{ padding: '7px', fontSize: '0.75rem', fontWeight: 700 }}>
                   ${amt.toLocaleString()}
                 </button>
               ))}
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 22 }}>
-              <button type="button" className="btn-neu" onClick={() => setShowAbonoModal(false)} style={{ flex: 1, padding: 12 }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-primary" disabled={submitting || !abonoAmount} style={{ flex: 1, padding: 12, background: 'var(--accent-green)', color: '#fff' }}>
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <button type="button" className="btn-neu" onClick={() => setShowAbonoModal(false)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+              <button type="submit" className="btn-neu btn-primary" disabled={submitting || !abonoAmount} style={{ flex: 1, padding: 10, background: 'var(--accent-green)', color: '#fff' }}>
                 {submitting ? 'Registrando...' : 'Confirmar Abono'}
               </button>
             </div>

@@ -1,6 +1,14 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import {
+  Building2,
+  DollarSign,
+  Receipt,
+  ShoppingCart,
+  Save,
+  Check
+} from 'lucide-react'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -122,7 +130,7 @@ export default function SettingsPage() {
 
   const SECTIONS = [
     {
-      title: 'Datos del negocio', icon: '🏪',
+      title: 'Datos del negocio', Icon: Building2,
       fields: [
         { key: 'businessName', label: 'Nombre del negocio', type: 'text', placeholder: 'Ej: Tienda La Esperanza' },
         { key: 'tradeName', label: 'Nombre comercial', type: 'text', placeholder: 'Opcional' },
@@ -131,7 +139,7 @@ export default function SettingsPage() {
       ]
     },
     {
-      title: 'Moneda e impuestos 🇨🇴', icon: '💰',
+      title: 'Moneda e impuestos', Icon: DollarSign,
       fields: [
         { key: 'currency', label: 'Moneda', type: 'select', options: ['COP', 'USD', 'MXN', 'PEN'] },
         { key: 'taxName', label: 'Nombre del impuesto', type: 'text', placeholder: 'IVA' },
@@ -139,7 +147,7 @@ export default function SettingsPage() {
       ]
     },
     {
-      title: 'Facturación Electrónica DIAN 🧾', icon: '🧾',
+      title: 'Facturación DIAN', Icon: Receipt,
       fields: [
         { key: 'dianNit', label: 'NIT / Identificación Fiscal DIAN', type: 'text', placeholder: 'Ej: 901234567-1' },
         { key: 'dianRegimen', label: 'Régimen Fiscal', type: 'select', options: ['No Responsable de IVA', 'Responsable de IVA (Común)', 'Régimen Simple de TRIBUTACIÓN (RST)'] },
@@ -151,7 +159,7 @@ export default function SettingsPage() {
       ]
     },
     {
-      title: 'Configuración de ventas', icon: '🛒',
+      title: 'Configuración ventas', Icon: ShoppingCart,
       fields: [
         { key: 'invoiceSeries', label: 'Serie de facturas', type: 'text', placeholder: 'F' },
         { key: 'receiptSeries', label: 'Serie de recibos', type: 'text', placeholder: 'R' },
@@ -162,59 +170,73 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Cargando configuraciones...</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando configuraciones...</div>
       </div>
     )
   }
 
   const currentSection = SECTIONS[activeSection]
+  const CurrentSectionIcon = currentSection.Icon
 
   return (
-    <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
-      {/* Section nav */}
-      <div className="neu-card" style={{ width: 250, padding: '16px 12px', flexShrink: 0 }}>
-        <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', padding: '4px 8px', marginBottom: 8 }}>Configuración</div>
-        {SECTIONS.map((s, i) => (
-          <button key={s.title} onClick={() => setActiveSection(i)}
-            className="sidebar-nav-item" style={{ marginBottom: 2, background: activeSection === i ? 'var(--bg-deep)' : undefined, color: activeSection === i ? 'var(--accent-blue)' : undefined, boxShadow: activeSection === i ? 'var(--neu-pressed)' : undefined }}>
-            <span>{s.icon}</span>
-            <span style={{ fontSize: '0.82rem', fontWeight: 600 }}>{s.title}</span>
-          </button>
-        ))}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
+      <div>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Configuración</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Ajustes generales, datos de facturación DIAN y moneda</p>
       </div>
 
-      {/* Form */}
-      <div style={{ flex: 1 }}>
-        <div className="neu-card" style={{ padding: '28px' }}>
-          <div style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', marginBottom: 4 }}>{currentSection.icon} {currentSection.title}</div>
-          <div className="divider" style={{ margin: '14px 0 22px' }} />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 18 }}>
-            {currentSection.fields.map(field => (
-              <div key={field.key}>
-                <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>{field.label}</label>
-                {field.type === 'select' ? (
-                  <select className="input-neu" value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)}>
-                    {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                ) : (
-                  <input className="input-neu" type={field.type} placeholder={field.placeholder} value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} />
-                )}
-              </div>
-            ))}
-          </div>
-
-          {error && (
-            <div style={{ marginTop: 16, background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>
-              ⚠ {error}
-            </div>
-          )}
-
-          <div style={{ marginTop: 28, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-            {saved && <div className="badge badge-green" style={{ padding: '10px 16px' }}>✓ Guardado</div>}
-            <button className="btn-neu btn-primary" style={{ padding: '12px 28px' }} onClick={handleSave}>
-              💾 Guardar cambios
+      {/* Responsive Wrapping Navigation Tabs */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {SECTIONS.map((s, i) => {
+          const SectionIcon = s.Icon
+          const isActive = activeSection === i
+          return (
+            <button key={s.title} onClick={() => setActiveSection(i)}
+              className="btn-neu"
+              style={{ padding: '8px 14px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6, background: isActive ? 'var(--accent-blue)' : 'var(--bg)', color: isActive ? '#fff' : 'var(--text-secondary)', boxShadow: isActive ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
+              <SectionIcon size={15} strokeWidth={2} style={{ color: isActive ? '#fff' : 'inherit' }} />
+              <span style={{ fontWeight: isActive ? 700 : 500 }}>{s.title}</span>
             </button>
+          )
+        })}
+      </div>
+
+      {/* Form Content */}
+      <div className="neu-card" style={{ padding: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: 12 }}>
+          <CurrentSectionIcon size={18} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
+          <span>{currentSection.title}</span>
+        </div>
+
+        <div className="divider" style={{ margin: '8px 0 16px' }} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+          {currentSection.fields.map(field => (
+            <div key={field.key}>
+              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{field.label}</label>
+              {field.type === 'select' ? (
+                <select className="input-neu" value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }}>
+                  {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              ) : (
+                <input className="input-neu" type={field.type} placeholder={field.placeholder} value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }} />
+              )}
+            </div>
+          ))}
+        </div>
+
+        {error && (
+          <div style={{ marginTop: 12, background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
+            {error}
           </div>
+        )}
+
+        <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
+          {saved && <div className="badge badge-green" style={{ padding: '8px 14px', fontSize: '0.78rem' }}>✓ Guardado</div>}
+          <button className="btn-neu btn-primary" style={{ padding: '10px 22px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }} onClick={handleSave}>
+            <Save size={15} strokeWidth={2.5} />
+            <span>Guardar cambios</span>
+          </button>
         </div>
       </div>
     </div>

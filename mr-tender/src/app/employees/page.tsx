@@ -1,7 +1,16 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
+import {
+  UserCheck,
+  Plus,
+  Phone,
+  Mail,
+  Briefcase,
+  DollarSign,
+  User
+} from 'lucide-react'
 
 interface Employee {
   id: string;
@@ -108,101 +117,78 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
       <div>
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Empleados y Personal</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Administra tu personal, salarios y comisiones del negocio</p>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Empleados y Personal</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Administra tu personal, salarios y permisos del negocio</p>
       </div>
 
-      <form onSubmit={handleCreateEmployee} className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-        <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Registrar Nuevo Empleado</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+      <form onSubmit={handleCreateEmployee} className="neu-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <h3 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Registrar Nuevo Empleado</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Nombre Completo</label>
-            <input type="text" className="input-neu" placeholder="Roberto Mendoza" value={fullName} onChange={e => setFullName(e.target.value)} required style={{ width: '100%' }} />
+            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Nombre Completo *</label>
+            <input type="text" className="input-neu" placeholder="Roberto Mendoza" value={fullName} onChange={e => setFullName(e.target.value)} required style={{ width: '100%', fontSize: '0.82rem' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Puesto / Cargo</label>
-            <input type="text" className="input-neu" placeholder="Cajero / Vendedor" value={position} onChange={e => setPosition(e.target.value)} style={{ width: '100%' }} />
+            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Puesto / Cargo</label>
+            <input type="text" className="input-neu" placeholder="Cajero / Vendedor" value={position} onChange={e => setPosition(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Salario Base Mensual</label>
-            <input type="number" className="input-neu" placeholder="12000" value={salary} onChange={e => setSalary(e.target.value)} style={{ width: '100%' }} />
+            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Salario Base Mensual</label>
+            <input type="number" className="input-neu" placeholder="1500000" value={salary} onChange={e => setSalary(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Teléfono</label>
-            <input type="text" className="input-neu" placeholder="555-0182" value={phone} onChange={e => setPhone(e.target.value)} style={{ width: '100%' }} />
+            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Teléfono</label>
+            <input type="text" className="input-neu" placeholder="3001234567" value={phone} onChange={e => setPhone(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
           </div>
-          <div style={{ gridColumn: 'span 2' }}>
-            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Correo Electrónico</label>
-            <input type="email" className="input-neu" placeholder="roberto@negocio.com" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%' }} />
+          <div>
+            <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Correo Electrónico</label>
+            <input type="email" className="input-neu" placeholder="roberto@negocio.com" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
           </div>
         </div>
-        <button type="submit" className="btn-neu btn-primary" disabled={creating} style={{ alignSelf: 'flex-end', padding: '10px 24px', fontSize: '0.85rem' }}>
-          {creating ? 'Registrando...' : 'Registrar Empleado'}
+        <button type="submit" className="btn-neu btn-primary" disabled={creating} style={{ alignSelf: 'flex-start', padding: '8px 18px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Plus size={15} strokeWidth={2.5} />
+          <span>{creating ? 'Registrando...' : 'Registrar Empleado'}</span>
         </button>
       </form>
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando personal...</div>
       ) : employees.length === 0 ? (
-        <div className="neu-card" style={{ padding: '40px', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: 12 }}>👤</div>
-          <h2 style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>No tienes empleados registrados</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-            Registra a tus vendedores y cajeros para que operen desde la app móvil.
+        <div className="neu-card" style={{ padding: '32px 16px', textAlign: 'center' }}>
+          <UserCheck size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+          <h2 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: 4 }}>No tienes empleados registrados</h2>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+            Registra a tus vendedores y cajeros para operar la app.
           </p>
         </div>
       ) : (
-        <div className="neu-card" style={{ padding: 0, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>N° Empleado</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Nombre</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Cargo</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Salario Base</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Teléfono / Email</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Estado</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600, textAlign: 'right' }}>Acciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map(emp => (
-                <tr key={emp.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px 20px', fontFamily: 'monospace', fontWeight: 600 }}>{emp.employee_number}</td>
-                  <td style={{ padding: '16px 20px', fontWeight: 700, color: 'var(--text-primary)' }}>{emp.full_name}</td>
-                  <td style={{ padding: '16px 20px', fontWeight: 600 }}>{emp.position}</td>
-                  <td style={{ padding: '16px 20px', fontWeight: 700, color: 'var(--accent-emerald)' }}>{formatCurrency(emp.base_salary)}</td>
-                  <td style={{ padding: '16px 20px' }}>
-                    <div>{emp.phone}</div>
-                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{emp.email}</div>
-                  </td>
-                  <td style={{ padding: '16px 20px' }}>
-                    <span style={{
-                      padding: '4px 8px',
-                      borderRadius: 6,
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      background: emp.is_active ? 'rgba(74,186,134,0.12)' : 'var(--border-color)',
-                      color: emp.is_active ? 'var(--accent-emerald)' : 'var(--text-muted)'
-                    }}>
-                      {emp.is_active ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                    <button
-                      onClick={() => toggleEmployeeStatus(emp.id, emp.is_active)}
-                      className="btn-neu btn-ghost"
-                      style={{ padding: '6px 12px', fontSize: '0.78rem', color: emp.is_active ? 'var(--accent-coral)' : 'var(--accent-emerald)' }}
-                    >
-                      {emp.is_active ? 'Desactivar' : 'Activar'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="neu-card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {employees.map(emp => (
+            <div key={emp.id} className="neu-flat" style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <User size={14} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{emp.full_name}</span>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
+                  <span>{emp.position}</span>
+                  {emp.phone && <span>• {emp.phone}</span>}
+                  {emp.base_salary > 0 && <span>• {formatCurrency(emp.base_salary)}</span>}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                <span className={`badge ${emp.is_active ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.65rem' }}>
+                  {emp.is_active ? 'Activo' : 'Inactivo'}
+                </span>
+                <button className="btn-neu btn-ghost" onClick={() => toggleEmployeeStatus(emp.id, emp.is_active)} style={{ padding: '4px 8px', fontSize: '0.72rem' }}>
+                  {emp.is_active ? 'Desactivar' : 'Activar'}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

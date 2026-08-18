@@ -1,6 +1,16 @@
 'use client'
 import { formatCurrency } from '@/lib/utils'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  BarChart3,
+  Package,
+  Users,
+  DollarSign,
+  ClipboardList,
+  Truck,
+  FileSpreadsheet,
+  FileText
+} from 'lucide-react'
 
 const MONTHLY = [
   { month: 'Feb', ventas: 88200, pedidos: 342 },
@@ -13,54 +23,65 @@ const MONTHLY = [
 ]
 
 const REPORT_TYPES = [
-  { icon: '📊', title: 'Ventas por período', desc: 'Reporte detallado de ventas con filtros de fecha, vendedor, producto y cliente.' },
-  { icon: '📦', title: 'Inventario', desc: 'Estado del stock, movimientos, rotación ABC y valorización del inventario.' },
-  { icon: '👥', title: 'Clientes', desc: 'Ranking de clientes, frecuencia de compra, ticket promedio y retención.' },
-  { icon: '💰', title: 'Caja y arqueos', desc: 'Historial de cierres de caja, diferencias y resumen por método de pago.' },
-  { icon: '📋', title: 'Estado de resultados', desc: 'Ingresos, costos, gastos y utilidad bruta/neta del período.' },
-  { icon: '🚚', title: 'Proveedores y compras', desc: 'Órdenes de compra, gastos por proveedor y cuentas por pagar.' },
+  { Icon: BarChart3, title: 'Ventas por período', desc: 'Reporte detallado de ventas con filtros de fecha, vendedor, producto y cliente.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+  { Icon: Package, title: 'Inventario', desc: 'Estado del stock, movimientos, rotación ABC y valorización del inventario.', color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
+  { Icon: Users, title: 'Clientes', desc: 'Ranking de clientes, frecuencia de compra, ticket promedio y retención.', color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
+  { Icon: DollarSign, title: 'Caja y arqueos', desc: 'Historial de cierres de caja, diferencias y resumen por método de pago.', color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
+  { Icon: ClipboardList, title: 'Estado de resultados', desc: 'Ingresos, costos, gastos y utilidad bruta/neta del período.', color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+  { Icon: Truck, title: 'Proveedores y compras', desc: 'Órdenes de compra, gastos por proveedor y cuentas por pagar.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
 ]
 
 export default function ReportsPage() {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
       <div>
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Reportes y Analítica</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: 3 }}>Datos actualizados al {new Date().toLocaleDateString('es-MX')}</p>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Reportes y Analítica</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Datos actualizados al {new Date().toLocaleDateString('es-CO')}</p>
       </div>
 
-      <div className="neu-card" style={{ padding: '22px 24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
+      <div className="neu-card" style={{ padding: '18px 20px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '1rem', color: 'var(--text-primary)' }}>Ventas mensuales 2026</div>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>*Agosto parcial</div>
+            <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Ventas mensuales 2026</div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>*Agosto parcial</div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-neu" style={{ padding: '8px 14px', fontSize: '0.8rem' }}>📥 Excel</button>
-            <button className="btn-neu" style={{ padding: '8px 14px', fontSize: '0.8rem' }}>📄 PDF</button>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn-neu" style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <FileSpreadsheet size={14} />
+              <span>Excel</span>
+            </button>
+            <button className="btn-neu" style={{ padding: '6px 12px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <FileText size={14} />
+              <span>PDF</span>
+            </button>
           </div>
         </div>
-        <ResponsiveContainer width="100%" height={240}>
+        <ResponsiveContainer width="100%" height={220}>
           <BarChart data={MONTHLY}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--bg-deep)" />
             <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
             <YAxis tick={{ fontSize: 11, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-            <Tooltip formatter={v => [`$${Number(v).toLocaleString('es-MX')}`, 'Ventas']} contentStyle={{ background: 'var(--bg)', border: 'none', borderRadius: 12, boxShadow: 'var(--neu-card)', fontSize: 12 }} />
+            <Tooltip formatter={v => [`$${Number(v).toLocaleString('es-CO')}`, 'Ventas']} contentStyle={{ background: 'var(--bg)', border: 'none', borderRadius: 12, boxShadow: 'var(--neu-card)', fontSize: 12 }} />
             <Bar dataKey="ventas" fill="#4A90D9" radius={[8, 8, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
-        {REPORT_TYPES.map(r => (
-          <button key={r.title} className="neu-card" style={{ padding: '20px 22px', cursor: 'pointer', display: 'flex', gap: 14, alignItems: 'flex-start', border: 'none', width: '100%', textAlign: 'left' }}>
-            <span style={{ fontSize: '1.8rem', flexShrink: 0 }}>{r.icon}</span>
-            <div>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4, fontSize: '0.95rem' }}>{r.title}</div>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>{r.desc}</div>
-            </div>
-          </button>
-        ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+        {REPORT_TYPES.map(r => {
+          const ReportIcon = r.Icon
+          return (
+            <button key={r.title} className="neu-card" style={{ padding: '16px', cursor: 'pointer', display: 'flex', gap: 12, alignItems: 'flex-start', border: 'none', width: '100%', textAlign: 'left' }}>
+              <div className="kpi-icon-wrap" style={{ background: r.bg, width: 36, height: 36, flexShrink: 0 }}>
+                <ReportIcon size={18} strokeWidth={2} style={{ color: r.color }} />
+              </div>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 700, color: 'var(--text-primary)', marginBottom: 2, fontSize: '0.9rem' }}>{r.title}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{r.desc}</div>
+              </div>
+            </button>
+          )
+        })}
       </div>
     </div>
   )

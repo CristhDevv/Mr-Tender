@@ -2,6 +2,15 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import {
+  ShoppingBag,
+  Plus,
+  Trash2,
+  Building2,
+  Truck,
+  CheckCircle2,
+  Clock
+} from 'lucide-react'
 
 interface Supplier {
   id: string;
@@ -203,20 +212,21 @@ export default function PurchasesPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
       <div>
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Órdenes de Compra y Entrada</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Registra compras de inventario para aumentar el stock y valorizar tu almacén</p>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Órdenes de Compra y Entrada</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Registra compras de inventario para aumentar el stock y valorizar tu almacén</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
         {/* Formulario */}
-        <form onSubmit={handleCreatePurchase} className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Registrar Nueva Compra</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+        <form onSubmit={handleCreatePurchase} className="neu-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <h3 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Registrar Nueva Compra</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Proveedor</label>
-              <select className="input-neu" value={supplierId} onChange={e => setSupplierId(e.target.value)} required style={{ width: '100%' }}>
+              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Proveedor</label>
+              <select className="input-neu" value={supplierId} onChange={e => setSupplierId(e.target.value)} required style={{ width: '100%', fontSize: '0.82rem' }}>
                 {suppliers.length === 0 ? (
                   <option value="">(Crea un proveedor primero)</option>
                 ) : (
@@ -225,99 +235,109 @@ export default function PurchasesPage() {
               </select>
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Almacén de Entrada</label>
-              <select className="input-neu" value={warehouseId} onChange={e => setWarehouseId(e.target.value)} required style={{ width: '100%' }}>
+              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Almacén de Entrada</label>
+              <select className="input-neu" value={warehouseId} onChange={e => setWarehouseId(e.target.value)} required style={{ width: '100%', fontSize: '0.82rem' }}>
                 {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
               </select>
             </div>
           </div>
 
-          <div className="divider" />
+          <div className="divider" style={{ margin: '4px 0' }} />
 
           {/* Items */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>Productos a ingresar</span>
-              <button type="button" onClick={handleAddItem} className="btn-neu" style={{ padding: '4px 10px', fontSize: '0.75rem' }}>+ Agregar</button>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>Productos a ingresar</span>
+              <button type="button" onClick={handleAddItem} className="btn-neu" style={{ padding: '4px 10px', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Plus size={12} strokeWidth={2.5} />
+                <span>Agregar</span>
+              </button>
             </div>
 
             {items.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <select
-                  className="input-neu"
-                  value={item.product_id}
-                  onChange={e => handleItemChange(idx, 'product_id', e.target.value)}
-                  required
-                  style={{ flex: 3 }}
-                >
-                  <option value="">Seleccionar Producto...</option>
-                  {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
-                </select>
-                <input
-                  type="number"
-                  className="input-neu"
-                  placeholder="Cantidad"
-                  value={item.quantity}
-                  onChange={e => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
-                  required
-                  min="0.1"
-                  style={{ flex: 1, textAlign: 'right' }}
-                />
-                <input
-                  type="number"
-                  className="input-neu"
-                  placeholder="Costo Unitario"
-                  value={item.unit_price}
-                  onChange={e => handleItemChange(idx, 'unit_price', parseFloat(e.target.value) || 0)}
-                  required
-                  min="0"
-                  style={{ flex: 1, textAlign: 'right' }}
-                />
-                {items.length > 1 && (
-                  <button type="button" onClick={() => handleRemoveItem(idx)} className="btn-neu" style={{ padding: '8px', color: 'var(--accent-coral)' }}>X</button>
-                )}
+              <div key={idx} className="neu-flat" style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}>
+                  <select
+                    className="input-neu"
+                    value={item.product_id}
+                    onChange={e => handleItemChange(idx, 'product_id', e.target.value)}
+                    required
+                    style={{ flex: 1, fontSize: '0.8rem' }}
+                  >
+                    <option value="">Seleccionar Producto...</option>
+                    {products.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku})</option>)}
+                  </select>
+
+                  {items.length > 1 && (
+                    <button type="button" onClick={() => handleRemoveItem(idx)} style={{ background: 'none', border: 'none', color: 'var(--accent-coral)', cursor: 'pointer', padding: '4px' }}>
+                      <Trash2 size={16} />
+                    </button>
+                  )}
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <div>
+                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Cantidad</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      placeholder="Cantidad"
+                      value={item.quantity}
+                      onChange={e => handleItemChange(idx, 'quantity', parseFloat(e.target.value) || 0)}
+                      required
+                      min="0.1"
+                      style={{ width: '100%', textAlign: 'right', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: 2 }}>Costo Unitario $</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      placeholder="Costo"
+                      value={item.unit_price}
+                      onChange={e => handleItemChange(idx, 'unit_price', parseFloat(e.target.value) || 0)}
+                      required
+                      min="0"
+                      style={{ width: '100%', textAlign: 'right', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                </div>
               </div>
             ))}
           </div>
 
-          <button type="submit" className="btn-neu btn-primary" disabled={submitting || suppliers.length === 0} style={{ alignSelf: 'flex-end', padding: '10px 24px', fontSize: '0.85rem', marginTop: 12 }}>
-            {submitting ? 'Registrando compra...' : 'Registrar y Recibir Compra'}
+          <button type="submit" className="btn-neu btn-primary" disabled={submitting || suppliers.length === 0} style={{ alignSelf: 'flex-start', padding: '10px 20px', fontSize: '0.85rem', marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <ShoppingBag size={15} strokeWidth={2.5} />
+            <span>{submitting ? 'Registrando...' : 'Registrar Compra'}</span>
           </button>
         </form>
 
         {/* Listado */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Historial de Entradas</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <h3 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Historial de Entradas</h3>
           {loading ? (
             <div style={{ color: 'var(--text-muted)' }}>Cargando compras...</div>
           ) : purchases.length === 0 ? (
-            <div className="neu-card" style={{ padding: 30, textAlign: 'center', color: 'var(--text-secondary)' }}>
+            <div className="neu-card" style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
               Aún no has registrado compras de mercaderías.
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {purchases.map(p => (
-                <div key={p.id} className="neu-card" style={{ padding: 14, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div key={p.id} className="neu-card" style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{p.number}</strong>
-                    <span style={{
-                      padding: '2px 6px',
-                      borderRadius: 4,
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      background: p.status === 'received' ? 'rgba(74,186,134,0.12)' : 'rgba(242,193,78,0.12)',
-                      color: p.status === 'received' ? 'var(--accent-emerald)' : 'var(--accent-gold)'
-                    }}>{p.status === 'received' ? 'Recibida' : 'Pendiente'}</span>
+                    <span className={`badge ${p.status === 'received' ? 'badge-green' : 'badge-amber'}`} style={{ fontSize: '0.65rem' }}>
+                      {p.status === 'received' ? 'Recibida' : 'Pendiente'}
+                    </span>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                     Proveedor: {p.suppliers?.company_name || 'Desconocido'}
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                    Almacén: {p.warehouses?.name || 'Desconocido'}
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatDate(p.order_date)}</span>
-                    <strong style={{ color: 'var(--text-primary)' }}>{formatCurrency(p.total)}</strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 }}>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{formatDate(p.order_date)}</span>
+                    <strong style={{ color: 'var(--accent-blue)', fontSize: '0.85rem' }}>{formatCurrency(p.total)}</strong>
                   </div>
                 </div>
               ))}

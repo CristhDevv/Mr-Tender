@@ -2,6 +2,20 @@
 import { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import {
+  DollarSign,
+  ShoppingCart,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Lock,
+  Unlock,
+  Plus,
+  Minus,
+  CheckCircle2,
+  AlertTriangle,
+  Building,
+  Clock
+} from 'lucide-react'
 
 interface DBCashSession {
   id: string
@@ -23,18 +37,6 @@ interface DBCashMovement {
   amount: number
   description: string
   created_at: string
-}
-
-const MODAL_STYLE: React.CSSProperties = {
-  position: 'fixed', inset: 0, zIndex: 1000,
-  background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
-}
-
-const PANEL_STYLE: React.CSSProperties = {
-  background: 'var(--bg)', borderRadius: 20, padding: 28, width: '100%',
-  maxWidth: 460, display: 'flex', flexDirection: 'column', gap: 16,
-  boxShadow: 'var(--neu-card)',
 }
 
 export default function CashPage() {
@@ -176,7 +178,7 @@ export default function CashPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 600 }}>Cargando caja...</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando caja...</div>
       </div>
     )
   }
@@ -188,68 +190,72 @@ export default function CashPage() {
   const expected = opening + totalSales + totalIncome - totalExpenses
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Header */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
+      
+      {/* Header & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Caja y Turnos</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-            {session ? `Turno abierto desde las ${new Date(session.opened_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}` : 'Caja cerrada'}
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Caja y Turnos</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>
+            {session ? `Turno abierto desde las ${new Date(session.opened_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}` : 'Caja cerrada'}
           </p>
         </div>
+        
         {session ? (
-          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-            <button onClick={() => { setMovType('income'); setModal('movement') }} className="btn-neu" style={{ padding: '9px 16px', fontSize: '0.82rem' }}>
-              + Ingreso
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => { setMovType('income'); setModal('movement') }} className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Plus size={14} strokeWidth={2.5} style={{ color: 'var(--accent-blue)' }} />
+              <span>Ingreso</span>
             </button>
-            <button onClick={() => { setMovType('expense'); setModal('movement') }} className="btn-neu" style={{ padding: '9px 16px', fontSize: '0.82rem', color: 'var(--accent-coral)' }}>
-              − Egreso
+            <button onClick={() => { setMovType('expense'); setModal('movement') }} className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Minus size={14} strokeWidth={2.5} />
+              <span>Egreso</span>
             </button>
-            <button onClick={() => { setClosingAmount(''); setModal('close') }} className="btn-neu btn-danger" style={{ padding: '9px 18px', fontSize: '0.82rem' }}>
-              🔒 Arqueo y Cierre Ciego
+            <button onClick={() => { setClosingAmount(''); setModal('close') }} className="btn-neu btn-danger" style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Lock size={14} strokeWidth={2} />
+              <span>Arqueo Ciego</span>
             </button>
           </div>
         ) : (
-          <button onClick={() => setModal('open')} className="btn-neu btn-primary" style={{ padding: '10px 20px', fontSize: '0.85rem' }}>
-            🔓 Abrir turno de caja
+          <button onClick={() => setModal('open')} className="btn-neu btn-primary" style={{ padding: '9px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Unlock size={15} strokeWidth={2} />
+            <span>Abrir turno de caja</span>
           </button>
         )}
       </div>
 
       {error && (
-        <div className="neu-card" style={{ padding: 16, background: 'rgba(235,94,85,0.08)', border: '1px solid rgba(235,94,85,0.2)' }}>
-          <p style={{ color: 'var(--accent-coral)', margin: 0, fontSize: '0.85rem' }}>⚠️ {error}</p>
+        <div className="neu-card" style={{ padding: 12, background: 'rgba(235,94,85,0.08)', border: '1px solid rgba(235,94,85,0.2)' }}>
+          <p style={{ color: 'var(--accent-coral)', margin: 0, fontSize: '0.82rem' }}>{error}</p>
         </div>
       )}
 
       {/* Report Banner after Blind Closure */}
       {closeReport && !session && (
-        <div className="neu-card animate-scale-in" style={{ padding: 24, background: closeReport.diff === 0 ? 'var(--accent-green-lt)' : closeReport.diff > 0 ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', borderRadius: 'var(--radius-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-            <span style={{ fontSize: '2rem' }}>
-              {closeReport.diff === 0 ? '✅' : closeReport.diff > 0 ? '🟢' : '🔴'}
-            </span>
+        <div className="neu-card animate-scale-in" style={{ padding: 18, background: closeReport.diff === 0 ? 'var(--accent-green-lt)' : closeReport.diff > 0 ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <CheckCircle2 size={24} strokeWidth={2} style={{ color: closeReport.diff === 0 ? 'var(--accent-green)' : closeReport.diff > 0 ? 'var(--accent-blue)' : 'var(--accent-coral)', flexShrink: 0 }} />
             <div>
-              <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>
+              <h3 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', margin: 0 }}>
                 {closeReport.diff === 0 ? '¡Arqueo Perfecto! Cuadre de Caja Exacto' : closeReport.diff > 0 ? 'Sobrante Registrado en el Arqueo' : 'Faltante Registrado en el Arqueo'}
               </h3>
-              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
                 Resultados del cierre ciego de turno
               </p>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginTop: 14 }}>
-            <div className="neu-flat" style={{ padding: '10px 12px' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Contado Físico</span>
-              <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>{formatCurrency(closeReport.counted)}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8, marginTop: 10 }}>
+            <div className="neu-flat" style={{ padding: '8px 10px' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Contado Físico</span>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{formatCurrency(closeReport.counted)}</div>
             </div>
-            <div className="neu-flat" style={{ padding: '10px 12px' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Esperado Sistema</span>
-              <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>{formatCurrency(closeReport.expected)}</div>
+            <div className="neu-flat" style={{ padding: '8px 10px' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Esperado Sistema</span>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>{formatCurrency(closeReport.expected)}</div>
             </div>
-            <div className="neu-flat" style={{ padding: '10px 12px' }}>
-              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Diferencia</span>
-              <div style={{ fontWeight: 900, fontSize: '1.05rem', color: closeReport.diff === 0 ? 'var(--accent-green)' : closeReport.diff > 0 ? 'var(--accent-blue)' : 'var(--accent-coral)' }}>
+            <div className="neu-flat" style={{ padding: '8px 10px' }}>
+              <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Diferencia</span>
+              <div style={{ fontWeight: 900, fontSize: '0.95rem', color: closeReport.diff === 0 ? 'var(--accent-green)' : closeReport.diff > 0 ? 'var(--accent-blue)' : 'var(--accent-coral)' }}>
                 {closeReport.diff > 0 ? `+${formatCurrency(closeReport.diff)}` : formatCurrency(closeReport.diff)}
               </div>
             </div>
@@ -260,109 +266,83 @@ export default function CashPage() {
       {/* Active Session Content */}
       {session && (
         <>
-          {/* Stat Cards */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 14 }}>
+          {/* Monochromatic Stat Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
             {[
-              { label: 'Fondo inicial', value: formatCurrency(opening), icon: '💰', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
-              { label: 'Ventas en efectivo', value: formatCurrency(totalSales), icon: '🛒', color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
-              { label: 'Ingresos manuales', value: formatCurrency(totalIncome), icon: '📥', color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
-              { label: 'Egresos / Gastos', value: formatCurrency(totalExpenses), icon: '📤', color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
-              { label: 'Efectivo esperado', value: formatCurrency(expected), icon: '🏦', color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
-            ].map(s => (
-              <div key={s.label} className="neu-card" style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div className="kpi-icon-wrap" style={{ background: s.bg, width: 38, height: 38, flexShrink: 0 }}>
-                  <span style={{ fontSize: '1.1rem' }}>{s.icon}</span>
+              { label: 'Fondo inicial', value: formatCurrency(opening), Icon: DollarSign, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+              { label: 'Ventas efectivo', value: formatCurrency(totalSales), Icon: ShoppingCart, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
+              { label: 'Ingresos manuales', value: formatCurrency(totalIncome), Icon: ArrowDownLeft, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
+              { label: 'Egresos / Gastos', value: formatCurrency(totalExpenses), Icon: ArrowUpRight, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+              { label: 'Efectivo esperado', value: formatCurrency(expected), Icon: Building, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
+            ].map(s => {
+              const StatIcon = s.Icon
+              return (
+                <div key={s.label} className="neu-card" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div className="kpi-icon-wrap" style={{ background: s.bg, width: 32, height: 32, flexShrink: 0 }}>
+                    <StatIcon size={16} strokeWidth={2} style={{ color: s.color }} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 900, color: s.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.value}</div>
+                  </div>
                 </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-                  <div style={{ fontSize: '1.15rem', fontWeight: 900, color: s.color, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.value}</div>
-                </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
 
-          {/* Movement Table */}
-          <div className="neu-card" style={{ padding: 0, overflowX: 'auto' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--bg-deep)', fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+          {/* Movements List (Responsive card list, no horizontal scroll) */}
+          <div className="neu-card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--bg-deep)', paddingBottom: 6 }}>
               Movimientos del Turno ({movements.length})
             </div>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '12px 18px', textAlign: 'left', fontWeight: 600 }}>Hora</th>
-                  <th style={{ padding: '12px 18px', textAlign: 'left', fontWeight: 600 }}>Descripción</th>
-                  <th style={{ padding: '12px 18px', textAlign: 'left', fontWeight: 600 }}>Tipo</th>
-                  <th style={{ padding: '12px 18px', textAlign: 'right', fontWeight: 600 }}>Monto</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movements.map(m => {
-                  const isPositive = m.movement_type === 'sale' || m.movement_type === 'income' || m.movement_type === 'deposit' || m.movement_type === 'opening'
-                  return (
-                    <tr key={m.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '12px 18px', color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                        {new Date(m.created_at).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                      </td>
-                      <td style={{ padding: '12px 18px', fontWeight: 600, color: 'var(--text-primary)' }}>{m.description}</td>
-                      <td style={{ padding: '12px 18px' }}>
-                        <span className={`badge ${isPositive ? 'badge-green' : 'badge-coral'}`} style={{ textTransform: 'capitalize' }}>
-                          {m.movement_type === 'opening' ? 'Apertura' : m.movement_type === 'sale' ? 'Venta' : m.movement_type === 'income' ? 'Ingreso' : 'Egreso'}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px 18px', textAlign: 'right', fontWeight: 800, color: isPositive ? 'var(--accent-emerald)' : 'var(--accent-coral)' }}>
-                        {isPositive ? '+' : '-'}{formatCurrency(Math.abs(Number(m.amount)))}
-                      </td>
-                    </tr>
-                  )
-                })}
-                {movements.length === 0 && (
-                  <tr>
-                    <td colSpan={4} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>
-                      No hay movimientos registrados en este turno
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {movements.map(m => {
+                const isPositive = m.movement_type === 'sale' || m.movement_type === 'income' || m.movement_type === 'deposit' || m.movement_type === 'opening'
+                return (
+                  <div key={m.id} className="neu-flat" style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {m.description || (m.movement_type === 'sale' ? 'Venta POS' : m.movement_type === 'opening' ? 'Apertura' : 'Movimiento')}
+                      </div>
+                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
+                        <Clock size={11} />
+                        <span>{new Date(m.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                    </div>
+
+                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: isPositive ? 'var(--accent-green)' : 'var(--accent-coral)' }}>
+                        {isPositive ? `+${formatCurrency(m.amount)}` : `-${formatCurrency(m.amount)}`}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+
+              {movements.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+                  Sin movimientos registrados en este turno
+                </div>
+              )}
+            </div>
           </div>
         </>
       )}
 
-      {/* Closed State Banner */}
-      {!session && !closeReport && (
-        <div className="neu-card" style={{ padding: '50px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          <div style={{ fontSize: '3.5rem' }}>💰</div>
-          <h2 style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1.3rem', margin: 0 }}>El turno de caja está cerrado</h2>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', maxWidth: 400, margin: 0 }}>
-            Abre un turno de caja especificando el fondo inicial en efectivo para comenzar a registrar ventas e ingresos en el POS.
-          </p>
-          <button onClick={() => setModal('open')} className="btn-neu btn-primary" style={{ padding: '12px 32px', fontSize: '0.9rem', marginTop: 8 }}>
-            🔓 Abrir turno de caja ahora
-          </button>
-        </div>
-      )}
-
       {/* Modal: Open Session */}
       {modal === 'open' && (
-        <div style={MODAL_STYLE} onClick={e => e.target === e.currentTarget && setModal(null)}>
-          <form onSubmit={handleOpenSession} style={PANEL_STYLE}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>🔓 Abrir Turno de Caja</h2>
-              <button type="button" onClick={() => setModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
-            </div>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <form onSubmit={handleOpenSession} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>Apertura de Turno</h2>
             <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8 }}>
-                Fondo Inicial en Efectivo ($) *
-              </label>
-              <input type="number" className="input-neu" value={openingAmount} onChange={e => setOpeningAmount(e.target.value)} required min="0" step="1000" placeholder="50000" style={{ width: '100%', fontSize: '1.1rem', fontWeight: 700 }} />
-              <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 6 }}>
-                Ingresa el saldo base disponible en la caja física al inicio del turno.
-              </p>
+              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Fondo Inicial de Caja $</label>
+              <input className="input-neu" type="number" step="1000" value={openingAmount} onChange={e => setOpeningAmount(e.target.value)} required autoFocus style={{ fontSize: '1.1rem', fontWeight: 800 }} />
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
-              <button type="button" onClick={() => setModal(null)} className="btn-neu btn-ghost" style={{ padding: '10px 18px' }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-primary" disabled={submitting} style={{ padding: '10px 24px' }}>
-                {submitting ? 'Abriendo...' : 'Abrir Turno'}
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <button type="button" className="btn-neu" onClick={() => setModal(null)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+              <button type="submit" className="btn-neu btn-primary" disabled={submitting} style={{ flex: 1, padding: 10 }}>
+                {submitting ? 'Abriendo...' : 'Abrir Caja'}
               </button>
             </div>
           </form>
@@ -371,71 +351,59 @@ export default function CashPage() {
 
       {/* Modal: Add Movement */}
       {modal === 'movement' && (
-        <div style={MODAL_STYLE} onClick={e => e.target === e.currentTarget && setModal(null)}>
-          <form onSubmit={handleAddMovement} style={PANEL_STYLE}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                {movType === 'income' ? '📥 Registrar Ingreso de Efectivo' : '📤 Registrar Egreso / Gasto'}
-              </h2>
-              <button type="button" onClick={() => setModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <form onSubmit={handleAddMovement} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>
+              {movType === 'income' ? 'Registrar Ingreso de Caja' : 'Registrar Egreso / Gasto'}
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Monto ($) *</label>
-                <input type="number" className="input-neu" value={movAmount} onChange={e => setMovAmount(e.target.value)} required min="1" step="500" placeholder="10000" style={{ width: '100%', fontSize: '1.05rem', fontWeight: 700 }} />
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Monto $</label>
+                <input className="input-neu" type="number" step="100" placeholder="0" value={movAmount} onChange={e => setMovAmount(e.target.value)} required autoFocus style={{ fontSize: '1.1rem', fontWeight: 800 }} />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Concepto / Descripción</label>
-                <input type="text" className="input-neu" value={movDesc} onChange={e => setMovDesc(e.target.value)} placeholder={movType === 'income' ? 'Base adicional, devuelto...' : 'Pago a proveedor, compra insumos...'} style={{ width: '100%' }} />
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Concepto / Motivo</label>
+                <input className="input-neu" placeholder="Ej: Pago de transporte / Cambio" value={movDesc} onChange={e => setMovDesc(e.target.value)} />
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
-              <button type="button" onClick={() => setModal(null)} className="btn-neu btn-ghost" style={{ padding: '10px 18px' }}>Cancelar</button>
-              <button type="submit" className={movType === 'income' ? 'btn-neu btn-primary' : 'btn-neu btn-danger'} disabled={submitting} style={{ padding: '10px 24px' }}>
-                {submitting ? 'Guardando...' : movType === 'income' ? 'Registrar Ingreso' : 'Registrar Egreso'}
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <button type="button" className="btn-neu" onClick={() => setModal(null)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+              <button type="submit" className="btn-neu btn-primary" disabled={submitting} style={{ flex: 1, padding: 10 }}>
+                {submitting ? 'Guardando...' : 'Confirmar'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Modal: Close Session (Blind Closure) */}
+      {/* Modal: Close Session (Blind Arqueo) */}
       {modal === 'close' && (
-        <div style={MODAL_STYLE} onClick={e => e.target === e.currentTarget && setModal(null)}>
-          <form onSubmit={handleCloseSession} style={PANEL_STYLE}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-coral)', margin: 0 }}>🔒 Arqueo y Cierre de Caja Ciego</h2>
-              <button type="button" onClick={() => setModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <form onSubmit={handleCloseSession} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>Arqueo de Caja Ciego</h2>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 12 }}>Cuenta físicamente el efectivo en el cajón e ingresa el total:</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Total Contado Físico $ *</label>
+                <input className="input-neu" type="number" step="100" placeholder="0" value={closingAmount} onChange={e => setClosingAmount(e.target.value)} required autoFocus style={{ fontSize: '1.2rem', fontWeight: 900 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Notas u observaciones</label>
+                <input className="input-neu" placeholder="Opcional..." value={closingNotes} onChange={e => setClosingNotes(e.target.value)} />
+              </div>
             </div>
 
-            <div className="neu-card" style={{ padding: 14, background: 'var(--bg-deep)', display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
-              <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.88rem' }}>ℹ️ Arqueo Ciego de Seguridad</div>
-              <div>Cuenta de forma física los billetes y monedas que entregas en caja. El sistema calculará la diferencia al enviar.</div>
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
-                Efectivo Real Contado en Caja ($) *
-              </label>
-              <input type="number" className="input-neu" value={closingAmount} onChange={e => setClosingAmount(e.target.value)} required min="0" placeholder="Ej: 345000" autoFocus style={{ width: '100%', fontSize: '1.2rem', fontWeight: 800 }} />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Notas de cierre / Observaciones</label>
-              <input type="text" className="input-neu" value={closingNotes} onChange={e => setClosingNotes(e.target.value)} placeholder="Sin novedades en el arqueo" style={{ width: '100%' }} />
-            </div>
-
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
-              <button type="button" onClick={() => setModal(null)} className="btn-neu btn-ghost" style={{ padding: '10px 18px' }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-danger" disabled={submitting || !closingAmount} style={{ padding: '10px 24px' }}>
-                {submitting ? 'Cerrando...' : 'Confirmar Cierre Ciego'}
+            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+              <button type="button" className="btn-neu" onClick={() => setModal(null)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+              <button type="submit" className="btn-neu btn-danger" disabled={submitting || !closingAmount} style={{ flex: 1, padding: 10 }}>
+                {submitting ? 'Cerrando...' : 'Cerrar Turno'}
               </button>
             </div>
           </form>
         </div>
       )}
+
     </div>
   )
 }

@@ -2,6 +2,14 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import {
+  BookOpen,
+  FolderTree,
+  FileText,
+  Layers,
+  ArrowDownRight,
+  ArrowUpRight
+} from 'lucide-react'
 
 interface Account {
   id: string;
@@ -82,111 +90,87 @@ export default function AccountingPage() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
       <div>
-        <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Contabilidad y Libro Diario</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>Asientos contables automáticos por partida doble generados por el POS y Compras</p>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Contabilidad y Libro Diario</h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Asientos contables automáticos por partida doble generados por POS y Compras</p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <button
           onClick={() => setActiveTab('entries')}
           className={`btn-neu ${activeTab === 'entries' ? 'btn-primary' : 'btn-ghost'}`}
-          style={{ padding: '10px 20px', fontSize: '0.85rem' }}
+          style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          📖 Libro Diario
+          <BookOpen size={14} strokeWidth={2} />
+          <span>Libro Diario</span>
         </button>
         <button
           onClick={() => setActiveTab('accounts')}
           className={`btn-neu ${activeTab === 'accounts' ? 'btn-primary' : 'btn-ghost'}`}
-          style={{ padding: '10px 20px', fontSize: '0.85rem' }}
+          style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          📂 Catálogo de Cuentas
+          <FolderTree size={14} strokeWidth={2} />
+          <span>Catálogo de Cuentas</span>
         </button>
       </div>
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando contabilidad...</div>
       ) : activeTab === 'accounts' ? (
-        // CATÁLOGO DE CUENTAS
-        <div className="neu-card" style={{ padding: 0, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Código</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Nombre de Cuenta</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Tipo de Cuenta</th>
-                <th style={{ padding: '16px 20px', fontWeight: 600 }}>Naturaleza</th>
-              </tr>
-            </thead>
-            <tbody>
-              {accounts.map(acc => (
-                <tr key={acc.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '16px 20px', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent-blue)' }}>{acc.code}</td>
-                  <td style={{ padding: '16px 20px', fontWeight: 600, color: 'var(--text-primary)' }}>{acc.name}</td>
-                  <td style={{ padding: '16px 20px', textTransform: 'capitalize', color: 'var(--text-secondary)' }}>{acc.account_type}</td>
-                  <td style={{ padding: '16px 20px', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 700, color: acc.normal_balance === 'debit' ? 'var(--accent-emerald)' : 'var(--accent-purple)' }}>
-                    {acc.normal_balance === 'debit' ? 'Deudora (D)' : 'Acreedora (A)'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        // CATÁLOGO DE CUENTAS (Responsive Card List)
+        <div className="neu-card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {accounts.map(acc => (
+            <div key={acc.id} className="neu-flat" style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <code style={{ fontSize: '0.78rem', color: 'var(--accent-blue)', fontWeight: 800 }}>{acc.code}</code>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{acc.name}</span>
+                </div>
+                <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', textTransform: 'capitalize', marginTop: 2 }}>{acc.account_type}</div>
+              </div>
+              <span className={`badge ${acc.normal_balance === 'debit' ? 'badge-green' : 'badge-purple'}`} style={{ fontSize: '0.65rem' }}>
+                {acc.normal_balance === 'debit' ? 'Deudora (D)' : 'Acreedora (A)'}
+              </span>
+            </div>
+          ))}
         </div>
       ) : (
         // LIBRO DIARIO
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {entries.length === 0 ? (
-            <div className="neu-card" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-              Aún no hay asientos contables registrados. Procesa una venta en el POS o registra una compra en la pestaña de Compras para ver el registro contable automático.
+            <div className="neu-card" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              Aún no hay asientos contables registrados. Al procesar ventas en el POS o compras se generarán automáticamente.
             </div>
           ) : (
             entries.map(entry => (
-              <div key={entry.id} className="neu-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div key={entry.id} className="neu-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6, borderBottom: '1px solid var(--bg-deep)', paddingBottom: 8 }}>
                   <div>
-                    <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{entry.number}</strong>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginLeft: 12 }}>{entry.description}</span>
+                    <strong style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{entry.number}</strong>
+                    <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginLeft: 8 }}>{entry.description}</span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{formatDate(entry.entry_date || (entry as any).created_at)}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{formatDate(entry.entry_date || (entry as any).created_at)}</span>
                 </div>
 
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left', marginTop: 8 }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '8px 12px', fontWeight: 600 }}>Cuenta</th>
-                      <th style={{ padding: '8px 12px', fontWeight: 600 }}>Descripción de Línea</th>
-                      <th style={{ padding: '8px 12px', fontWeight: 600, textAlign: 'right' }}>Debe</th>
-                      <th style={{ padding: '8px 12px', fontWeight: 600, textAlign: 'right' }}>Haber</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {entry.journal_entry_lines?.map(line => (
-                      <tr key={line.id} style={{ borderBottom: '1px dotted var(--border-color)' }}>
-                        <td style={{ padding: '8px 12px' }}>
-                          <span style={{ fontFamily: 'monospace', marginRight: 8, color: 'var(--accent-blue)' }}>
-                            {line.accounts?.code}
-                          </span>
-                          <strong style={{ color: 'var(--text-primary)' }}>{line.accounts?.name}</strong>
-                        </td>
-                        <td style={{ padding: '8px 12px', color: 'var(--text-secondary)' }}>{line.description}</td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: line.debit > 0 ? 700 : 400, color: line.debit > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                          {line.debit > 0 ? formatCurrency(line.debit) : '-'}
-                        </td>
-                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: line.credit > 0 ? 700 : 400, color: line.credit > 0 ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                          {line.credit > 0 ? formatCurrency(line.credit) : '-'}
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Sumas Iguales */}
-                    <tr style={{ background: 'var(--bg-deep)' }}>
-                      <td colSpan={2} style={{ padding: '8px 12px', fontWeight: 700, textAlign: 'right', color: 'var(--text-primary)' }}>Sumas Iguales:</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: 'var(--accent-emerald)' }}>{formatCurrency(entry.total_debit)}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 800, color: 'var(--accent-emerald)' }}>{formatCurrency(entry.total_credit)}</td>
-                    </tr>
-                  </tbody>
-                </table>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {entry.journal_entry_lines?.map(line => (
+                    <div key={line.id} className="neu-flat" style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: '0.75rem' }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{line.accounts?.name || 'Cuenta'} ({line.accounts?.code})</div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{line.description}</div>
+                      </div>
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        {line.debit > 0 ? (
+                          <span style={{ fontWeight: 800, color: 'var(--accent-green)' }}>D: {formatCurrency(line.debit)}</span>
+                        ) : (
+                          <span style={{ fontWeight: 800, color: 'var(--accent-coral)' }}>H: {formatCurrency(line.credit)}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             ))
           )}

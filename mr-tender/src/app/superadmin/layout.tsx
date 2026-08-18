@@ -3,16 +3,28 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import {
+  LayoutDashboard,
+  Store,
+  ClipboardList,
+  CreditCard,
+  CircleDollarSign,
+  Tag,
+  Headphones,
+  FileText,
+  Menu,
+  LogOut
+} from 'lucide-react'
 
 const SUPERADMIN_NAV = [
-  { href: '/superadmin', icon: '⊞', label: 'Dashboard' },
-  { href: '/superadmin/tenants', icon: '🏪', label: 'Negocios' },
-  { href: '/superadmin/plans', icon: '📋', label: 'Planes' },
-  { href: '/superadmin/subscriptions', icon: '💳', label: 'Suscripciones' },
-  { href: '/superadmin/payments', icon: '💰', label: 'Pagos' },
-  { href: '/superadmin/coupons', icon: '🏷', label: 'Cupones' },
-  { href: '/superadmin/support', icon: '🎧', label: 'Soporte' },
-  { href: '/superadmin/logs', icon: '📋', label: 'Logs' },
+  { href: '/superadmin',               Icon: LayoutDashboard,  label: 'Dashboard' },
+  { href: '/superadmin/tenants',       Icon: Store,            label: 'Negocios' },
+  { href: '/superadmin/plans',         Icon: ClipboardList,    label: 'Planes' },
+  { href: '/superadmin/subscriptions', Icon: CreditCard,       label: 'Suscripciones' },
+  { href: '/superadmin/payments',      Icon: CircleDollarSign, label: 'Pagos' },
+  { href: '/superadmin/coupons',       Icon: Tag,              label: 'Cupones' },
+  { href: '/superadmin/support',       Icon: Headphones,       label: 'Soporte' },
+  { href: '/superadmin/logs',          Icon: FileText,         label: 'Logs' },
 ]
 
 export default function SuperadminLayout({ children }: { children: React.ReactNode }) {
@@ -42,20 +54,25 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
         <div className="divider" style={{ margin: '0 16px 12px' }} />
 
         <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {SUPERADMIN_NAV.map(item => (
-            <Link key={item.href} href={item.href} className={`sidebar-nav-item ${pathname === item.href ? 'active' : ''}`}>
-              <span style={{ fontSize: '1rem', width: 22, textAlign: 'center' }}>{item.icon}</span>
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          {SUPERADMIN_NAV.map(item => {
+            const Icon = item.Icon
+            const isActive = pathname === item.href
+            return (
+              <Link key={item.href} href={item.href} className={`sidebar-nav-item ${isActive ? 'active' : ''}`}>
+                <Icon size={18} strokeWidth={2} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.8 }} />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
         </nav>
 
         <div className="divider" style={{ margin: '12px 16px 0' }} />
 
         <div style={{ padding: '14px 18px' }}>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8 }}>Superadmin de plataforma</div>
-          <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '8px', fontSize: '0.8rem', justifyContent: 'center', color: 'var(--accent-coral)' }}>
-            🚪 Cerrar sesión
+          <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '8px', fontSize: '0.8rem', justifyContent: 'center', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <LogOut size={16} strokeWidth={2} />
+            <span>Cerrar sesión</span>
           </button>
         </div>
       </aside>
@@ -64,27 +81,28 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
       <div className="app-content">
         
         {/* Topbar visible on all screens (especially Mobile) */}
-        <header className="topbar" style={{ display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between', padding: '12px 18px' }}>
+        <header className="topbar" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            <Link href="/superadmin" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <Link href="/superadmin" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent-purple)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, boxShadow: '3px 3px 8px rgba(139,114,190,0.4)' }}>M</div>
             </Link>
-            <div style={{ width: 1, height: 20, background: 'var(--border-color)', margin: '0 2px' }} />
+            <div style={{ width: 1, height: 18, background: 'var(--border-color)', margin: '0 2px', flexShrink: 0 }} />
             <div style={{ minWidth: 0 }}>
               <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {SUPERADMIN_NAV.find(i => i.href === pathname)?.label || 'Superadmin'}
               </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600 }}>Panel de Plataforma</div>
             </div>
           </div>
 
           {/* Right actions: Navigation selector & Logout button on mobile */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button className="btn-neu" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ padding: '7px 12px', fontSize: '0.78rem', fontWeight: 700 }}>
-              ☰ Menú
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <button className="btn-neu" onClick={() => setMobileMenuOpen(!mobileMenuOpen)} style={{ padding: '7px 10px', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Menu size={14} strokeWidth={2} />
+              <span>Menú</span>
             </button>
-            <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ padding: '7px 12px', fontSize: '0.78rem', color: 'var(--accent-coral)', fontWeight: 700 }}>
-              🚪 Salir
+            <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ padding: '7px 10px', fontSize: '0.78rem', color: 'var(--accent-coral)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4 }}>
+              <LogOut size={14} strokeWidth={2} />
+              <span>Salir</span>
             </button>
           </div>
         </header>
@@ -95,26 +113,30 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
             <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 8px', marginBottom: 4 }}>
               Navegación Superadmin
             </div>
-            {SUPERADMIN_NAV.map(item => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={`sidebar-nav-item ${pathname === item.href ? 'active' : ''}`}
-                style={{ padding: '8px 12px', fontSize: '0.85rem' }}
-              >
-                <span style={{ fontSize: '1rem', width: 22 }}>{item.icon}</span>
-                <span>{item.label}</span>
-              </Link>
-            ))}
+            {SUPERADMIN_NAV.map(item => {
+              const Icon = item.Icon
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={`sidebar-nav-item ${pathname === item.href ? 'active' : ''}`}
+                  style={{ padding: '8px 12px', fontSize: '0.85rem' }}
+                >
+                  <Icon size={16} strokeWidth={2} style={{ flexShrink: 0 }} />
+                  <span>{item.label}</span>
+                </Link>
+              )
+            })}
             <div className="divider" style={{ margin: '6px 0' }} />
-            <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '10px', fontSize: '0.82rem', justifyContent: 'center', color: 'var(--accent-coral)', fontWeight: 700 }}>
-              🚪 Cerrar sesión
+            <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '10px', fontSize: '0.82rem', justifyContent: 'center', color: 'var(--accent-coral)', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <LogOut size={16} strokeWidth={2} />
+              <span>Cerrar sesión</span>
             </button>
           </div>
         )}
 
-        <main style={{ flex: 1, padding: '20px', maxWidth: 1400, width: '100%' }}>
+        <main style={{ flex: 1, padding: '20px', maxWidth: 1400, width: '100%', overflowX: 'hidden' }}>
           {children}
         </main>
       </div>

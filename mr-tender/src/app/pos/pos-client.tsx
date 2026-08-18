@@ -4,13 +4,29 @@ import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import CameraScanner from '@/components/CameraScanner'
 import { findMasterProduct } from '@/lib/catalog/colombia-products'
+import {
+  Search,
+  Camera,
+  Package,
+  ShoppingCart,
+  Plus,
+  Minus,
+  X,
+  Banknote,
+  CreditCard,
+  Smartphone,
+  MessageSquare,
+  Printer,
+  Send,
+  User,
+  Check
+} from 'lucide-react'
 
 interface Product {
   id: string
   name: string
   price: number
   sku: string
-  emoji: string
   stock: number
   category: string
   cost: number
@@ -35,14 +51,12 @@ interface Customer {
 }
 
 const PAYMENT_METHODS = [
-  { key: 'cash', label: '💵 Efectivo' },
-  { key: 'card_debit', label: '💳 Débito' },
-  { key: 'card_credit', label: '💳 Crédito' },
-  { key: 'transfer', label: '📱 Nequi / Daviplata' },
-  { key: 'fiao', label: '💬 Fiar (Crédito)' },
+  { key: 'cash', label: 'Efectivo', Icon: Banknote },
+  { key: 'card_debit', label: 'Débito', Icon: CreditCard },
+  { key: 'card_credit', label: 'Crédito', Icon: CreditCard },
+  { key: 'transfer', label: 'Nequi / Daviplata', Icon: Smartphone },
+  { key: 'fiao', label: 'Fiar (Crédito)', Icon: MessageSquare },
 ]
-
-const EMOJIS = ['🥤', '🥛', '🍞', '🫙', '🧼', '🧻', '🧽', '🍚', '☕', '🍗', '🫘', '🧴', '🍎', '🥩', '🍟']
 
 export default function POSClient() {
   const supabase = createClient()
@@ -169,7 +183,7 @@ export default function POSClient() {
           .eq('is_active', true)
         
         if (prodData) {
-          const loadedProducts: Product[] = prodData.map((p: any, idx: number) => {
+          const loadedProducts: Product[] = prodData.map((p: any) => {
             const whStock = p.inventory?.find((inv: any) => inv.warehouse_id === warehouse_id)
             const stock = whStock ? Number(whStock.quantity) : 0
             const catName = p.categories?.name || 'General'
@@ -180,7 +194,6 @@ export default function POSClient() {
               price: Number(p.sale_price),
               cost: Number(p.cost_price),
               sku: p.sku || p.barcode || '',
-              emoji: EMOJIS[idx % EMOJIS.length],
               stock,
               category: catName,
               category_id: p.category_id,
@@ -247,7 +260,7 @@ export default function POSClient() {
     // Check Colombia master catalog
     const master = findMasterProduct(cleanCode)
     if (master) {
-      alert(`✨ Producto detectado: "${master.name}". No está en tu inventario local aún. Puedes registrarlo rápido con la cámara en 'Nuevo Producto'.`)
+      alert(`Producto detectado: "${master.name}". No está en tu inventario local aún. Puedes registrarlo con la cámara en 'Nuevo Producto'.`)
     }
   }
 
@@ -366,18 +379,18 @@ export default function POSClient() {
   function sendTicketWhatsApp() {
     let rawPhone = selectedCustomer?.phone?.replace(/\D/g, '') || ''
     const itemsText = cart.map(i => `• ${i.quantity}x ${i.name} (${formatCurrency(i.lineTotal)})`).join('\n')
-    const message = `🧾 *FACTURA POS / TICKET DE COMPRA*
-🏪 *${businessName}*
-📄 *Folio:* ${saleNumber}
-📅 *Fecha:* ${new Date().toLocaleString('es-CO')}
+    const message = `*FACTURA POS / TICKET DE COMPRA*
+*${businessName}*
+Folio: ${saleNumber}
+Fecha: ${new Date().toLocaleString('es-CO')}
 
 ${itemsText}
 
-💰 *TOTAL:* ${formatCurrency(total)}
-💳 *Pago:* ${paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'fiao' ? 'Fiao (Crédito)' : 'Nequi / Daviplata'}
-${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
+TOTAL: ${formatCurrency(total)}
+Pago: ${paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'fiao' ? 'Fiao (Crédito)' : 'Nequi / Daviplata'}
+${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
-¡Muchas gracias por tu compra! 😊`
+¡Muchas gracias por tu compra!`
 
     if (rawPhone) {
       if (!rawPhone.startsWith('57') && rawPhone.length === 10) rawPhone = '57' + rawPhone
@@ -449,14 +462,14 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
             {change > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: 'var(--accent-green)', fontWeight: 800 }}><span>Cambio:</span><span>{formatCurrency(change)}</span></div>}
           </div>
 
-          {/* DIAN CUFE & QR Sim */}
+          {/* DIAN CUFE & QR */}
           <div style={{ textAlign: 'center', marginTop: 8 }}>
             <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=CUFE-DIAN-${saleNumber}`} alt="QR DIAN" style={{ width: 70, height: 70, margin: '0 auto 4px' }} />
             <div style={{ fontSize: '0.58rem', color: '#94A3B8', wordBreak: 'break-all' }}>
               CUFE: c89f2a01490b8e7c102a99182bc837d7a1290317
             </div>
             <div style={{ fontSize: '0.72rem', fontWeight: 700, marginTop: 4, color: '#475569' }}>
-              ¡Gracias por su compra en {businessName}! 🇨🇴
+              ¡Gracias por su compra en {businessName}!
             </div>
           </div>
         </div>
@@ -464,15 +477,18 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: 10, maxWidth: 360, width: '100%', flexDirection: 'column' }}>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button className="btn-neu" onClick={() => window.print()} style={{ flex: 1, padding: '12px', fontSize: '0.85rem', fontWeight: 700, justifyContent: 'center' }}>
-              🖨 Imprimir Ticket
+            <button className="btn-neu" onClick={() => window.print()} style={{ flex: 1, padding: '12px', fontSize: '0.85rem', fontWeight: 700, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Printer size={16} strokeWidth={2} />
+              <span>Imprimir Ticket</span>
             </button>
-            <button className="btn-neu" onClick={sendTicketWhatsApp} style={{ flex: 1, padding: '12px', fontSize: '0.85rem', background: '#25D366', color: '#fff', fontWeight: 800, justifyContent: 'center' }}>
-              💬 WhatsApp
+            <button className="btn-neu" onClick={sendTicketWhatsApp} style={{ flex: 1, padding: '12px', fontSize: '0.85rem', background: '#25D366', color: '#fff', fontWeight: 800, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Send size={16} strokeWidth={2} />
+              <span>WhatsApp</span>
             </button>
           </div>
-          <button className="btn-neu btn-primary" onClick={newSale} style={{ padding: '14px', fontSize: '0.95rem', justifyContent: 'center' }}>
-            + Nueva venta
+          <button className="btn-neu btn-primary" onClick={newSale} style={{ padding: '14px', fontSize: '0.95rem', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={16} strokeWidth={2.5} />
+            <span>Nueva venta</span>
           </button>
         </div>
       </div>
@@ -483,44 +499,47 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16, height: 'calc(100vh - 100px)', overflow: 'hidden' }}>
 
       {/* ── LEFT: Products Search Panel (Fixed viewport height, internal scroll) ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, height: '100%', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%', overflow: 'hidden' }}>
         {/* Search & Camera scanner */}
-        <div style={{ display: 'flex', gap: 10, flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
           <div className="input-group" style={{ flex: 1 }}>
-            <span className="input-icon" style={{ fontSize: '1rem' }}>🔍</span>
-            <input className="input-neu" placeholder="Buscar por nombre o código EAN..." value={search} onChange={e => setSearch(e.target.value)} autoFocus />
+            <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
+            <input className="input-neu" placeholder="Buscar por nombre o código EAN..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
           </div>
-          <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} style={{ padding: '10px 14px', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-            📷 Escanear
+          <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} style={{ padding: '8px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Camera size={16} strokeWidth={2} />
+            <span>Escanear</span>
           </button>
         </div>
 
-        {/* Categories */}
-        <div style={{ display: 'flex', gap: 6, overflowX: 'auto', paddingBottom: 4, flexShrink: 0 }}>
+        {/* Categories (Wrapping, No Horizontal Scroll) */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
           {categories.map(c => (
             <button key={c} className="btn-neu" onClick={() => setCategory(c)}
-              style={{ padding: '6px 12px', fontSize: '0.75rem', whiteSpace: 'nowrap', flexShrink: 0, background: category === c ? 'var(--accent-blue)' : 'var(--bg)', color: category === c ? '#fff' : 'var(--text-secondary)', boxShadow: category === c ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
+              style={{ padding: '5px 10px', fontSize: '0.72rem', background: category === c ? 'var(--accent-blue)' : 'var(--bg)', color: category === c ? '#fff' : 'var(--text-secondary)', boxShadow: category === c ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
               {c}
             </button>
           ))}
         </div>
 
         {/* Product grid results */}
-        <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: 10, alignContent: 'start', paddingRight: 4 }}>
+        <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, alignContent: 'start', paddingRight: 4 }}>
           {filtered.map(product => (
-            <button key={product.id} className="pos-product-btn" onClick={() => addToCart(product)} style={{ padding: '12px 10px' }}>
-              <div style={{ fontSize: '1.8rem', marginBottom: 2 }}>{product.emoji}</div>
-              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', lineHeight: 1.2 }}>{product.name}</div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-blue)' }}>{formatCurrency(product.price)}</span>
-                <span style={{ fontSize: '0.65rem', color: product.stock <= 5 ? 'var(--accent-coral)' : 'var(--text-muted)' }}>{product.stock} uds</span>
+            <button key={product.id} className="pos-product-btn" onClick={() => addToCart(product)} style={{ padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2px' }}>
+                <Package size={18} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
+              </div>
+              <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.2, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{product.name}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 2 }}>
+                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-blue)' }}>{formatCurrency(product.price)}</span>
+                <span style={{ fontSize: '0.62rem', color: product.stock <= 5 ? 'var(--accent-coral)' : 'var(--text-muted)' }}>{product.stock} u</span>
               </div>
             </button>
           ))}
           {filtered.length === 0 && (
             <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: '2rem', marginBottom: 8 }}>🔍</div>
-              <div style={{ fontSize: '0.85rem' }}>{search.trim() === '' ? 'Escribe o escanea un producto para buscar' : 'No se encontraron coincidencias'}</div>
+              <Search size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+              <div style={{ fontSize: '0.82rem' }}>{search.trim() === '' ? 'Escribe o escanea un producto para buscar' : 'No se encontraron coincidencias'}</div>
             </div>
           )}
         </div>
@@ -532,50 +551,53 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
         {step === 'cart' && (
           <>
             {/* Cart header */}
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--bg-deep)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>🛒 Carrito ({cart.reduce((s, i) => s + i.quantity, 0)})</span>
+            <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--bg-deep)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
+                <ShoppingCart size={16} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
+                <span>Carrito ({cart.reduce((s, i) => s + i.quantity, 0)})</span>
+              </div>
               {cart.length > 0 && (
-                <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '4px 8px', fontSize: '0.75rem', color: 'var(--accent-coral)' }}>Limpiar todo</button>
+                <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '3px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}>Limpiar</button>
               )}
             </div>
 
-            {/* High-Density Minimalist Cart Items List (NO IMAGES, NO EMOJIS) */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 12px' }}>
+            {/* High-Density Minimalist Cart Items List */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
               {cart.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '60px 16px', color: 'var(--text-muted)' }}>
-                  <div style={{ fontSize: '2.2rem', marginBottom: 8 }}>🛍</div>
-                  <div style={{ fontSize: '0.85rem' }}>Escanea o busca productos para añadirlos</div>
+                  <ShoppingCart size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+                  <div style={{ fontSize: '0.82rem' }}>Escanea o busca productos para añadirlos</div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   {cart.map(item => (
-                    <div key={item.id} className="neu-flat" style={{ padding: '8px 10px', display: 'flex', alignItems: 'center', gap: 8, borderRadius: 'var(--radius-sm)' }}>
+                    <div key={item.id} className="neu-flat" style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 6, borderRadius: 'var(--radius-sm)' }}>
                       
-                      {/* Product Name & Unit price (NO IMAGE / EMOJI) */}
+                      {/* Product Name & Unit price */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {item.name}
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
                           {formatCurrency(item.price)} c/u
                         </div>
                       </div>
 
                       {/* Quantity Controls */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 }}>
-                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - 1)} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.85rem', fontWeight: 800 }}>−</button>
-                        <span style={{ minWidth: 20, textAlign: 'center', fontWeight: 800, fontSize: '0.85rem' }}>{item.quantity}</span>
-                        <button className="btn-neu btn-icon-sm btn-primary" onClick={() => updateQty(item.id, item.quantity + 1)} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.85rem', fontWeight: 800 }}>+</button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
+                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - 1)} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>−</button>
+                        <span style={{ minWidth: 18, textAlign: 'center', fontWeight: 800, fontSize: '0.82rem' }}>{item.quantity}</span>
+                        <button className="btn-neu btn-icon-sm btn-primary" onClick={() => updateQty(item.id, item.quantity + 1)} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>+</button>
                       </div>
 
                       {/* Line Total */}
-                      <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 65 }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent-blue)' }}>{formatCurrency(item.lineTotal)}</div>
+                      <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 60 }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.82rem', color: 'var(--accent-blue)' }}>{formatCurrency(item.lineTotal)}</div>
                       </div>
 
                       {/* Remove Button */}
-                      <button onClick={() => removeFromCart(item.id)} style={{ padding: '2px 4px', fontSize: '0.8rem', color: 'var(--accent-coral)', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 800 }} title="Quitar">
-                        ✕
+                      <button onClick={() => removeFromCart(item.id)} style={{ padding: '2px', color: 'var(--accent-coral)', background: 'none', border: 'none', cursor: 'pointer' }} title="Quitar">
+                        <X size={14} strokeWidth={2.5} />
                       </button>
                     </div>
                   ))}
@@ -585,32 +607,32 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
             {/* Discount Input */}
             {cart.length > 0 && (
-              <div style={{ padding: '8px 16px', borderTop: '1px solid var(--bg-deep)', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>Descuento %</span>
-                  <input className="input-neu" type="number" min={0} max={100} value={discount || ''} onChange={e => setDiscount(Number(e.target.value))} placeholder="0" style={{ padding: '6px 10px', fontSize: '0.82rem' }} />
+              <div style={{ padding: '6px 14px', borderTop: '1px solid var(--bg-deep)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', fontWeight: 600, whiteSpace: 'nowrap' }}>Descuento %</span>
+                  <input className="input-neu" type="number" min={0} max={100} value={discount || ''} onChange={e => setDiscount(Number(e.target.value))} placeholder="0" style={{ padding: '4px 8px', fontSize: '0.8rem' }} />
                 </div>
               </div>
             )}
 
             {/* Totals & Checkout Button */}
-            <div style={{ padding: '14px 18px', borderTop: '1px solid var(--bg-deep)', background: 'var(--bg-deep)', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', flexShrink: 0 }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 12 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--bg-deep)', background: 'var(--bg-deep)', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginBottom: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                   <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
                 </div>
                 {discount > 0 && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--accent-coral)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', color: 'var(--accent-coral)' }}>
                     <span>Descuento ({discount}%)</span><span>-{formatCurrency(discountAmt)}</span>
                   </div>
                 )}
-                <div className="divider" style={{ margin: '4px 0' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.15rem', color: 'var(--text-primary)' }}>
+                <div className="divider" style={{ margin: '3px 0' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-primary)' }}>
                   <span>Total</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span>
                 </div>
               </div>
-              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => setStep('payment')} style={{ width: '100%', padding: '13px', fontSize: '0.95rem', justifyContent: 'center' }}>
-                💳 Cobrar {formatCurrency(total)}
+              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => setStep('payment')} style={{ width: '100%', padding: '12px', fontSize: '0.9rem', justifyContent: 'center' }}>
+                Cobrar {formatCurrency(total)}
               </button>
             </div>
           </>
@@ -619,24 +641,24 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
         {/* ── PAYMENT STEP ── */}
         {step === 'payment' && (
           <>
-            <div style={{ padding: '16px 20px 12px', borderBottom: '1px solid var(--bg-deep)', flexShrink: 0 }}>
-              <button className="btn-neu btn-ghost" onClick={() => setStep('cart')} style={{ padding: '4px 10px', fontSize: '0.78rem', marginBottom: 6 }}>← Volver al Carrito</button>
-              <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-primary)' }}>Método de Pago</div>
-              <div style={{ fontWeight: 900, fontSize: '1.5rem', color: 'var(--accent-blue)', marginTop: 2 }}>{formatCurrency(total)}</div>
+            <div style={{ padding: '14px 16px 10px', borderBottom: '1px solid var(--bg-deep)', flexShrink: 0 }}>
+              <button className="btn-neu btn-ghost" onClick={() => setStep('cart')} style={{ padding: '3px 8px', fontSize: '0.75rem', marginBottom: 4 }}>← Volver</button>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Método de Pago</div>
+              <div style={{ fontWeight: 900, fontSize: '1.35rem', color: 'var(--accent-blue)', marginTop: 1 }}>{formatCurrency(total)}</div>
             </div>
 
-            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
+            <div style={{ flex: 1, padding: '14px', display: 'flex', flexDirection: 'column', gap: 10, overflowY: 'auto' }}>
               
               {/* Customer Selector */}
               <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
-                  👤 Cliente de la Venta
+                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
+                  Cliente de la Venta
                 </label>
                 <select className="input-neu" value={selectedCustomer?.id || ''} onChange={e => {
                   const found = customerList.find(c => c.id === e.target.value)
                   setSelectedCustomer(found || null)
                   setError('')
-                }}>
+                }} style={{ fontSize: '0.82rem' }}>
                   <option value="">-- Público General --</option>
                   {customerList.map(c => (
                     <option key={c.id} value={c.id}>
@@ -648,28 +670,33 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
               {/* Payment methods grid */}
               <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
+                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
                   Forma de Pago
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                  {PAYMENT_METHODS.map(pm => (
-                    <button key={pm.key} className="btn-neu" onClick={() => { setPaymentMethod(pm.key); setError(''); }}
-                      style={{ padding: '10px 8px', fontSize: '0.8rem', flexDirection: 'column', gap: 2, height: 56, justifyContent: 'center', background: paymentMethod === pm.key ? 'var(--accent-blue)' : 'var(--bg)', color: paymentMethod === pm.key ? '#fff' : 'var(--text-secondary)', boxShadow: paymentMethod === pm.key ? '4px 4px 12px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
-                      {pm.label}
-                    </button>
-                  ))}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                  {PAYMENT_METHODS.map(pm => {
+                    const MethodIcon = pm.Icon
+                    const isSelected = paymentMethod === pm.key
+                    return (
+                      <button key={pm.key} className="btn-neu" onClick={() => { setPaymentMethod(pm.key); setError(''); }}
+                        style={{ padding: '8px 6px', fontSize: '0.75rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, height: 50, justifyContent: 'center', background: isSelected ? 'var(--accent-blue)' : 'var(--bg)', color: isSelected ? '#fff' : 'var(--text-secondary)', boxShadow: isSelected ? '4px 4px 12px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
+                        <MethodIcon size={16} strokeWidth={2} style={{ color: isSelected ? '#fff' : 'inherit' }} />
+                        <span style={{ fontWeight: isSelected ? 700 : 500 }}>{pm.label}</span>
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
               {/* Cash received input */}
               {paymentMethod === 'cash' && (
                 <div>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>Efectivo recibido</div>
-                  <input className="input-neu" type="number" placeholder={total.toFixed(2)} value={receivedAmount} onChange={e => setReceivedAmount(e.target.value)} style={{ fontSize: '1.05rem', fontWeight: 700, textAlign: 'right' }} />
+                  <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Efectivo recibido</div>
+                  <input className="input-neu" type="number" placeholder={total.toFixed(2)} value={receivedAmount} onChange={e => setReceivedAmount(e.target.value)} style={{ fontSize: '1rem', fontWeight: 700, textAlign: 'right' }} />
                   {Number(receivedAmount) > 0 && (
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 8, padding: '8px 12px', background: 'var(--accent-green-lt)', borderRadius: 'var(--radius-sm)' }}>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent-green)' }}>Cambio</span>
-                      <span style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--accent-green)' }}>{formatCurrency(change)}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, padding: '6px 10px', background: 'var(--accent-green-lt)', borderRadius: 'var(--radius-sm)' }}>
+                      <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--accent-green)' }}>Cambio</span>
+                      <span style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--accent-green)' }}>{formatCurrency(change)}</span>
                     </div>
                   )}
                 </div>
@@ -677,9 +704,9 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
               {/* Quick amount buttons for cash */}
               {paymentMethod === 'cash' && (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 4 }}>
                   {[2000, 5000, 10000, 20000, 50000, Math.ceil(total / 1000) * 1000].map(amt => (
-                    <button key={amt} className="btn-neu" onClick={() => setReceivedAmount(String(amt))} style={{ padding: '7px', fontSize: '0.78rem', fontWeight: 700 }}>
+                    <button key={amt} className="btn-neu" onClick={() => setReceivedAmount(String(amt))} style={{ padding: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
                       ${amt.toLocaleString()}
                     </button>
                   ))}
@@ -688,32 +715,33 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
               {/* Nequi / Daviplata Transfer QR & Receipt Reference */}
               {paymentMethod === 'transfer' && (
-                <div style={{ background: 'var(--accent-purple-lt)', padding: '12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ fontWeight: 800, fontSize: '0.82rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    📱 Pago con Nequi / Daviplata
+                <div style={{ background: 'var(--accent-purple-lt)', padding: '10px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.78rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <Smartphone size={15} strokeWidth={2} />
+                    <span>Pago con Nequi / Daviplata</span>
                   </div>
                   
                   {/* QR Image Box */}
-                  <div style={{ background: '#fff', padding: 8, borderRadius: 10, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, margin: '0 auto', maxWidth: 140 }}>
+                  <div style={{ background: '#fff', padding: 6, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, margin: '0 auto', maxWidth: 130 }}>
                     <img
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=Nequi-Pay-${total}`}
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=Nequi-Pay-${total}`}
                       alt="QR Pago Nequi"
-                      style={{ width: 100, height: 100 }}
+                      style={{ width: 90, height: 90 }}
                     />
-                    <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Escanea por {formatCurrency(total)}</span>
+                    <span style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 700 }}>Escanea por {formatCurrency(total)}</span>
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                    <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
                       Nº de Comprobante / Aprobación *
                     </label>
                     <input
                       className="input-neu"
-                      placeholder="Ej: NQ-987654 o últimos 4 dígitos"
+                      placeholder="Ej: NQ-987654"
                       value={transferRef}
                       onChange={e => { setTransferRef(e.target.value); setError(''); }}
                       required
-                      style={{ fontWeight: 700, padding: '8px 10px', fontSize: '0.82rem' }}
+                      style={{ fontWeight: 700, padding: '6px 8px', fontSize: '0.78rem' }}
                     />
                   </div>
                 </div>
@@ -721,34 +749,34 @@ ${change > 0 ? `💵 *Cambio:* ${formatCurrency(change)}` : ''}
 
               {/* Fiao Details & Validation */}
               {paymentMethod === 'fiao' && (
-                <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '12px', borderRadius: 'var(--radius-md)' }}>
+                <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '10px', borderRadius: 'var(--radius-md)' }}>
                   {selectedCustomer ? (
                     <div>
-                      <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-blue)' }}>💬 Fiar a: {selectedCustomer.full_name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.3 }}>
+                      <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-blue)' }}>Fiar a: {selectedCustomer.full_name}</div>
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.3 }}>
                         Deuda actual: <strong>{formatCurrency(selectedCustomer.credit_used)}</strong><br />
                         Cupo disponible: <strong>{formatCurrency(selectedCustomer.credit_limit - selectedCustomer.credit_used)}</strong> de {formatCurrency(selectedCustomer.credit_limit)}
                       </div>
                     </div>
                   ) : (
-                    <div style={{ fontSize: '0.8rem', color: 'var(--accent-coral)', fontWeight: 600 }}>
-                      ⚠️ Selecciona un cliente arriba para poder fiarle esta compra.
+                    <div style={{ fontSize: '0.75rem', color: 'var(--accent-coral)', fontWeight: 600 }}>
+                      Selecciona un cliente arriba para poder fiarle esta compra.
                     </div>
                   )}
                 </div>
               )}
 
               {error && (
-                <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
-                  ⚠ {error}
+                <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem' }}>
+                  {error}
                 </div>
               )}
             </div>
 
-            <div style={{ padding: '14px 18px', borderTop: '1px solid var(--bg-deep)', flexShrink: 0 }}>
+            <div style={{ padding: '12px 16px', borderTop: '1px solid var(--bg-deep)', flexShrink: 0 }}>
               <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
-                style={{ width: '100%', padding: '14px', fontSize: '0.95rem', justifyContent: 'center' }}>
-                {loading ? '⏳ Procesando...' : paymentMethod === 'fiao' ? `💬 Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `📱 Confirmar Transferencia (${formatCurrency(total)})` : '✓ Confirmar pago'}
+                style={{ width: '100%', padding: '12px', fontSize: '0.9rem', justifyContent: 'center' }}>
+                {loading ? 'Procesando...' : paymentMethod === 'fiao' ? `Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `Confirmar Nequi (${formatCurrency(total)})` : 'Confirmar pago'}
               </button>
             </div>
           </>

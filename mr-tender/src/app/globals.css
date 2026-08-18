@@ -490,7 +490,12 @@ body {
 .toggle input:checked ~ .toggle-track { background: var(--accent-blue-lt); }
 .toggle input:checked ~ .toggle-track::after { transform: translateX(22px); background: var(--accent-blue); }
 
-/* ── Responsive ── */
+/* ── Global Anti-Horizontal Scroll & Responsive Rules ── */
+html, body, .app-layout, .app-content {
+  overflow-x: hidden !important;
+  max-width: 100vw;
+}
+
 .sidebar-toggle-btn {
   display: none !important;
 }
