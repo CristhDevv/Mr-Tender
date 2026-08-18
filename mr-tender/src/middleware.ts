@@ -4,6 +4,19 @@ import { NextResponse, type NextRequest } from 'next/server'
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
+  const { pathname } = request.nextUrl
+
+  // Exclude static assets and PWA files from auth check
+  if (
+    pathname === '/manifest.webmanifest' ||
+    pathname === '/manifest.json' ||
+    pathname === '/sw.js' ||
+    pathname.startsWith('/_next') ||
+    pathname.includes('.')
+  ) {
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,11 +40,9 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
-
   // Public routes that don't need auth
   const publicRoutes = ['/', '/login', '/register', '/pricing']
-  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/auth'))
+  const isPublic = publicRoutes.some(r => pathname === r || pathname.startsWith('/auth') || pathname.startsWith('/store/'))
 
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL('/login', request.url))
@@ -51,5 +62,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|sw.js|manifest.webmanifest|manifest.json|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|js)$).*)'],
 }
