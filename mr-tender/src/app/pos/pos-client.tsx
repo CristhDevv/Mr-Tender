@@ -22,11 +22,22 @@ interface CartItem extends Product {
   lineTotal: number
 }
 
+interface Customer {
+  id: string
+  full_name: string
+  phone: string | null
+  credit_limit: number
+  credit_used: number
+  total_purchases?: number
+  total_orders?: number
+}
+
 const PAYMENT_METHODS = [
   { key: 'cash', label: '💵 Efectivo' },
   { key: 'card_debit', label: '💳 Débito' },
   { key: 'card_credit', label: '💳 Crédito' },
   { key: 'transfer', label: '📱 Transferencia' },
+  { key: 'fiao', label: '💬 Fiar (Crédito)' },
 ]
 
 const EMOJIS = ['🥤', '🥛', '🍞', '🫙', '🧼', '🧻', '🧽', '🍚', '☕', '🍗', '🫘', '🧴', '🍎', '🥩', '🍟']
@@ -44,6 +55,10 @@ export default function POSClient() {
   const [saleNumber, setSaleNumber] = useState('')
   const [error, setError] = useState('')
 
+  // Customers state
+  const [customerList, setCustomerList] = useState<Customer[]>([])
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+
   // State loaded from DB
   const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<string[]>(['Todos'])
@@ -56,7 +71,7 @@ export default function POSClient() {
     register_id: string | null
   } | null>(null)
 
-  // Fetch session data and products
+  // Fetch session data, products and customers
   useEffect(() => {
     async function loadData() {
       try {
@@ -106,6 +121,26 @@ export default function POSClient() {
           register_id
         })
 
+        // Fetch customers list
+        const { data: custData } = await supabase
+          .from('customers')
+          .select('id, full_name, phone, credit_limit, credit_used, total_purchases, total_orders')
+          .eq('tenant_id', tenant_id)
+          .eq('is_active', true)
+          .order('full_name', { ascending: true })
+
+        if (custData) {
+          setCustomerList(custData as any)
+          if (typeof window !== 'undefined') {
+            const params = new URLSearchParams(window.location.search)
+            const cId = params.get('customer')
+            if (cId) {
+              const found = custData.find((c: any) => c.id === cId)
+              if (found) setSelectedCustomer(found as any)
+            }
+          }
+        }
+
         // Get products with stock
         const { data: prodData } = await supabase
           .from('products')
@@ -119,7 +154,6 @@ export default function POSClient() {
         
         if (prodData) {
           const loadedProducts: Product[] = prodData.map((p: any, idx: number) => {
-            // Find inventory for current warehouse or sum all
             const whStock = p.inventory?.find((inv: any) => inv.warehouse_id === warehouse_id)
             const stock = whStock ? Number(whStock.quantity) : 0
             const catName = p.categories?.name || 'General'
@@ -184,8 +218,25 @@ export default function POSClient() {
 
   async function processSale() {
     if (!sessionInfo) return
-    setLoading(true)
     setError('')
+
+    // Validate Fiao method
+    if (paymentMethod === 'fiao') {
+      if (!selectedCustomer) {
+        setError('Debes seleccionar un cliente para fiar la compra')
+        return
+      }
+      const limit = Number(selectedCustomer.credit_limit || 0)
+      const used = Number(selectedCustomer.credit_used || 0)
+      const available = limit - used
+
+      if (total > available) {
+        setError(`El cliente no tiene suficiente cupo disponible. Disponible: ${formatCurrency(available)} (Cupo: ${formatCurrency(limit)})`)
+        return
+      }
+    }
+
+    setLoading(true)
 
     const salePayload = {
       tenant_id: sessionInfo.tenant_id,
@@ -193,10 +244,10 @@ export default function POSClient() {
       register_id: sessionInfo.register_id,
       session_id: sessionInfo.session_id,
       branch_id: sessionInfo.branch_id,
-      customer_id: null, // Default
+      customer_id: selectedCustomer ? selectedCustomer.id : null,
       subtotal,
       discount_amount: discountAmt,
-      tax_amount: total * 0.16, // Simulating 16% tax
+      tax_amount: total * 0.16,
       tip_amount: 0,
       total,
       change_amount: change,
@@ -235,6 +286,24 @@ export default function POSClient() {
 
       setSaleNumber(data.number)
       
+      // If payment was Fiao, update customer credit_used
+      if (paymentMethod === 'fiao' && selectedCustomer) {
+        const newCreditUsed = Number(selectedCustomer.credit_used || 0) + total
+        await supabase
+          .from('customers')
+          .update({
+            credit_used: newCreditUsed,
+            total_purchases: Number(selectedCustomer.total_purchases || 0) + total,
+            total_orders: Number(selectedCustomer.total_orders || 0) + 1,
+            last_purchase_at: new Date().toISOString()
+          })
+          .eq('id', selectedCustomer.id)
+
+        // Update local state
+        setCustomerList(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, credit_used: newCreditUsed } : c))
+        setSelectedCustomer(prev => prev ? { ...prev, credit_used: newCreditUsed } : null)
+      }
+
       // Update local products stock
       setProducts(prev => prev.map(p => {
         const cartItem = cart.find(ci => ci.id === p.id)
@@ -255,6 +324,7 @@ export default function POSClient() {
     setDiscount(0)
     setPaymentMethod('cash')
     setReceivedAmount('')
+    setSelectedCustomer(null)
     setStep('cart')
   }
 
@@ -262,11 +332,21 @@ export default function POSClient() {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '70vh' }}>
         <div className="neu-card animate-scale-in" style={{ padding: '52px 44px', textAlign: 'center', maxWidth: 420, width: '100%' }}>
-          <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>✅</div>
-          <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: 8 }}>¡Venta completada!</h2>
+          <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>
+            {paymentMethod === 'fiao' ? '💬' : '✅'}
+          </div>
+          <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: 8 }}>
+            {paymentMethod === 'fiao' ? '¡Venta en Fiao Registrada!' : '¡Venta completada!'}
+          </h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>Folio: <strong>{saleNumber}</strong></p>
+          {selectedCustomer && <p style={{ color: 'var(--accent-purple)', fontWeight: 600, marginBottom: 6 }}>Cliente: {selectedCustomer.full_name}</p>}
           <p style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>Total: <strong>{formatCurrency(total)}</strong></p>
           {change > 0 && <p style={{ color: 'var(--accent-green)', fontWeight: 700, fontSize: '1.1rem', marginBottom: 6 }}>Cambio: {formatCurrency(change)}</p>}
+          {paymentMethod === 'fiao' && selectedCustomer && (
+            <p style={{ color: 'var(--accent-coral)', fontWeight: 700, fontSize: '0.9rem', marginBottom: 6, background: 'var(--accent-coral-lt)', padding: '6px 12px', borderRadius: 'var(--radius-sm)' }}>
+              Nueva Deuda Total: {formatCurrency(selectedCustomer.credit_used)}
+            </p>
+          )}
           <div style={{ display: 'flex', gap: 12, marginTop: 28 }}>
             <button className="btn-neu" style={{ flex: 1, padding: '12px', fontSize: '0.875rem' }} onClick={() => alert('Ticket impreso / enviado')}>🖨 Ticket</button>
             <button className="btn-neu btn-primary" style={{ flex: 2, padding: '12px', fontSize: '0.875rem' }} onClick={newSale}>+ Nueva venta</button>
@@ -406,15 +486,40 @@ export default function POSClient() {
               <div style={{ fontWeight: 800, fontSize: '1.6rem', color: 'var(--accent-blue)', marginTop: 4 }}>{formatCurrency(total)}</div>
             </div>
 
-            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Payment methods */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                {PAYMENT_METHODS.map(pm => (
-                  <button key={pm.key} className="btn-neu" onClick={() => setPaymentMethod(pm.key)}
-                    style={{ padding: '12px 10px', fontSize: '0.82rem', flexDirection: 'column', gap: 4, height: 64, justifyContent: 'center', background: paymentMethod === pm.key ? 'var(--accent-blue)' : 'var(--bg)', color: paymentMethod === pm.key ? '#fff' : 'var(--text-secondary)', boxShadow: paymentMethod === pm.key ? '4px 4px 12px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
-                    {pm.label}
-                  </button>
-                ))}
+            <div style={{ flex: 1, padding: '16px', display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto' }}>
+              
+              {/* Customer Selector */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                  👤 Cliente de la Venta
+                </label>
+                <select className="input-neu" value={selectedCustomer?.id || ''} onChange={e => {
+                  const found = customerList.find(c => c.id === e.target.value)
+                  setSelectedCustomer(found || null)
+                  setError('')
+                }}>
+                  <option value="">-- Público General --</option>
+                  {customerList.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.full_name} (Deuda: ${c.credit_used} / Cupo: ${c.credit_limit})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Payment methods grid */}
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 6 }}>
+                  Forma de Pago
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {PAYMENT_METHODS.map(pm => (
+                    <button key={pm.key} className="btn-neu" onClick={() => { setPaymentMethod(pm.key); setError(''); }}
+                      style={{ padding: '12px 10px', fontSize: '0.82rem', flexDirection: 'column', gap: 4, height: 60, justifyContent: 'center', background: paymentMethod === pm.key ? 'var(--accent-blue)' : 'var(--bg)', color: paymentMethod === pm.key ? '#fff' : 'var(--text-secondary)', boxShadow: paymentMethod === pm.key ? '4px 4px 12px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
+                      {pm.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Cash received input */}
@@ -434,11 +539,30 @@ export default function POSClient() {
               {/* Quick amount buttons for cash */}
               {paymentMethod === 'cash' && (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8 }}>
-                  {[50, 100, 200, 500, 1000, Math.ceil(total / 10) * 10].map(amt => (
+                  {[2000, 5000, 10000, 20000, 50000, Math.ceil(total / 1000) * 1000].map(amt => (
                     <button key={amt} className="btn-neu" onClick={() => setReceivedAmount(String(amt))} style={{ padding: '8px', fontSize: '0.82rem', fontWeight: 700 }}>
-                      ${amt}
+                      ${amt.toLocaleString()}
                     </button>
                   ))}
+                </div>
+              )}
+
+              {/* Fiao Details & Validation */}
+              {paymentMethod === 'fiao' && (
+                <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '12px 14px', borderRadius: 'var(--radius-md)' }}>
+                  {selectedCustomer ? (
+                    <div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--accent-blue)' }}>💬 Fiar a: {selectedCustomer.full_name}</div>
+                      <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
+                        Deuda actual: <strong>{formatCurrency(selectedCustomer.credit_used)}</strong><br />
+                        Cupo disponible: <strong>{formatCurrency(selectedCustomer.credit_limit - selectedCustomer.credit_used)}</strong> de {formatCurrency(selectedCustomer.credit_limit)}
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: '0.82rem', color: 'var(--accent-coral)', fontWeight: 600 }}>
+                      ⚠️ Selecciona un cliente arriba para poder fiarle esta compra.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -450,9 +574,9 @@ export default function POSClient() {
             </div>
 
             <div style={{ padding: '16px 18px', borderTop: '1px solid var(--bg-deep)' }}>
-              <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '')}
+              <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer)}
                 style={{ width: '100%', padding: '15px', fontSize: '1rem', justifyContent: 'center' }}>
-                {loading ? '⏳ Procesando...' : '✓ Confirmar pago'}
+                {loading ? '⏳ Procesando...' : paymentMethod === 'fiao' ? `💬 Confirmar Fiao (${formatCurrency(total)})` : '✓ Confirmar pago'}
               </button>
             </div>
           </>
