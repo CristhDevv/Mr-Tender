@@ -43,7 +43,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="app-layout">
       {/* Overlay mobile */}
-      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 49 }} />}
+      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 49 }} />}
 
       {/* ── SIDEBAR ── */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
@@ -81,7 +81,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
           <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '8px', fontSize: '0.8rem', justifyContent: 'center', color: 'var(--accent-coral)' }}>
-            Cerrar sesión
+            🚪 Cerrar sesión
           </button>
         </div>
       </aside>
@@ -90,7 +90,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="app-content">
         {/* Topbar */}
         <header className="topbar" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button className="btn-neu btn-ghost btn-icon" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ display: 'none' }}>☰</button>
+          {/* Mobile Sidebar Hamburger Toggle */}
+          <button className="btn-neu btn-ghost sidebar-toggle-btn" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ padding: '8px 12px', fontSize: '0.85rem', fontWeight: 800 }}>
+            ☰ Menú
+          </button>
 
           {/* Clickable Brand logo in Topbar -> /dashboard */}
           <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -106,13 +109,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-          <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem' }}>
-            + Nueva venta
-          </Link>
+          {pathname !== '/pos' && (
+            <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem' }}>
+              + Nueva venta
+            </Link>
+          )}
         </header>
 
         {/* Page */}
-        <main style={{ flex: 1, padding: '28px', maxWidth: 1400, width: '100%' }}>
+        <main style={{ flex: 1, padding: '20px 24px', maxWidth: 1400, width: '100%' }}>
           {children}
         </main>
       </div>
