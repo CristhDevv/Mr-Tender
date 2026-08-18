@@ -38,7 +38,7 @@ const PAYMENT_METHODS = [
   { key: 'cash', label: '💵 Efectivo' },
   { key: 'card_debit', label: '💳 Débito' },
   { key: 'card_credit', label: '💳 Crédito' },
-  { key: 'transfer', label: '📱 Transferencia' },
+  { key: 'transfer', label: '📱 Nequi / Daviplata' },
   { key: 'fiao', label: '💬 Fiar (Crédito)' },
 ]
 
@@ -52,6 +52,7 @@ export default function POSClient() {
   const [discount, setDiscount] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [receivedAmount, setReceivedAmount] = useState('')
+  const [transferRef, setTransferRef] = useState('')
   const [step, setStep] = useState<'cart' | 'payment' | 'done'>('cart')
   const [loading, setLoading] = useState(false)
   const [saleNumber, setSaleNumber] = useState('')
@@ -258,6 +259,14 @@ export default function POSClient() {
       }
     }
 
+    // Validate Transfer/Nequi reference
+    if (paymentMethod === 'transfer') {
+      if (!transferRef.trim()) {
+        setError('Ingresa el número de comprobante o aprobación Nequi/Daviplata')
+        return
+      }
+    }
+
     setLoading(true)
 
     const salePayload = {
@@ -296,7 +305,8 @@ export default function POSClient() {
           payment_method: paymentMethod,
           amount: total,
           received_amount: paymentMethod === 'cash' ? Number(receivedAmount) : total,
-          change_amount: change
+          change_amount: change,
+          reference: paymentMethod === 'transfer' ? transferRef.trim() : null
         }
       ]
     }
@@ -346,6 +356,7 @@ export default function POSClient() {
     setDiscount(0)
     setPaymentMethod('cash')
     setReceivedAmount('')
+    setTransferRef('')
     setSelectedCustomer(null)
     setStep('cart')
   }
@@ -355,13 +366,14 @@ export default function POSClient() {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '70vh' }}>
         <div className="neu-card animate-scale-in" style={{ padding: '52px 44px', textAlign: 'center', maxWidth: 420, width: '100%' }}>
           <div style={{ fontSize: '3.5rem', marginBottom: 16 }}>
-            {paymentMethod === 'fiao' ? '💬' : '✅'}
+            {paymentMethod === 'fiao' ? '💬' : paymentMethod === 'transfer' ? '📱' : '✅'}
           </div>
           <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: 'var(--text-primary)', marginBottom: 8 }}>
             {paymentMethod === 'fiao' ? '¡Venta en Fiao Registrada!' : '¡Venta completada!'}
           </h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>Folio: <strong>{saleNumber}</strong></p>
           {selectedCustomer && <p style={{ color: 'var(--accent-purple)', fontWeight: 600, marginBottom: 6 }}>Cliente: {selectedCustomer.full_name}</p>}
+          {transferRef && <p style={{ color: 'var(--accent-blue)', fontWeight: 600, marginBottom: 6 }}>Comprobante: {transferRef}</p>}
           <p style={{ color: 'var(--text-secondary)', marginBottom: 6 }}>Total: <strong>{formatCurrency(total)}</strong></p>
           {change > 0 && <p style={{ color: 'var(--accent-green)', fontWeight: 700, fontSize: '1.1rem', marginBottom: 6 }}>Cambio: {formatCurrency(change)}</p>}
           {paymentMethod === 'fiao' && selectedCustomer && (
@@ -574,6 +586,39 @@ export default function POSClient() {
                 </div>
               )}
 
+              {/* Nequi / Daviplata Transfer QR & Receipt Reference */}
+              {paymentMethod === 'transfer' && (
+                <div style={{ background: 'var(--accent-purple-lt)', padding: '14px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    📱 Pago con Nequi / Daviplata
+                  </div>
+                  
+                  {/* QR Image Box */}
+                  <div style={{ background: '#fff', padding: 10, borderRadius: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, margin: '0 auto', maxWidth: 160 }}>
+                    <img
+                      src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=Nequi-Pay-${total}`}
+                      alt="QR Pago Nequi"
+                      style={{ width: 110, height: 110 }}
+                    />
+                    <span style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700 }}>Escanea por {formatCurrency(total)}</span>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                      Nº de Comprobante / Aprobación *
+                    </label>
+                    <input
+                      className="input-neu"
+                      placeholder="Ej: NQ-987654 o últimos 4 dígitos"
+                      value={transferRef}
+                      onChange={e => { setTransferRef(e.target.value); setError(''); }}
+                      required
+                      style={{ fontWeight: 700 }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Fiao Details & Validation */}
               {paymentMethod === 'fiao' && (
                 <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '12px 14px', borderRadius: 'var(--radius-md)' }}>
@@ -601,9 +646,9 @@ export default function POSClient() {
             </div>
 
             <div style={{ padding: '16px 18px', borderTop: '1px solid var(--bg-deep)' }}>
-              <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer)}
+              <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
                 style={{ width: '100%', padding: '15px', fontSize: '1rem', justifyContent: 'center' }}>
-                {loading ? '⏳ Procesando...' : paymentMethod === 'fiao' ? `💬 Confirmar Fiao (${formatCurrency(total)})` : '✓ Confirmar pago'}
+                {loading ? '⏳ Procesando...' : paymentMethod === 'fiao' ? `💬 Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `📱 Confirmar Transferencia (${formatCurrency(total)})` : '✓ Confirmar pago'}
               </button>
             </div>
           </>

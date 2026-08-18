@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
 interface DBCashSession {
@@ -54,9 +54,10 @@ export default function CashPage() {
   const [movAmount, setMovAmount] = useState('')
   const [movDesc, setMovDesc] = useState('')
 
-  // Close modal state
+  // Close modal state (Blind Closure)
   const [closingAmount, setClosingAmount] = useState('')
   const [closingNotes, setClosingNotes] = useState('')
+  const [closeReport, setCloseReport] = useState<{ expected: number; counted: number; diff: number } | null>(null)
 
   useEffect(() => {
     loadCashData()
@@ -111,10 +112,11 @@ export default function CashPage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      const { data, error } = await supabase.rpc('open_cash_session', {
+      const { error } = await supabase.rpc('open_cash_session', {
         p_opening_amount: parseFloat(openingAmount) || 0
       })
       if (error) throw error
+      setCloseReport(null)
       await loadCashData()
       setModal(null)
     } catch (err: any) {
@@ -147,13 +149,20 @@ export default function CashPage() {
 
   async function handleCloseSession(e: React.FormEvent) {
     e.preventDefault()
+    if (!closingAmount) return
     setSubmitting(true)
+
+    const counted = parseFloat(closingAmount) || 0
+    const diff = counted - expected
+
     try {
       const { error } = await supabase.rpc('close_cash_session', {
-        p_closing_amount: parseFloat(closingAmount) || 0,
+        p_closing_amount: counted,
         p_notes: closingNotes
       })
       if (error) throw error
+
+      setCloseReport({ expected, counted, diff })
       await loadCashData()
       setModal(null)
       setClosingAmount(''); setClosingNotes('')
@@ -196,8 +205,8 @@ export default function CashPage() {
             <button onClick={() => { setMovType('expense'); setModal('movement') }} className="btn-neu" style={{ padding: '9px 16px', fontSize: '0.82rem', color: 'var(--accent-coral)' }}>
               − Egreso
             </button>
-            <button onClick={() => { setClosingAmount(expected.toString()); setModal('close') }} className="btn-neu btn-danger" style={{ padding: '9px 18px', fontSize: '0.82rem' }}>
-              🔒 Cerrar turno
+            <button onClick={() => { setClosingAmount(''); setModal('close') }} className="btn-neu btn-danger" style={{ padding: '9px 18px', fontSize: '0.82rem' }}>
+              🔒 Arqueo y Cierre Ciego
             </button>
           </div>
         ) : (
@@ -210,6 +219,41 @@ export default function CashPage() {
       {error && (
         <div className="neu-card" style={{ padding: 16, background: 'rgba(235,94,85,0.08)', border: '1px solid rgba(235,94,85,0.2)' }}>
           <p style={{ color: 'var(--accent-coral)', margin: 0, fontSize: '0.85rem' }}>⚠️ {error}</p>
+        </div>
+      )}
+
+      {/* Report Banner after Blind Closure */}
+      {closeReport && !session && (
+        <div className="neu-card animate-scale-in" style={{ padding: 24, background: closeReport.diff === 0 ? 'var(--accent-green-lt)' : closeReport.diff > 0 ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', borderRadius: 'var(--radius-lg)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+            <span style={{ fontSize: '2rem' }}>
+              {closeReport.diff === 0 ? '✅' : closeReport.diff > 0 ? '🟢' : '🔴'}
+            </span>
+            <div>
+              <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>
+                {closeReport.diff === 0 ? '¡Arqueo Perfecto! Cuadre de Caja Exacto' : closeReport.diff > 0 ? 'Sobrante Registrado en el Arqueo' : 'Faltante Registrado en el Arqueo'}
+              </h3>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Resultados del cierre ciego de turno
+              </p>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10, marginTop: 14 }}>
+            <div className="neu-flat" style={{ padding: '10px 12px' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Contado Físico</span>
+              <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>{formatCurrency(closeReport.counted)}</div>
+            </div>
+            <div className="neu-flat" style={{ padding: '10px 12px' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Esperado Sistema</span>
+              <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>{formatCurrency(closeReport.expected)}</div>
+            </div>
+            <div className="neu-flat" style={{ padding: '10px 12px' }}>
+              <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Diferencia</span>
+              <div style={{ fontWeight: 900, fontSize: '1.05rem', color: closeReport.diff === 0 ? 'var(--accent-green)' : closeReport.diff > 0 ? 'var(--accent-blue)' : 'var(--accent-coral)' }}>
+                {closeReport.diff > 0 ? `+${formatCurrency(closeReport.diff)}` : formatCurrency(closeReport.diff)}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -285,7 +329,7 @@ export default function CashPage() {
       )}
 
       {/* Closed State Banner */}
-      {!session && (
+      {!session && !closeReport && (
         <div className="neu-card" style={{ padding: '50px 24px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
           <div style={{ fontSize: '3.5rem' }}>💰</div>
           <h2 style={{ fontWeight: 800, color: 'var(--text-primary)', fontSize: '1.3rem', margin: 0 }}>El turno de caja está cerrado</h2>
@@ -357,28 +401,25 @@ export default function CashPage() {
         </div>
       )}
 
-      {/* Modal: Close Session */}
+      {/* Modal: Close Session (Blind Closure) */}
       {modal === 'close' && (
         <div style={MODAL_STYLE} onClick={e => e.target === e.currentTarget && setModal(null)}>
           <form onSubmit={handleCloseSession} style={PANEL_STYLE}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-coral)', margin: 0 }}>🔒 Arqueo y Cierre de Caja</h2>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-coral)', margin: 0 }}>🔒 Arqueo y Cierre de Caja Ciego</h2>
               <button type="button" onClick={() => setModal(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
             </div>
 
-            <div className="neu-card" style={{ padding: 14, background: 'var(--bg-deep)', display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.85rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Fondo inicial:</span><strong>{formatCurrency(opening)}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Ventas + Ingresos:</span><strong style={{ color: 'var(--accent-emerald)' }}>+{formatCurrency(totalSales + totalIncome)}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Egresos:</span><strong style={{ color: 'var(--accent-coral)' }}>-{formatCurrency(totalExpenses)}</strong></div>
-              <div className="divider" />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem', fontWeight: 800 }}><span>Efectivo esperado:</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(expected)}</span></div>
+            <div className="neu-card" style={{ padding: 14, background: 'var(--bg-deep)', display: 'flex', flexDirection: 'column', gap: 6, fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+              <div style={{ fontWeight: 700, color: 'var(--text-primary)', fontSize: '0.88rem' }}>ℹ️ Arqueo Ciego de Seguridad</div>
+              <div>Cuenta de forma física los billetes y monedas que entregas en caja. El sistema calculará la diferencia al enviar.</div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>
+              <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 6 }}>
                 Efectivo Real Contado en Caja ($) *
               </label>
-              <input type="number" className="input-neu" value={closingAmount} onChange={e => setClosingAmount(e.target.value)} required min="0" placeholder={expected.toString()} style={{ width: '100%', fontSize: '1.1rem', fontWeight: 700 }} />
+              <input type="number" className="input-neu" value={closingAmount} onChange={e => setClosingAmount(e.target.value)} required min="0" placeholder="Ej: 345000" autoFocus style={{ width: '100%', fontSize: '1.2rem', fontWeight: 800 }} />
             </div>
 
             <div>
@@ -388,8 +429,8 @@ export default function CashPage() {
 
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
               <button type="button" onClick={() => setModal(null)} className="btn-neu btn-ghost" style={{ padding: '10px 18px' }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-danger" disabled={submitting} style={{ padding: '10px 24px' }}>
-                {submitting ? 'Cerrando...' : 'Confirmar Cierre'}
+              <button type="submit" className="btn-neu btn-danger" disabled={submitting || !closingAmount} style={{ padding: '10px 24px' }}>
+                {submitting ? 'Cerrando...' : 'Confirmar Cierre Ciego'}
               </button>
             </div>
           </form>
