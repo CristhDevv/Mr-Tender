@@ -94,8 +94,8 @@ export default function RegisterPage() {
       <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 520, padding: '40px 36px' }}>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ width: 46, height: 46, borderRadius: 14, background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 22, margin: '0 auto 12px', boxShadow: '5px 5px 14px rgba(74,144,217,0.4)' }}>M</div>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <img src="/logo.png" alt="Mr Tender" style={{ width: 56, height: 56, borderRadius: 14, margin: '0 auto 10px', display: 'block', objectFit: 'contain' }} />
           <h1 style={{ fontWeight: 800, fontSize: '1.3rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Crear mi cuenta</h1>
         </div>
 

@@ -66,8 +66,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* ── SIDEBAR ── */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
         {/* Clickable Brand Logo -> /dashboard */}
-        <Link href="/dashboard" onClick={() => setSidebarOpen(false)} style={{ textDecoration: 'none', padding: '20px 18px 16px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 38, height: 38, borderRadius: 12, background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 20, boxShadow: '4px 4px 10px rgba(74,144,217,0.4)', flexShrink: 0 }}>M</div>
+        <Link href="/dashboard" onClick={() => setSidebarOpen(false)} style={{ textDecoration: 'none', padding: '16px 18px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img src="/logo.png" alt="Mr Tender" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
           <div>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</div>
             <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Panel de administración</div>
@@ -120,9 +120,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span>Menú</span>
             </button>
 
-            {/* Clickable Brand Logo (LOGO M ONLY) */}
+            {/* Clickable Brand Logo (IMAGE LOGO) */}
             <Link href="/dashboard" title="Mr Tender - Ir a Inicio" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 18, boxShadow: '3px 3px 8px rgba(74,144,217,0.4)' }}>M</div>
+              <img src="/logo.png" alt="Mr Tender" style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'contain' }} />
             </Link>
 
             <div style={{ width: 1, height: 18, background: 'var(--border-color)', margin: '0 2px', flexShrink: 0 }} />

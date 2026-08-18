@@ -27,8 +27,8 @@ export default function LoginPage() {
       <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 420, padding: '40px 36px' }}>
 
         {/* Logo */}
-        <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ width: 52, height: 52, borderRadius: 16, background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: 26, margin: '0 auto 14px', boxShadow: '5px 5px 14px rgba(74,144,217,0.4)' }}>M</div>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <img src="/logo.png" alt="Mr Tender" style={{ width: 64, height: 64, borderRadius: 16, margin: '0 auto 12px', display: 'block', objectFit: 'contain' }} />
           <h1 style={{ fontWeight: 800, fontSize: '1.4rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Bienvenido de vuelta</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', marginTop: 4 }}>Ingresa a tu cuenta de Mr Tender</p>
         </div>
