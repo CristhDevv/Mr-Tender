@@ -6,6 +6,8 @@ import {
   BookOpen,
   FolderTree,
   FileText,
+  FileSpreadsheet,
+  Printer,
   Layers,
   ArrowDownRight,
   ArrowUpRight
@@ -89,11 +91,57 @@ export default function AccountingPage() {
     }
   }
 
+  function exportAccountingExcel() {
+    if (entries.length === 0) {
+      alert('No hay asientos contables para exportar.')
+      return
+    }
+
+    let csvContent = '\uFEFF'
+    csvContent += `LIBRO DIARIO Y CONTABILIDAD - MR TENDER\n`
+    csvContent += `Fecha: ${new Date().toLocaleString('es-CO')}\n\n`
+    csvContent += 'Asiento,Fecha,Descripcion,CuentaCodigo,CuentaNombre,Debito,Credito\n'
+
+    entries.forEach(e => {
+      const date = formatDate(e.entry_date)
+      const desc = e.description.replace(/,/g, ' ')
+      e.journal_entry_lines?.forEach(line => {
+        const code = line.accounts?.code || 'N/A'
+        const accName = line.accounts?.name?.replace(/,/g, ' ') || 'Cuenta'
+        csvContent += `${e.number},${date},${desc},${code},${accName},${line.debit || 0},${line.credit || 0}\n`
+      })
+    })
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `libro_diario_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
-      <div>
-        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Contabilidad y Libro Diario</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Asientos contables automáticos por partida doble generados por POS y Compras</p>
+      
+      {/* Header & Export Actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Contabilidad y Libro Diario</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Asientos contables automáticos por partida doble generados por POS y Compras</p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn-neu" onClick={exportAccountingExcel} style={{ padding: '8px 12px', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileSpreadsheet size={15} style={{ color: 'var(--accent-green)' }} />
+            <span>Excel</span>
+          </button>
+          <button className="btn-neu btn-primary" onClick={() => window.print()} style={{ padding: '8px 14px', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Printer size={15} />
+            <span>Imprimir</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -104,7 +152,7 @@ export default function AccountingPage() {
           style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
         >
           <BookOpen size={14} strokeWidth={2} />
-          <span>Libro Diario</span>
+          <span>Libro Diario ({entries.length})</span>
         </button>
         <button
           onClick={() => setActiveTab('accounts')}
@@ -112,14 +160,14 @@ export default function AccountingPage() {
           style={{ padding: '8px 16px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
         >
           <FolderTree size={14} strokeWidth={2} />
-          <span>Catálogo de Cuentas</span>
+          <span>Catálogo de Cuentas ({accounts.length})</span>
         </button>
       </div>
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando contabilidad...</div>
       ) : activeTab === 'accounts' ? (
-        // CATÁLOGO DE CUENTAS (Responsive Card List)
+        // CATÁLOGO DE CUENTAS
         <div className="neu-card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
           {accounts.map(acc => (
             <div key={acc.id} className="neu-flat" style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10 }}>
@@ -158,14 +206,14 @@ export default function AccountingPage() {
                   {entry.journal_entry_lines?.map(line => (
                     <div key={line.id} className="neu-flat" style={{ padding: '6px 10px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, fontSize: '0.75rem' }}>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{line.accounts?.name || 'Cuenta'} ({line.accounts?.code})</div>
-                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{line.description}</div>
+                        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{line.accounts?.name || 'Cuenta'}</span>
+                        <code style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: 6 }}>{line.accounts?.code}</code>
                       </div>
-                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        {line.debit > 0 ? (
-                          <span style={{ fontWeight: 800, color: 'var(--accent-green)' }}>D: {formatCurrency(line.debit)}</span>
+                      <div style={{ display: 'flex', gap: 16, textAlign: 'right', flexShrink: 0 }}>
+                        {Number(line.debit) > 0 ? (
+                          <span style={{ color: 'var(--accent-green)', fontWeight: 800 }}>D: {formatCurrency(line.debit)}</span>
                         ) : (
-                          <span style={{ fontWeight: 800, color: 'var(--accent-coral)' }}>H: {formatCurrency(line.credit)}</span>
+                          <span style={{ color: 'var(--accent-purple)', fontWeight: 800 }}>H: {formatCurrency(line.credit)}</span>
                         )}
                       </div>
                     </div>
