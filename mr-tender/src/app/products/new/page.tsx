@@ -32,22 +32,92 @@ export default function NewProductPage() {
         .select('id, name')
         .eq('tenant_id', tenant_id)
       
-      if (catData) {
+      let initialCategoryId = ''
+      if (catData && catData.length > 0) {
         setCategories(catData)
-        if (catData.length > 0) {
-          setForm(f => ({ ...f, categoryId: catData[0].id }))
-        }
+        initialCategoryId = catData[0].id
+        setForm(f => ({ ...f, categoryId: catData[0].id }))
       }
 
       // Load main warehouse
-      const { data: whData } = await supabase
+      let { data: whData } = await supabase
         .from('warehouses')
         .select('id')
         .eq('tenant_id', tenant_id)
         .eq('is_main', true)
         .limit(1)
       
-      const warehouse_id = whData?.[0]?.id || null
+      if (!whData || whData.length === 0) {
+        const { data: fallbackWh } = await supabase
+          .from('warehouses')
+          .select('id')
+          .eq('tenant_id', tenant_id)
+          .limit(1)
+        whData = fallbackWh
+      }
+
+      let warehouse_id = whData?.[0]?.id || null
+
+      // Auto-create default branch & warehouse if they don't exist (self-healing)
+      if (!warehouse_id) {
+        try {
+          let { data: brs } = await supabase
+            .from('branches')
+            .select('id')
+            .eq('tenant_id', tenant_id)
+            .limit(1)
+          
+          let branch_id = brs?.[0]?.id || null
+          if (!branch_id) {
+            const { data: newBr, error: brErr } = await supabase
+              .from('branches')
+              .insert({ tenant_id, name: 'Sucursal Principal', is_main: true })
+              .select('id')
+              .single()
+            if (!brErr && newBr) {
+              branch_id = newBr.id
+            }
+          }
+
+          if (branch_id) {
+            const { data: newWh, error: whErr } = await supabase
+              .from('warehouses')
+              .insert({
+                tenant_id,
+                branch_id,
+                name: 'Almacén Principal',
+                code: 'ALM-001',
+                is_main: true
+              })
+              .select('id')
+              .single()
+            if (!whErr && newWh) {
+              warehouse_id = newWh.id
+            }
+          }
+        } catch (e) {
+          console.error('Error auto-creating default configuration:', e)
+        }
+      }
+
+      // Auto-create category 'General' if none exist
+      if (!catData || catData.length === 0) {
+        try {
+          const { data: newCat, error: catErr } = await supabase
+            .from('categories')
+            .insert({ tenant_id, name: 'General', slug: 'general' })
+            .select('id, name')
+            .single()
+          
+          if (!catErr && newCat) {
+            setCategories([newCat])
+            initialCategoryId = newCat.id
+            setForm(f => ({ ...f, categoryId: newCat.id }))
+          }
+        } catch (e) {
+          console.error('Error auto-creating default category:', e)
+        }
+      }
 
       setTenantInfo({ tenant_id, warehouse_id })
     }
