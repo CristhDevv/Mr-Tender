@@ -6,6 +6,7 @@ import {
   DollarSign,
   Receipt,
   ShoppingCart,
+  Smartphone,
   Save,
   Check
 } from 'lucide-react'
@@ -38,6 +39,10 @@ export default function SettingsPage() {
     dianRangeFrom: '1',
     dianRangeTo: '5000',
     dianSoftwareId: '',
+    // Digital Payments
+    nequiPhone: '',
+    daviplataPhone: '',
+    bancolombiaKey: '',
   })
 
   useEffect(() => {
@@ -77,6 +82,9 @@ export default function SettingsPage() {
             dianRangeFrom: data.dian_from || '1',
             dianRangeTo: data.dian_to || '5000',
             dianSoftwareId: data.dian_software_id || '',
+            nequiPhone: data.whatsapp || data.phone || '',
+            daviplataPhone: data.phone || '',
+            bancolombiaKey: '',
           })
         }
       } catch (err: any) {
@@ -103,6 +111,8 @@ export default function SettingsPage() {
           business_name: form.businessName,
           trade_name: form.tradeName,
           tax_id: form.taxId || form.dianNit,
+          phone: form.phone || form.nequiPhone,
+          whatsapp: form.nequiPhone,
           address: form.address,
           currency: form.currency,
           tax_name: form.taxName,
@@ -135,7 +145,16 @@ export default function SettingsPage() {
         { key: 'businessName', label: 'Nombre del negocio', type: 'text', placeholder: 'Ej: Tienda La Esperanza' },
         { key: 'tradeName', label: 'Nombre comercial', type: 'text', placeholder: 'Opcional' },
         { key: 'taxId', label: 'NIT / Cédula Fiscal', type: 'text', placeholder: '901234567-1' },
+        { key: 'phone', label: 'Teléfono / WhatsApp', type: 'text', placeholder: '3001234567' },
         { key: 'address', label: 'Dirección', type: 'text', placeholder: 'Calle, número, barrio' },
+      ]
+    },
+    {
+      title: 'Pagos Digitales & QR', Icon: Smartphone,
+      fields: [
+        { key: 'nequiPhone', label: 'Número Nequi para pagos QR', type: 'text', placeholder: '3001234567' },
+        { key: 'daviplataPhone', label: 'Número Daviplata', type: 'text', placeholder: '3001234567' },
+        { key: 'bancolombiaKey', label: 'Llave Bre-B / Cuenta Bancolombia', type: 'text', placeholder: 'Opcional' },
       ]
     },
     {
@@ -182,7 +201,7 @@ export default function SettingsPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
       <div>
         <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Configuración</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Ajustes generales, datos de facturación DIAN y moneda</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Ajustes generales, datos de facturación DIAN, Nequi y moneda</p>
       </div>
 
       {/* Responsive Wrapping Navigation Tabs */}

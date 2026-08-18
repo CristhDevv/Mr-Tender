@@ -14,7 +14,9 @@ import {
   CheckCircle2,
   AlertTriangle,
   Building,
-  Clock
+  Clock,
+  Send,
+  MessageSquare
 } from 'lucide-react'
 
 interface DBCashSession {
@@ -46,6 +48,8 @@ export default function CashPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [businessName, setBusinessName] = useState('MI NEGOCIO')
+  const [ownerPhone, setOwnerPhone] = useState('')
 
   // Modals
   const [modal, setModal] = useState<'open' | 'movement' | 'close' | null>(null)
@@ -59,7 +63,7 @@ export default function CashPage() {
   // Close modal state (Blind Closure)
   const [closingAmount, setClosingAmount] = useState('')
   const [closingNotes, setClosingNotes] = useState('')
-  const [closeReport, setCloseReport] = useState<{ expected: number; counted: number; diff: number } | null>(null)
+  const [closeReport, setCloseReport] = useState<{ expected: number; counted: number; diff: number; openedAt: string; sales: number; expenses: number } | null>(null)
 
   useEffect(() => {
     loadCashData()
@@ -73,6 +77,17 @@ export default function CashPage() {
       if (!user) return
 
       const tenant_id = user.user_metadata?.tenant_id
+
+      const { data: tSettings } = await supabase
+        .from('tenant_settings')
+        .select('business_name, whatsapp, phone')
+        .eq('tenant_id', tenant_id)
+        .limit(1)
+
+      if (tSettings?.[0]) {
+        setBusinessName(tSettings[0].business_name || 'MI NEGOCIO')
+        setOwnerPhone(tSettings[0].whatsapp || tSettings[0].phone || '')
+      }
 
       // Load active open session
       const { data: sessions, error: sessErr } = await supabase
@@ -149,6 +164,12 @@ export default function CashPage() {
     }
   }
 
+  const totalSales = movements.filter(m => m.movement_type === 'sale').reduce((s, m) => s + Number(m.amount), 0)
+  const totalExpenses = movements.filter(m => m.movement_type === 'expense' || m.movement_type === 'withdrawal').reduce((s, m) => s + Number(m.amount), 0)
+  const totalIncome = movements.filter(m => m.movement_type === 'income' || m.movement_type === 'deposit').reduce((s, m) => s + Number(m.amount), 0)
+  const opening = session ? Number(session.opening_amount) : 0
+  const expected = opening + totalSales + totalIncome - totalExpenses
+
   async function handleCloseSession(e: React.FormEvent) {
     e.preventDefault()
     if (!closingAmount) return
@@ -164,7 +185,14 @@ export default function CashPage() {
       })
       if (error) throw error
 
-      setCloseReport({ expected, counted, diff })
+      setCloseReport({
+        expected,
+        counted,
+        diff,
+        openedAt: session?.opened_at || new Date().toISOString(),
+        sales: totalSales,
+        expenses: totalExpenses
+      })
       await loadCashData()
       setModal(null)
       setClosingAmount(''); setClosingNotes('')
@@ -175,6 +203,34 @@ export default function CashPage() {
     }
   }
 
+  function sendCloseReportWhatsApp() {
+    if (!closeReport) return
+    let cleanPhone = ownerPhone.replace(/\D/g, '')
+    if (!cleanPhone.startsWith('57') && cleanPhone.length === 10) {
+      cleanPhone = '57' + cleanPhone
+    }
+
+    const message = `📊 *REPORTE DE CIERRE DE CAJA*
+🏪 *${businessName}*
+📅 Fecha: ${new Date().toLocaleString('es-CO')}
+
+💵 *Fondo Inicial:* ${formatCurrency(opening)}
+🛒 *Ventas Turno:* ${formatCurrency(closeReport.sales)}
+📤 *Gastos/Salidas:* -${formatCurrency(closeReport.expenses)}
+──────────────
+💰 *Efectivo Esperado:* ${formatCurrency(closeReport.expected)}
+🪙 *Efectivo Contado:* ${formatCurrency(closeReport.counted)}
+⚖️ *Diferencia:* ${closeReport.diff === 0 ? 'Exacto ($0)' : closeReport.diff > 0 ? `+${formatCurrency(closeReport.diff)} (Sobrante)` : `${formatCurrency(closeReport.diff)} (Faltante)`}
+
+✅ Cierre registrado en Mr Tender POS.`
+
+    if (cleanPhone) {
+      window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank')
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank')
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
@@ -182,12 +238,6 @@ export default function CashPage() {
       </div>
     )
   }
-
-  const totalSales = movements.filter(m => m.movement_type === 'sale').reduce((s, m) => s + Number(m.amount), 0)
-  const totalExpenses = movements.filter(m => m.movement_type === 'expense' || m.movement_type === 'withdrawal').reduce((s, m) => s + Number(m.amount), 0)
-  const totalIncome = movements.filter(m => m.movement_type === 'income' || m.movement_type === 'deposit').reduce((s, m) => s + Number(m.amount), 0)
-  const opening = session ? Number(session.opening_amount) : 0
-  const expected = opening + totalSales + totalIncome - totalExpenses
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
@@ -230,20 +280,28 @@ export default function CashPage() {
         </div>
       )}
 
-      {/* Report Banner after Blind Closure */}
+      {/* Report Banner after Blind Closure with WhatsApp share button */}
       {closeReport && !session && (
         <div className="neu-card animate-scale-in" style={{ padding: 18, background: closeReport.diff === 0 ? 'var(--accent-green-lt)' : closeReport.diff > 0 ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', borderRadius: 'var(--radius-lg)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <CheckCircle2 size={24} strokeWidth={2} style={{ color: closeReport.diff === 0 ? 'var(--accent-green)' : closeReport.diff > 0 ? 'var(--accent-blue)' : 'var(--accent-coral)', flexShrink: 0 }} />
-            <div>
-              <h3 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', margin: 0 }}>
-                {closeReport.diff === 0 ? '¡Arqueo Perfecto! Cuadre de Caja Exacto' : closeReport.diff > 0 ? 'Sobrante Registrado en el Arqueo' : 'Faltante Registrado en el Arqueo'}
-              </h3>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
-                Resultados del cierre ciego de turno
-              </p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <CheckCircle2 size={24} strokeWidth={2} style={{ color: closeReport.diff === 0 ? 'var(--accent-green)' : closeReport.diff > 0 ? 'var(--accent-blue)' : 'var(--accent-coral)', flexShrink: 0 }} />
+              <div>
+                <h3 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', margin: 0 }}>
+                  {closeReport.diff === 0 ? '¡Arqueo Perfecto! Cuadre de Caja Exacto' : closeReport.diff > 0 ? 'Sobrante Registrado en el Arqueo' : 'Faltante Registrado en el Arqueo'}
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+                  Resultados del cierre ciego de turno
+                </p>
+              </div>
             </div>
+
+            <button className="btn-neu" onClick={sendCloseReportWhatsApp} style={{ background: '#25D366', color: '#fff', padding: '8px 14px', fontSize: '0.8rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Send size={14} />
+              <span>Enviar Reporte por WhatsApp</span>
+            </button>
           </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8, marginTop: 10 }}>
             <div className="neu-flat" style={{ padding: '8px 10px' }}>
               <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Contado Físico</span>
@@ -290,7 +348,7 @@ export default function CashPage() {
             })}
           </div>
 
-          {/* Movements List (Responsive card list, no horizontal scroll) */}
+          {/* Movements List */}
           <div className="neu-card" style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', borderBottom: '1px solid var(--bg-deep)', paddingBottom: 6 }}>
               Movimientos del Turno ({movements.length})
@@ -298,23 +356,25 @@ export default function CashPage() {
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
               {movements.map(m => {
-                const isPositive = m.movement_type === 'sale' || m.movement_type === 'income' || m.movement_type === 'deposit' || m.movement_type === 'opening'
+                const isPos = m.movement_type === 'sale' || m.movement_type === 'income' || m.movement_type === 'deposit'
                 return (
-                  <div key={m.id} className="neu-flat" style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600, fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {m.description || (m.movement_type === 'sale' ? 'Venta POS' : m.movement_type === 'opening' ? 'Apertura' : 'Movimiento')}
+                  <div key={m.id} className="neu-flat" style={{ padding: '8px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 6, background: isPos ? 'var(--accent-green-lt)' : 'var(--accent-coral-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: isPos ? 'var(--accent-green)' : 'var(--accent-coral)', flexShrink: 0 }}>
+                        {isPos ? <ArrowDownLeft size={14} /> : <ArrowUpRight size={14} />}
                       </div>
-                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4, marginTop: 1 }}>
-                        <Clock size={11} />
-                        <span>{new Date(m.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {m.description}
+                        </div>
+                        <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                          {new Date(m.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
                       </div>
                     </div>
 
-                    <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: isPositive ? 'var(--accent-green)' : 'var(--accent-coral)' }}>
-                        {isPositive ? `+${formatCurrency(m.amount)}` : `-${formatCurrency(m.amount)}`}
-                      </div>
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem', color: isPos ? 'var(--accent-green)' : 'var(--accent-coral)', flexShrink: 0 }}>
+                      {isPos ? '+' : '-'}{formatCurrency(m.amount)}
                     </div>
                   </div>
                 )
@@ -322,7 +382,7 @@ export default function CashPage() {
 
               {movements.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '24px 16px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-                  Sin movimientos registrados en este turno
+                  No hay movimientos registrados en este turno
                 </div>
               )}
             </div>
@@ -334,70 +394,85 @@ export default function CashPage() {
       {modal === 'open' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <form onSubmit={handleOpenSession} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>Apertura de Turno</h2>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>Apertura de Caja</h2>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 14 }}>Ingresa el fondo inicial de sencillo disponible para dar cambio</p>
+            
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Fondo Inicial de Caja $</label>
-              <input className="input-neu" type="number" step="1000" value={openingAmount} onChange={e => setOpeningAmount(e.target.value)} required autoFocus style={{ fontSize: '1.1rem', fontWeight: 800 }} />
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Fondo Inicial ($)</label>
+              <input className="input-neu" type="number" step="1000" placeholder="50000" value={openingAmount} onChange={e => setOpeningAmount(e.target.value)} required autoFocus style={{ fontSize: '1.1rem', fontWeight: 800 }} />
             </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 10 }}>
+              {[20000, 50000, 100000].map(amt => (
+                <button key={amt} type="button" className="btn-neu" onClick={() => setOpeningAmount(String(amt))} style={{ padding: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                  ${amt / 1000}k
+                </button>
+              ))}
+            </div>
+
             <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
               <button type="button" className="btn-neu" onClick={() => setModal(null)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
               <button type="submit" className="btn-neu btn-primary" disabled={submitting} style={{ flex: 1, padding: 10 }}>
-                {submitting ? 'Abriendo...' : 'Abrir Caja'}
+                {submitting ? 'Abriendo...' : 'Abrir caja'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Modal: Add Movement */}
+      {/* Modal: Movement */}
       {modal === 'movement' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <form onSubmit={handleAddMovement} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
             <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 12 }}>
-              {movType === 'income' ? 'Registrar Ingreso de Caja' : 'Registrar Egreso / Gasto'}
+              {movType === 'income' ? 'Registrar Ingreso Manual' : 'Registrar Salida / Gasto'}
             </h2>
+            
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Monto $</label>
-                <input className="input-neu" type="number" step="100" placeholder="0" value={movAmount} onChange={e => setMovAmount(e.target.value)} required autoFocus style={{ fontSize: '1.1rem', fontWeight: 800 }} />
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Monto ($) *</label>
+                <input className="input-neu" type="number" step="500" placeholder="Ej: 15000" value={movAmount} onChange={e => setMovAmount(e.target.value)} required autoFocus style={{ fontSize: '1.1rem', fontWeight: 800 }} />
               </div>
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Concepto / Motivo</label>
-                <input className="input-neu" placeholder="Ej: Pago de transporte / Cambio" value={movDesc} onChange={e => setMovDesc(e.target.value)} />
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Motivo / Concepto</label>
+                <input className="input-neu" placeholder={movType === 'income' ? 'Ej: Sencillo adicional' : 'Ej: Pago almuerzo / Bolsas'} value={movDesc} onChange={e => setMovDesc(e.target.value)} />
               </div>
             </div>
+
             <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
               <button type="button" className="btn-neu" onClick={() => setModal(null)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-primary" disabled={submitting} style={{ flex: 1, padding: 10 }}>
-                {submitting ? 'Guardando...' : 'Confirmar'}
+              <button type="submit" className="btn-neu btn-primary" disabled={submitting || !movAmount} style={{ flex: 1, padding: 10 }}>
+                {submitting ? 'Guardando...' : 'Registrar'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Modal: Close Session (Blind Arqueo) */}
+      {/* Modal: Blind Close (Arqueo Ciego) */}
       {modal === 'close' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <form onSubmit={handleCloseSession} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>Arqueo de Caja Ciego</h2>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 12 }}>Cuenta físicamente el efectivo en el cajón e ingresa el total:</p>
+          <form onSubmit={handleCloseSession} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 380, padding: 20 }}>
+            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', marginBottom: 4 }}>Arqueo Ciego de Cierre</h2>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: 14 }}>
+              Cuenta el dinero físico en la gaveta e ingrésalo aquí. El sistema comparará con el monto esperado.
+            </p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Total Contado Físico $ *</label>
-                <input className="input-neu" type="number" step="100" placeholder="0" value={closingAmount} onChange={e => setClosingAmount(e.target.value)} required autoFocus style={{ fontSize: '1.2rem', fontWeight: 900 }} />
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Efectivo Total Contado en Gaveta ($) *</label>
+                <input className="input-neu" type="number" step="100" placeholder="Ej: 345000" value={closingAmount} onChange={e => setClosingAmount(e.target.value)} required autoFocus style={{ fontSize: '1.2rem', fontWeight: 900, textAlign: 'center' }} />
               </div>
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Notas u observaciones</label>
-                <input className="input-neu" placeholder="Opcional..." value={closingNotes} onChange={e => setClosingNotes(e.target.value)} />
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Notas u Observaciones del Turno</label>
+                <input className="input-neu" placeholder="Ej: Turno entregado sin novedades" value={closingNotes} onChange={e => setClosingNotes(e.target.value)} />
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
               <button type="button" className="btn-neu" onClick={() => setModal(null)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
               <button type="submit" className="btn-neu btn-danger" disabled={submitting || !closingAmount} style={{ flex: 1, padding: 10 }}>
-                {submitting ? 'Cerrando...' : 'Cerrar Turno'}
+                {submitting ? 'Cerrando...' : 'Finalizar Turno'}
               </button>
             </div>
           </form>

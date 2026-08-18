@@ -24,7 +24,10 @@ import {
   Delete,
   Scale,
   WifiOff,
-  Wifi
+  Wifi,
+  PauseCircle,
+  PlayCircle,
+  PlusCircle
 } from 'lucide-react'
 
 // Web Audio sound generator for tactile feedback
@@ -93,7 +96,7 @@ interface Product {
   stock: number
   category: string
   cost: number
-  unit_type?: string // 'unit' | 'kg' | 'lb' | 'g'
+  unit_type?: string
   category_id?: string
   warehouse_id?: string
 }
@@ -114,6 +117,16 @@ interface Customer {
   total_orders?: number
 }
 
+interface HeldCart {
+  id: string
+  label: string
+  time: string
+  cart: CartItem[]
+  discount: number
+  customer: Customer | null
+  total: number
+}
+
 export default function POSClient() {
   const supabase = createClient()
   const [search, setSearch] = useState('')
@@ -129,12 +142,22 @@ export default function POSClient() {
   const [error, setError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
   const [businessName, setBusinessName] = useState('MI TIENDA')
+  const [merchantPhone, setMerchantPhone] = useState('3001234567')
   const [isOnline, setIsOnline] = useState(true)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
+
+  // Held Carts (Multi-ticket)
+  const [heldCarts, setHeldCarts] = useState<HeldCart[]>([])
+  const [showHeldModal, setShowHeldModal] = useState(false)
 
   // Weighed product modal
   const [weighingProduct, setWeighingProduct] = useState<Product | null>(null)
   const [weightValue, setWeightValue] = useState('0.5')
+
+  // Express product creation modal from POS
+  const [showExpressModal, setShowExpressModal] = useState(false)
+  const [expressForm, setExpressForm] = useState({ name: '', sku: '', price: '', cost: '', stock: '10' })
+  const [creatingExpress, setCreatingExpress] = useState(false)
 
   // Customers state
   const [customerList, setCustomerList] = useState<Customer[]>([])
@@ -161,12 +184,18 @@ export default function POSClient() {
     window.addEventListener('online', handleOnline)
     window.addEventListener('offline', handleOffline)
 
-    // Check existing offline sales in localStorage
     const savedQueue = localStorage.getItem('mr_tender_offline_sales')
     if (savedQueue) {
       try {
         const parsed = JSON.parse(savedQueue)
         setPendingSyncCount(parsed.length)
+      } catch {}
+    }
+
+    const savedHeld = localStorage.getItem('mr_tender_held_carts')
+    if (savedHeld) {
+      try {
+        setHeldCarts(JSON.parse(savedHeld))
       } catch {}
     }
 
@@ -176,7 +205,6 @@ export default function POSClient() {
     }
   }, [])
 
-  // Sync offline sales when back online
   async function syncPendingSales() {
     const savedQueue = localStorage.getItem('mr_tender_offline_sales')
     if (!savedQueue) return
@@ -208,12 +236,13 @@ export default function POSClient() {
         // Get tenant settings
         const { data: tSettings } = await supabase
           .from('tenant_settings')
-          .select('business_name')
+          .select('business_name, whatsapp, phone')
           .eq('tenant_id', tenant_id)
           .limit(1)
 
         if (tSettings?.[0]?.business_name) {
           setBusinessName(tSettings[0].business_name)
+          setMerchantPhone(tSettings[0].whatsapp || tSettings[0].phone || '3001234567')
         }
 
         // Get branch
@@ -292,8 +321,6 @@ export default function POSClient() {
             const whStock = p.inventory?.find((inv: any) => inv.warehouse_id === warehouse_id)
             const stock = whStock ? Number(whStock.quantity) : 0
             const catName = p.categories?.name || 'General'
-
-            // Detect weighed product by name (fruver, quesos, carnes)
             const isWeighed = /kg|kilo|libra|\blb\b|gramo|\bgr\b|queso|carne|pollo|fruta|verdura/i.test(p.name)
 
             return {
@@ -314,14 +341,12 @@ export default function POSClient() {
           const cats = ['Todos', ...Array.from(new Set(loadedProducts.map(p => p.category)))]
           setCategories(cats)
 
-          // Save local backup for offline mode
           localStorage.setItem('mr_tender_cached_products', JSON.stringify(loadedProducts))
         }
       } catch (err: any) {
         console.error('Error loading POS data:', err)
         setError('Error al cargar datos del POS')
 
-        // Try restoring offline cache
         const cached = localStorage.getItem('mr_tender_cached_products')
         if (cached) {
           try {
@@ -374,7 +399,46 @@ export default function POSClient() {
   const total = subtotal - discountAmt
   const change = paymentMethod === 'cash' ? Math.max(0, (Number(receivedAmount) || 0) - total) : 0
 
-  // Handle Touch Numpad operations
+  // Hold / Pause Current Cart
+  function holdCurrentCart() {
+    if (cart.length === 0) return
+    playSound('tap')
+    const newHeld: HeldCart = {
+      id: 'HELD-' + Date.now(),
+      label: selectedCustomer ? selectedCustomer.full_name : `Ticket ${heldCarts.length + 1}`,
+      time: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
+      cart: [...cart],
+      discount,
+      customer: selectedCustomer,
+      total
+    }
+    const updated = [newHeld, ...heldCarts]
+    setHeldCarts(updated)
+    localStorage.setItem('mr_tender_held_carts', JSON.stringify(updated))
+    setCart([])
+    setDiscount(0)
+    setSelectedCustomer(null)
+  }
+
+  function resumeHeldCart(held: HeldCart) {
+    playSound('tap')
+    setCart(held.cart)
+    setDiscount(held.discount)
+    setSelectedCustomer(held.customer)
+    const updated = heldCarts.filter(h => h.id !== held.id)
+    setHeldCarts(updated)
+    localStorage.setItem('mr_tender_held_carts', JSON.stringify(updated))
+    setShowHeldModal(false)
+  }
+
+  function deleteHeldCart(id: string) {
+    playSound('tap')
+    const updated = heldCarts.filter(h => h.id !== id)
+    setHeldCarts(updated)
+    localStorage.setItem('mr_tender_held_carts', JSON.stringify(updated))
+  }
+
+  // Handle Touch Numpad
   function handleNumpadKey(key: string) {
     playSound('tap')
     if (key === 'C') {
@@ -387,7 +451,6 @@ export default function POSClient() {
       if (!receivedAmount || receivedAmount === '0') return
       setReceivedAmount(prev => prev + '00')
     } else {
-      // number digit
       setReceivedAmount(prev => {
         if (prev === '0') return key
         return (prev + key).slice(0, 9)
@@ -411,8 +474,79 @@ export default function POSClient() {
     }
 
     const master = findMasterProduct(cleanCode)
-    if (master) {
-      alert(`Producto detectado: "${master.name}". No está en tu inventario local aún. Puedes registrarlo con la cámara en 'Nuevo Producto'.`)
+    setExpressForm({
+      name: master ? master.name : '',
+      sku: cleanCode,
+      price: master ? String(master.suggestedPrice) : '',
+      cost: master ? String(master.suggestedCost) : '',
+      stock: '10'
+    })
+    setShowExpressModal(true)
+  }
+
+  // Create Express Product
+  async function handleCreateExpressProduct(e: React.FormEvent) {
+    e.preventDefault()
+    if (!expressForm.name.trim() || !expressForm.price || !sessionInfo) return
+    setCreatingExpress(true)
+    try {
+      const price = parseFloat(expressForm.price) || 0
+      const cost = parseFloat(expressForm.cost) || price * 0.75
+      const stock = parseFloat(expressForm.stock) || 1
+
+      // 1. Insert product
+      const { data: newProd, error: pErr } = await supabase
+        .from('products')
+        .insert([{
+          tenant_id: sessionInfo.tenant_id,
+          name: expressForm.name.trim(),
+          sku: expressForm.sku.trim() || 'EX-' + Date.now().toString().slice(-6),
+          barcode: expressForm.sku.trim() || null,
+          sale_price: price,
+          cost_price: cost,
+          min_stock: 3,
+          max_stock: 50,
+          is_active: true
+        }])
+        .select()
+        .single()
+
+      if (pErr) throw pErr
+
+      // 2. Insert inventory
+      if (sessionInfo.warehouse_id && newProd) {
+        await supabase
+          .from('inventory')
+          .insert([{
+            tenant_id: sessionInfo.tenant_id,
+            warehouse_id: sessionInfo.warehouse_id,
+            product_id: newProd.id,
+            quantity: stock,
+            avg_cost: cost
+          }])
+      }
+
+      const created: Product = {
+        id: newProd.id,
+        name: newProd.name,
+        price,
+        cost,
+        sku: newProd.sku || '',
+        stock,
+        category: 'General',
+        unit_type: 'unit',
+        warehouse_id: sessionInfo.warehouse_id
+      }
+
+      setProducts(prev => [created, ...prev])
+      addToCart(created)
+      setShowExpressModal(false)
+      setSearch('')
+    } catch (err: any) {
+      console.error('Error creating express product:', err)
+      alert(err.message || 'No se pudo registrar el producto')
+    } finally {
+      setCreatingExpress(false)
     }
   }
 
@@ -420,7 +554,6 @@ export default function POSClient() {
     if (!sessionInfo) return
     setError('')
 
-    // Validate Fiao method
     if (paymentMethod === 'fiao') {
       if (!selectedCustomer) {
         setError('Debes seleccionar un cliente para fiar la compra')
@@ -438,7 +571,6 @@ export default function POSClient() {
       }
     }
 
-    // Validate Transfer reference
     if (paymentMethod === 'transfer') {
       if (!transferRef.trim()) {
         setError('Ingresa el número de comprobante Nequi/Daviplata')
@@ -493,7 +625,6 @@ export default function POSClient() {
 
     try {
       if (!navigator.onLine) {
-        // Handle Offline Sale Storage
         const localNumber = 'OFF-' + Math.floor(100000 + Math.random() * 900000)
         const savedQueue = JSON.parse(localStorage.getItem('mr_tender_offline_sales') || '[]')
         savedQueue.push({ payload: salePayload, created_at: new Date().toISOString() })
@@ -513,7 +644,6 @@ export default function POSClient() {
       setSaleNumber(data.number)
       playSound('success')
       
-      // If payment was Fiao, update customer credit_used
       if (paymentMethod === 'fiao' && selectedCustomer) {
         const newCreditUsed = Number(selectedCustomer.credit_used || 0) + total
         await supabase
@@ -530,7 +660,6 @@ export default function POSClient() {
         setSelectedCustomer(prev => prev ? { ...prev, credit_used: newCreditUsed } : null)
       }
 
-      // Update local stock
       setProducts(prev => prev.map(p => {
         const cartItem = cart.find(ci => ci.id === p.id)
         return cartItem ? { ...p, stock: p.stock - cartItem.quantity } : p
@@ -670,21 +799,33 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
           {/* LEFT: Products Search Panel */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%', overflow: 'hidden' }}>
             
-            {/* Search, Scanner & Offline Badge */}
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
+            {/* Search, Scanner, Express & Held Carts Badge */}
+            <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
               <div className="input-group" style={{ flex: 1 }}>
                 <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
-                <input className="input-neu" placeholder="Buscar por nombre o código..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
+                <input className="input-neu" placeholder="Buscar producto o código..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
               </div>
-              <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} style={{ padding: '8px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Camera size={16} strokeWidth={2} />
+              
+              <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} title="Escanear código de barras" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Camera size={15} strokeWidth={2} />
                 <span>Escanear</span>
               </button>
 
+              <button className="btn-neu" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} title="Crear producto rápido" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <PlusCircle size={15} style={{ color: 'var(--accent-blue)' }} />
+                <span>Crear</span>
+              </button>
+
+              {heldCarts.length > 0 && (
+                <button className="btn-neu" onClick={() => setShowHeldModal(true)} title="Ver carritos en espera" style={{ padding: '8px 10px', fontSize: '0.78rem', background: 'var(--accent-amber-lt)', color: 'var(--accent-amber)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <PlayCircle size={15} />
+                  <span>{heldCarts.length}</span>
+                </button>
+              )}
+
               {!isOnline && (
-                <span className="badge badge-amber" title="Modo Offline Activo" style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem' }}>
+                <span className="badge badge-amber" title="Modo Offline" style={{ padding: '6px', fontSize: '0.7rem' }}>
                   <WifiOff size={13} />
-                  <span>Offline</span>
                 </span>
               )}
             </div>
@@ -727,9 +868,15 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                 </button>
               ))}
               {filtered.length === 0 && (
-                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
-                  <Search size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
-                  <div style={{ fontSize: '0.82rem' }}>{search.trim() === '' ? 'Escribe o escanea un producto para buscar' : 'No se encontraron coincidencias'}</div>
+                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '30px 16px', color: 'var(--text-muted)' }}>
+                  <Search size={28} strokeWidth={1.5} style={{ margin: '0 auto 6px', color: 'var(--text-muted)' }} />
+                  <div style={{ fontSize: '0.8rem' }}>{search.trim() === '' ? 'Escribe o escanea un producto para buscar' : 'No se encontraron coincidencias'}</div>
+                  {search.trim() !== '' && (
+                    <button className="btn-neu btn-primary" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} style={{ margin: '10px auto 0', padding: '6px 14px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <PlusCircle size={14} />
+                      <span>Registrar "{search}" ahora</span>
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -738,20 +885,29 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
           {/* RIGHT: Minimalist High-Density Cart */}
           <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }} className="neu-card">
             {/* Cart header */}
-            <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--bg-deep)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
-                <ShoppingCart size={16} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
+            <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--bg-deep)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                <ShoppingCart size={15} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
                 <span>Carrito ({cart.reduce((s, i) => s + (i.unit_type === 'unit' ? i.quantity : 1), 0)})</span>
               </div>
-              {cart.length > 0 && (
-                <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '3px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}>Limpiar</button>
-              )}
+              
+              <div style={{ display: 'flex', gap: 6 }}>
+                {cart.length > 0 && (
+                  <>
+                    <button className="btn-neu" onClick={holdCurrentCart} title="Poner en espera para atender a otro cliente" style={{ padding: '3px 8px', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 4, color: 'var(--accent-amber)' }}>
+                      <PauseCircle size={13} />
+                      <span>En espera</span>
+                    </button>
+                    <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '3px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}>Limpiar</button>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Cart Items List */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
               {cart.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 16px', color: 'var(--text-muted)' }}>
+                <div style={{ textAlign: 'center', padding: '50px 16px', color: 'var(--text-muted)' }}>
                   <ShoppingCart size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
                   <div style={{ fontSize: '0.82rem' }}>Escanea o busca productos para añadirlos</div>
                 </div>
@@ -841,7 +997,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             </div>
           </div>
 
-          {/* Quick Selectors Row (Cliente + Método en 2 columnas compactas) */}
+          {/* Quick Selectors Row (Cliente + Método) */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8, marginBottom: 8, flexShrink: 0 }}>
             <div>
               <label style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Cliente</label>
@@ -871,13 +1027,12 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             </div>
           </div>
 
-          {/* Body: Integrated Touch Keypad for Cash or Transfer/Fiao panels */}
+          {/* Body */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0, overflow: 'hidden' }}>
             
             {/* CASH: Display + Touch Numpad */}
             {paymentMethod === 'cash' && (
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0 }}>
-                {/* Cash Received Display & Change */}
                 <div style={{ background: 'var(--bg-deep)', padding: '8px 12px', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
                   <div>
                     <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Efectivo Recibido</div>
@@ -905,7 +1060,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                   ))}
                 </div>
 
-                {/* Integrated 3x4 Touch Numpad Grid (No OS keyboard popup) */}
+                {/* Integrated 3x4 Touch Numpad Grid */}
                 <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, minHeight: 0 }}>
                   {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'].map(k => (
                     <button
@@ -922,18 +1077,18 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
               </div>
             )}
 
-            {/* NEQUI / DAVIPLATA */}
+            {/* NEQUI / DAVIPLATA (Real Merchant Phone) */}
             {paymentMethod === 'transfer' && (
               <div style={{ background: 'var(--accent-purple-lt)', padding: '12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 8, flex: 1, justifyContent: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Smartphone size={16} /> Nequi / Daviplata
+                    <Smartphone size={16} /> Nequi: {merchantPhone}
                   </span>
                   <span style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--accent-purple)' }}>{formatCurrency(total)}</span>
                 </div>
                 <div style={{ background: '#fff', padding: 8, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, margin: '0 auto' }}>
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=Nequi-${total}`} alt="QR" style={{ width: 85, height: 85 }} />
-                  <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Escanea para pagar</span>
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=Nequi-Pagar-${merchantPhone}-${total}`} alt="QR" style={{ width: 85, height: 85 }} />
+                  <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Pagar a {merchantPhone}</span>
                 </div>
                 <div>
                   <label style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Nº de Comprobante / Aprobación *</label>
@@ -988,7 +1143,90 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
         </div>
       )}
 
-      {/* ── MODAL: WEIGHED PRODUCT PICKER (KG / LB / G) ── */}
+      {/* ── MODAL: HELD CARTS (Pausar Venta) ── */}
+      {showHeldModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 380, padding: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>
+                <PauseCircle size={18} style={{ color: 'var(--accent-amber)' }} />
+                <span>Carritos en Espera ({heldCarts.length})</span>
+              </div>
+              <button className="btn-neu btn-ghost" onClick={() => setShowHeldModal(false)} style={{ padding: '2px 6px' }}>✕</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
+              {heldCarts.map(held => (
+                <div key={held.id} className="neu-flat" style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)', display: 'block' }}>{held.label}</strong>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{held.time} • {held.cart.length} productos</span>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-blue)', marginTop: 2 }}>{formatCurrency(held.total)}</div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="btn-neu btn-ghost" onClick={() => deleteHeldCart(held.id)} style={{ padding: '6px 8px', color: 'var(--accent-coral)' }}>
+                      <X size={14} />
+                    </button>
+                    <button className="btn-neu btn-primary" onClick={() => resumeHeldCart(held)} style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
+                      Retomar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: EXPRESS PRODUCT CREATION ── */}
+      {showExpressModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <form onSubmit={handleCreateExpressProduct} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 380, padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+              <PlusCircle size={20} style={{ color: 'var(--accent-blue)' }} />
+              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Registrar Producto Express</h3>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Nombre del Producto *</label>
+                <input className="input-neu" placeholder="Ej: Arroz Diana 500g" value={expressForm.name} onChange={e => setExpressForm({ ...expressForm, name: e.target.value })} required autoFocus style={{ fontSize: '0.85rem' }} />
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Precio Venta $ *</label>
+                  <input className="input-neu" type="number" step="100" placeholder="2500" value={expressForm.price} onChange={e => setExpressForm({ ...expressForm, price: e.target.value })} required style={{ fontSize: '0.95rem', fontWeight: 800 }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Costo $ (Opcional)</label>
+                  <input className="input-neu" type="number" step="100" placeholder="1800" value={expressForm.cost} onChange={e => setExpressForm({ ...expressForm, cost: e.target.value })} style={{ fontSize: '0.85rem' }} />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Código / EAN</label>
+                  <input className="input-neu" placeholder="770..." value={expressForm.sku} onChange={e => setExpressForm({ ...expressForm, sku: e.target.value })} style={{ fontSize: '0.82rem' }} />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Stock Inicial</label>
+                  <input className="input-neu" type="number" value={expressForm.stock} onChange={e => setExpressForm({ ...expressForm, stock: e.target.value })} style={{ fontSize: '0.85rem', fontWeight: 700 }} />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button type="button" className="btn-neu" onClick={() => setShowExpressModal(false)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+              <button type="submit" className="btn-neu btn-primary" disabled={creatingExpress} style={{ flex: 1, padding: 10 }}>
+                {creatingExpress ? 'Guardando...' : 'Guardar y Vender'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* ── MODAL: WEIGHED PRODUCT PICKER ── */}
       {weighingProduct && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
@@ -1016,7 +1254,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
               />
             </div>
 
-            {/* Quick weight chips */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginTop: 8 }}>
               {['0.25', '0.5', '1', '2'].map(w => (
                 <button key={w} type="button" className="btn-neu" onClick={() => setWeightValue(w)} style={{ padding: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
