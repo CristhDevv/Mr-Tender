@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   Users,
@@ -13,7 +13,10 @@ import {
   ShoppingCart,
   Award,
   Check,
-  UserCheck
+  UserCheck,
+  Receipt,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 
 interface DBCustomer {
@@ -30,6 +33,18 @@ interface DBCustomer {
   is_active: boolean
 }
 
+interface CustomerFiaoSale {
+  id: string
+  number: string
+  total: number
+  created_at: string
+  sale_items?: {
+    product_name: string
+    quantity: number
+    total: number
+  }[]
+}
+
 export default function CustomersPage() {
   const supabase = createClient()
   const [search, setSearch] = useState('')
@@ -39,6 +54,10 @@ export default function CustomersPage() {
   const [submitting, setSubmitting] = useState(false)
   const [tenantId, setTenantId] = useState<string | null>(null)
   const [businessName, setBusinessName] = useState<string>('nuestro negocio')
+
+  // Fiao History for selected customer
+  const [customerSales, setCustomerSales] = useState<CustomerFiaoSale[]>([])
+  const [loadingSales, setLoadingSales] = useState(false)
 
   // Modals
   const [showNewModal, setShowNewModal] = useState(false)
@@ -87,6 +106,34 @@ export default function CustomersPage() {
       setLoading(false)
     }
   }
+
+  // Load sales history for selected customer
+  useEffect(() => {
+    if (!selected || !tenantId) return
+    async function loadCustomerHistory() {
+      setLoadingSales(true)
+      try {
+        const { data, error } = await supabase
+          .from('sales')
+          .select(`
+            id, number, total, created_at,
+            sale_items (product_name, quantity, total)
+          `)
+          .eq('customer_id', selected)
+          .order('created_at', { ascending: false })
+          .limit(5)
+
+        if (!error && data) {
+          setCustomerSales(data as any)
+        }
+      } catch (err) {
+        console.error('Error loading customer sales history:', err)
+      } finally {
+        setLoadingSales(false)
+      }
+    }
+    loadCustomerHistory()
+  }, [selected, tenantId])
 
   const filtered = customers.filter(c =>
     c.full_name.toLowerCase().includes(search.toLowerCase()) ||
@@ -303,13 +350,51 @@ export default function CustomersPage() {
               </a>
             </div>
 
+            {/* Itemized Fiao Purchases History (Desglose de lo que debe) */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Receipt size={14} style={{ color: 'var(--accent-blue)' }} />
+                <span>Historial de Compras Recientes</span>
+              </div>
+
+              {loadingSales ? (
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', padding: 8 }}>Cargando compras...</div>
+              ) : customerSales.length === 0 ? (
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textAlign: 'center', padding: 8 }}>Sin compras registradas aún</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {customerSales.map(sale => (
+                    <div key={sale.id} className="neu-flat" style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-primary)' }}>{sale.number}</span>
+                        <strong style={{ fontSize: '0.82rem', color: 'var(--accent-blue)' }}>{formatCurrency(sale.total)}</strong>
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                        {formatDate(sale.created_at)}
+                      </div>
+                      {sale.sale_items && sale.sale_items.length > 0 && (
+                        <div style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', borderTop: '1px dashed var(--bg-deep)', paddingTop: 3, marginTop: 2 }}>
+                          {sale.sale_items.map((item, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                              <span>• {item.quantity}x {item.product_name}</span>
+                              <span>{formatCurrency(item.total)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Summary details */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 4 }}>
-              <div className="neu-flat" style={{ padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
-                <span style={{ color: 'var(--text-secondary)' }}>Compras totales:</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 2 }}>
+              <div className="neu-flat" style={{ padding: '6px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Compras acumuladas:</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{formatCurrency(selectedCustomer.total_purchases)}</span>
               </div>
-              <div className="neu-flat" style={{ padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.75rem' }}>
+              <div className="neu-flat" style={{ padding: '6px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>Pedidos totales:</span>
                 <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{selectedCustomer.total_orders}</span>
               </div>

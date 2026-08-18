@@ -2,6 +2,20 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
+import {
+  ShoppingBag,
+  Store,
+  Phone,
+  MapPin,
+  CreditCard,
+  Plus,
+  Minus,
+  CheckCircle2,
+  Send,
+  ArrowLeft,
+  Package,
+  ShoppingCart
+} from 'lucide-react'
 
 interface StoreSettings {
   tenant_id: string
@@ -24,8 +38,6 @@ interface Product {
 interface CartItem extends Product {
   quantity: number
 }
-
-const EMOJIS = ['🍔', '🥤', '🍞', '🍕', '🥗', '🍎', '🍰', '🍪', '☕', '🥤']
 
 export default function StoreClient({ subdomain }: { subdomain: string }) {
   const supabase = createClient()
@@ -51,7 +63,6 @@ export default function StoreClient({ subdomain }: { subdomain: string }) {
   useEffect(() => {
     async function loadStore() {
       try {
-        // Resolve store settings
         const { data: storeData, error: storeErr } = await supabase
           .from('ecommerce_settings')
           .select('tenant_id, store_name, description, logo_url, primary_color, currency, whatsapp_phone')
@@ -63,7 +74,6 @@ export default function StoreClient({ subdomain }: { subdomain: string }) {
         if (storeData) {
           setSettings(storeData as any)
 
-          // Get store owner's WhatsApp number or tenant phone
           let phoneToUse = storeData.whatsapp_phone || ''
           if (!phoneToUse) {
             const { data: tenantData } = await supabase
@@ -78,7 +88,6 @@ export default function StoreClient({ subdomain }: { subdomain: string }) {
           }
           setStoreWhatsapp(phoneToUse)
 
-          // Load active products for this tenant
           const { data: prodData, error: prodErr } = await supabase
             .from('products')
             .select('id, name, sale_price, sku, description')
@@ -150,7 +159,7 @@ export default function StoreClient({ subdomain }: { subdomain: string }) {
       setOrderNumber(orderNum)
       setCheckoutStep('done')
 
-      // Prepare WhatsApp message
+      // WhatsApp format
       let cleanPhone = storeWhatsapp.replace(/\D/g, '')
       if (!cleanPhone.startsWith('57') && cleanPhone.length === 10) {
         cleanPhone = '57' + cleanPhone
@@ -158,22 +167,22 @@ export default function StoreClient({ subdomain }: { subdomain: string }) {
 
       const itemsText = cart.map(i => `• ${i.quantity}x ${i.name} (${formatCurrency(i.sale_price * i.quantity)})`).join('\n')
       const paymentText = customer.paymentMethod === 'cash_on_delivery'
-        ? `💵 Efectivo contra entrega (Traer cambio de ${formatCurrency(Number(customer.changeAmount) || 0)})`
-        : `📱 Nequi / Daviplata`
+        ? `Efectivo contra entrega (Cambio de ${formatCurrency(Number(customer.changeAmount) || 0)})`
+        : `Nequi / Daviplata`
 
-      const message = `🛒 *NUEVO PEDIDO DE DOMICILIO* (#${orderNum})
-🏪 *${settings.store_name}*
+      const message = `*NUEVO PEDIDO DE DOMICILIO* (#${orderNum})
+*${settings.store_name}*
 
-👤 *Cliente:* ${customer.name}
-📱 *Teléfono:* ${customer.phone}
-🏠 *Dirección:* ${customer.address}
+*Cliente:* ${customer.name}
+*Teléfono:* ${customer.phone}
+*Dirección:* ${customer.address}
 
 *PRODUCTOS:*
 ${itemsText}
 
-💰 *TOTAL:* ${formatCurrency(subtotal)}
-💳 *Pago:* ${paymentText}
-${customer.notes ? `📝 *Notas:* ${customer.notes}` : ''}`
+*TOTAL:* ${formatCurrency(subtotal)}
+*Pago:* ${paymentText}
+${customer.notes ? `*Notas:* ${customer.notes}` : ''}`
 
       if (cleanPhone) {
         const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
@@ -199,10 +208,10 @@ ${customer.notes ? `📝 *Notas:* ${customer.notes}` : ''}`
 
   if (!settings) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#F8F9FA', gap: 10 }}>
-        <span style={{ fontSize: '3rem' }}>🧐</span>
-        <h1 style={{ fontWeight: 800, color: '#1F2937' }}>Tienda no encontrada</h1>
-        <p style={{ color: '#6B7280' }}>El subdominio "{subdomain}" no corresponde a ninguna tienda activa.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#F8F9FA', gap: 10, padding: 20 }}>
+        <Store size={44} style={{ color: '#9CA3AF' }} />
+        <h1 style={{ fontWeight: 800, color: '#1F2937', fontSize: '1.25rem' }}>Tienda no encontrada</h1>
+        <p style={{ color: '#6B7280', textAlign: 'center', fontSize: '0.85rem' }}>El enlace no corresponde a ninguna tienda activa.</p>
       </div>
     )
   }
@@ -212,24 +221,23 @@ ${customer.notes ? `📝 *Notas:* ${customer.notes}` : ''}`
       
       {/* Header */}
       <header style={{ background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.05)', position: 'sticky', top: 0, zIndex: 10 }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {settings.logo_url ? (
-              <img src={settings.logo_url} alt="Logo" style={{ width: 40, height: 40, borderRadius: 8 }} />
+              <img src={settings.logo_url} alt="Logo" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'contain' }} />
             ) : (
-              <div style={{ width: 36, height: 36, borderRadius: 8, background: settings.primary_color || 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800 }}>
-                {settings.store_name[0].toUpperCase()}
-              </div>
+              <img src="/logo.png" alt="Logo" style={{ width: 36, height: 36, borderRadius: 8, objectFit: 'contain' }} />
             )}
             <div>
-              <h1 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1F2937' }}>{settings.store_name}</h1>
-              <p style={{ fontSize: '0.75rem', color: '#6B7280' }}>{settings.description || 'Catálogo Digital de Barrio 🇨🇴'}</p>
+              <h1 style={{ fontWeight: 800, fontSize: '1rem', color: '#1F2937', margin: 0 }}>{settings.store_name}</h1>
+              <p style={{ fontSize: '0.72rem', color: '#6B7280', margin: 0 }}>{settings.description || 'Catálogo Digital'}</p>
             </div>
           </div>
           {cart.length > 0 && checkoutStep === 'browse' && (
-            <button className="btn-neu btn-primary" onClick={() => setCheckoutStep('checkout')}
-              style={{ background: '#25D366', color: '#fff', border: 'none', padding: '10px 20px', fontSize: '0.85rem', fontWeight: 800 }}>
-              🛒 Ver Carrito ({cart.reduce((s, i) => s + i.quantity, 0)})
+            <button onClick={() => setCheckoutStep('checkout')}
+              style={{ background: '#25D366', color: '#fff', border: 'none', padding: '8px 14px', fontSize: '0.82rem', fontWeight: 800, borderRadius: 8, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+              <ShoppingCart size={15} />
+              <span>Ver Carrito ({cart.reduce((s, i) => s + i.quantity, 0)})</span>
             </button>
           )}
         </div>
@@ -237,15 +245,15 @@ ${customer.notes ? `📝 *Notas:* ${customer.notes}` : ''}`
 
       {/* Done State */}
       {checkoutStep === 'done' && (
-        <div style={{ maxWidth: 500, margin: '60px auto 0', padding: 32, background: '#fff', borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', textAlign: 'center' }}>
-          <div style={{ fontSize: '4rem', marginBottom: 16 }}>🎉</div>
-          <h2 style={{ fontWeight: 800, fontSize: '1.5rem', color: '#1F2937', marginBottom: 8 }}>¡Pedido recibido y enviado a WhatsApp!</h2>
-          <p style={{ color: '#6B7280', marginBottom: 18 }}>Si WhatsApp no se abrió automáticamente, la tienda ya tiene registrado tu pedido en su sistema.</p>
-          <div style={{ background: '#F3F4F6', padding: 14, borderRadius: 12, display: 'inline-block', marginBottom: 28 }}>
-            <span style={{ fontSize: '0.875rem', color: '#4B5563' }}>Número de Orden:</span>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1F2937', marginTop: 4 }}>{orderNumber}</div>
+        <div style={{ maxWidth: 440, margin: '40px auto 0', padding: 24, background: '#fff', borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+          <CheckCircle2 size={48} style={{ color: '#25D366', margin: '0 auto 12px' }} />
+          <h2 style={{ fontWeight: 800, fontSize: '1.25rem', color: '#1F2937', marginBottom: 6 }}>¡Pedido recibido y enviado a WhatsApp!</h2>
+          <p style={{ color: '#6B7280', fontSize: '0.82rem', marginBottom: 14 }}>La tienda ya tiene registrado tu pedido en su sistema.</p>
+          <div style={{ background: '#F3F4F6', padding: 10, borderRadius: 10, display: 'inline-block', marginBottom: 20 }}>
+            <span style={{ fontSize: '0.75rem', color: '#4B5563' }}>Número de Orden:</span>
+            <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1F2937', marginTop: 2 }}>{orderNumber}</div>
           </div>
-          <button className="btn-neu" onClick={() => setCheckoutStep('browse')} style={{ width: '100%', padding: '12px', justifyContent: 'center' }}>
+          <button className="btn-neu" onClick={() => setCheckoutStep('browse')} style={{ width: '100%', padding: '10px', justifyContent: 'center', fontSize: '0.85rem' }}>
             Seguir explorando la tienda
           </button>
         </div>
@@ -253,29 +261,32 @@ ${customer.notes ? `📝 *Notas:* ${customer.notes}` : ''}`
 
       {/* Checkout Screen */}
       {checkoutStep === 'checkout' && (
-        <div style={{ maxWidth: 800, margin: '30px auto 0', padding: '0 20px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24 }}>
+        <div style={{ maxWidth: 800, margin: '20px auto 0', padding: '0 16px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>
           {/* Form */}
-          <form onSubmit={handleCheckout} style={{ background: '#fff', padding: 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1F2937', marginBottom: 6 }}>📍 Datos del Domicilio</h3>
+          <form onSubmit={handleCheckout} style={{ background: '#fff', padding: 20, borderRadius: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: '1rem', color: '#1F2937' }}>
+              <MapPin size={16} style={{ color: 'var(--accent-blue)' }} />
+              <span>Datos del Domicilio</span>
+            </div>
             
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 6 }}>Tu Nombre Completo *</label>
-              <input style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none' }} placeholder="Ej: Doña Carmen / Carlos R." value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} required />
+              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Tu Nombre Completo *</label>
+              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none', fontSize: '0.85rem' }} placeholder="Ej: Carmen / Carlos R." value={customer.name} onChange={e => setCustomer({ ...customer, name: e.target.value })} required />
             </div>
 
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 6 }}>Teléfono / WhatsApp *</label>
-              <input style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none' }} type="tel" placeholder="Ej: 3001234567" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} required />
+              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Teléfono / WhatsApp *</label>
+              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none', fontSize: '0.85rem' }} type="tel" placeholder="Ej: 3001234567" value={customer.phone} onChange={e => setCustomer({ ...customer, phone: e.target.value })} required />
             </div>
 
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 6 }}>Dirección de Entrega *</label>
-              <input style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none' }} placeholder="Ej: Calle 45 # 12-34 Apto 201" value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} required />
+              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Dirección de Entrega *</label>
+              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none', fontSize: '0.85rem' }} placeholder="Ej: Calle 45 # 12-34 Apto 201" value={customer.address} onChange={e => setCustomer({ ...customer, address: e.target.value })} required />
             </div>
 
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 6 }}>Forma de Pago *</label>
-              <select style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none', background: '#fff', fontWeight: 700 }} value={customer.paymentMethod} onChange={e => setCustomer({ ...customer, paymentMethod: e.target.value })}>
+              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Forma de Pago *</label>
+              <select style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none', background: '#fff', fontWeight: 700, fontSize: '0.85rem' }} value={customer.paymentMethod} onChange={e => setCustomer({ ...customer, paymentMethod: e.target.value })}>
                 <option value="cash_on_delivery">💵 Efectivo Contra Entrega</option>
                 <option value="nequi">📱 Nequi / Daviplata</option>
               </select>
@@ -283,39 +294,40 @@ ${customer.notes ? `📝 *Notas:* ${customer.notes}` : ''}`
 
             {customer.paymentMethod === 'cash_on_delivery' && (
               <div>
-                <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 6 }}>¿Con cuánto vas a pagar? (Para llevarte cambio)</label>
-                <input style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none' }} type="number" step="1000" placeholder="50000" value={customer.changeAmount} onChange={e => setCustomer({ ...customer, changeAmount: e.target.value })} />
+                <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>¿Con cuánto vas a pagar? (Para cambio)</label>
+                <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none', fontSize: '0.85rem' }} type="number" step="1000" placeholder="50000" value={customer.changeAmount} onChange={e => setCustomer({ ...customer, changeAmount: e.target.value })} />
               </div>
             )}
 
             <div>
-              <label style={{ fontSize: '0.75rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 6 }}>Instrucciones adicionales (Opcional)</label>
-              <input style={{ width: '100%', padding: 12, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none' }} placeholder="Ej: Dejar en portería o timbrar duro" value={customer.notes} onChange={e => setCustomer({ ...customer, notes: e.target.value })} />
+              <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Instrucciones adicionales (Opcional)</label>
+              <input style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none', fontSize: '0.85rem' }} placeholder="Ej: Timbrar duro / Dejar en portería" value={customer.notes} onChange={e => setCustomer({ ...customer, notes: e.target.value })} />
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 12 }}>
-              <button type="button" className="btn-neu" onClick={() => setCheckoutStep('browse')} style={{ flex: 1, padding: '12px', justifyContent: 'center' }}>Volver</button>
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button type="button" className="btn-neu" onClick={() => setCheckoutStep('browse')} style={{ flex: 1, padding: '10px', justifyContent: 'center', fontSize: '0.82rem' }}>Volver</button>
               <button type="submit" className="btn-neu btn-primary" disabled={submitting}
-                style={{ flex: 2, background: '#25D366', color: '#fff', border: 'none', padding: '12px', justifyContent: 'center', fontWeight: 800 }}>
-                {submitting ? 'Enviando...' : '🟢 Pedir por WhatsApp'}
+                style={{ flex: 2, background: '#25D366', color: '#fff', border: 'none', padding: '10px', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Send size={15} />
+                <span>{submitting ? 'Enviando...' : 'Pedir por WhatsApp'}</span>
               </button>
             </div>
           </form>
 
           {/* Cart review */}
-          <div style={{ background: '#fff', padding: 24, borderRadius: 16, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
-            <h3 style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1F2937', marginBottom: 14 }}>Resumen del Domicilio</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 18 }}>
+          <div style={{ background: '#fff', padding: 20, borderRadius: 14, boxShadow: '0 4px 20px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', height: 'fit-content' }}>
+            <h3 style={{ fontWeight: 800, fontSize: '1rem', color: '#1F2937', marginBottom: 12 }}>Resumen del Pedido</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
               {cart.map(item => (
-                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.875rem' }}>
+                <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.82rem' }}>
                   <span style={{ color: '#4B5563' }}>{item.name} x{item.quantity}</span>
-                  <span style={{ fontWeight: 600, color: '#1F2937' }}>{formatCurrency(item.sale_price * item.quantity)}</span>
+                  <span style={{ fontWeight: 700, color: '#1F2937' }}>{formatCurrency(item.sale_price * item.quantity)}</span>
                 </div>
               ))}
             </div>
-            <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 14, display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '1.1rem' }}>
-              <span>Total Domicilio</span>
-              <span style={{ color: settings.primary_color || 'var(--accent-blue)' }}>{formatCurrency(subtotal)}</span>
+            <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 10, display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1.05rem' }}>
+              <span>Total</span>
+              <span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(subtotal)}</span>
             </div>
           </div>
         </div>
@@ -323,31 +335,33 @@ ${customer.notes ? `📝 *Notas:* ${customer.notes}` : ''}`
 
       {/* Product Catalog */}
       {checkoutStep === 'browse' && (
-        <div style={{ maxWidth: 1000, margin: '40px auto 0', padding: '0 20px' }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1F2937', marginBottom: 20 }}>Nuestros Productos en Tienda</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 18 }}>
-            {products.map((p, idx) => (
-              <div key={p.id} style={{ background: '#fff', padding: 18, borderRadius: 16, boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-                <div style={{ fontSize: '2.5rem', textAlign: 'center', padding: '10px 0' }}>{EMOJIS[idx % EMOJIS.length]}</div>
+        <div style={{ maxWidth: 900, margin: '24px auto 0', padding: '0 16px' }}>
+          <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1F2937', marginBottom: 14 }}>Productos Disponibles</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 14 }}>
+            {products.map((p) => (
+              <div key={p.id} style={{ background: '#fff', padding: 14, borderRadius: 14, boxShadow: '0 2px 10px rgba(0,0,0,0.03)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 4px' }}>
+                  <Package size={22} style={{ color: 'var(--accent-blue)' }} />
+                </div>
                 <div>
-                  <h4 style={{ fontWeight: 700, fontSize: '0.9rem', color: '#1F2937', marginBottom: 4 }}>{p.name}</h4>
-                  <p style={{ fontSize: '0.75rem', color: '#6B7280', minHeight: 32, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {p.description || 'Producto disponible para entrega inmediata'}
+                  <h4 style={{ fontWeight: 700, fontSize: '0.85rem', color: '#1F2937', marginBottom: 2 }}>{p.name}</h4>
+                  <p style={{ fontSize: '0.72rem', color: '#6B7280', minHeight: 28, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {p.description || 'Disponible para entrega inmediata'}
                   </p>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                  <span style={{ fontWeight: 800, color: settings.primary_color || 'var(--accent-blue)', fontSize: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 4 }}>
+                  <span style={{ fontWeight: 800, color: 'var(--accent-blue)', fontSize: '0.95rem' }}>
                     {formatCurrency(p.sale_price)}
                   </span>
                   <button className="btn-neu" onClick={() => addToCart(p)}
-                    style={{ padding: '8px 12px', fontSize: '0.78rem', background: '#F3F4F6', fontWeight: 700 }}>
+                    style={{ padding: '6px 10px', fontSize: '0.75rem', background: '#F3F4F6', fontWeight: 700 }}>
                     + Agregar
                   </button>
                 </div>
               </div>
             ))}
             {products.length === 0 && (
-              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: '#6B7280' }}>
+              <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 40, color: '#6B7280', fontSize: '0.85rem' }}>
                 No hay productos cargados en esta tienda.
               </div>
             )}
@@ -357,10 +371,13 @@ ${customer.notes ? `📝 *Notas:* ${customer.notes}` : ''}`
 
       {/* Floating Cart Button for Mobile */}
       {cart.length > 0 && checkoutStep === 'browse' && (
-        <div style={{ position: 'fixed', bottom: 20, left: 20, right: 20, zIndex: 99, display: 'flex', justifyContent: 'center' }}>
+        <div style={{ position: 'fixed', bottom: 16, left: 16, right: 16, zIndex: 99, display: 'flex', justifyContent: 'center' }}>
           <button onClick={() => setCheckoutStep('checkout')} className="btn-neu"
-            style={{ width: '100%', maxWidth: 450, padding: '16px', background: '#25D366', color: '#fff', fontSize: '1rem', fontWeight: 800, border: 'none', borderRadius: 30, boxShadow: '0 8px 24px rgba(37,211,102,0.4)', justifyContent: 'space-between' }}>
-            <span>🛒 Realizar Pedido ({cart.reduce((s, i) => s + i.quantity, 0)})</span>
+            style={{ width: '100%', maxWidth: 420, padding: '14px 18px', background: '#25D366', color: '#fff', fontSize: '0.95rem', fontWeight: 800, border: 'none', borderRadius: 24, boxShadow: '0 8px 24px rgba(37,211,102,0.4)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <ShoppingCart size={18} />
+              <span>Pedir Domicilio ({cart.reduce((s, i) => s + i.quantity, 0)})</span>
+            </span>
             <span>{formatCurrency(subtotal)} →</span>
           </button>
         </div>

@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import CameraScanner from '@/components/CameraScanner'
@@ -20,8 +20,70 @@ import {
   Send,
   User,
   Check,
-  ArrowLeft
+  ArrowLeft,
+  Delete,
+  Scale,
+  WifiOff,
+  Wifi
 } from 'lucide-react'
+
+// Web Audio sound generator for tactile feedback
+function playSound(type: 'beep' | 'success' | 'tap' | 'error') {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioContextClass) return
+    const ctx = new AudioContextClass()
+
+    if (type === 'tap') {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(400, ctx.currentTime)
+      gain.gain.setValueAtTime(0.04, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.04)
+    } else if (type === 'beep') {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(880, ctx.currentTime)
+      gain.gain.setValueAtTime(0.08, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.08)
+    } else if (type === 'success') {
+      const notes = [523.25, 659.25, 783.99] // C5, E5, G5
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'triangle'
+        osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.08)
+        gain.gain.setValueAtTime(0.09, ctx.currentTime + i * 0.08)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.08 + 0.12)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(ctx.currentTime + i * 0.08)
+        osc.stop(ctx.currentTime + i * 0.08 + 0.12)
+      })
+    } else if (type === 'error') {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sawtooth'
+      osc.frequency.setValueAtTime(220, ctx.currentTime)
+      gain.gain.setValueAtTime(0.1, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.18)
+    }
+  } catch {}
+}
 
 interface Product {
   id: string
@@ -31,6 +93,7 @@ interface Product {
   stock: number
   category: string
   cost: number
+  unit_type?: string // 'unit' | 'kg' | 'lb' | 'g'
   category_id?: string
   warehouse_id?: string
 }
@@ -66,6 +129,12 @@ export default function POSClient() {
   const [error, setError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
   const [businessName, setBusinessName] = useState('MI TIENDA')
+  const [isOnline, setIsOnline] = useState(true)
+  const [pendingSyncCount, setPendingSyncCount] = useState(0)
+
+  // Weighed product modal
+  const [weighingProduct, setWeighingProduct] = useState<Product | null>(null)
+  const [weightValue, setWeightValue] = useState('0.5')
 
   // Customers state
   const [customerList, setCustomerList] = useState<Customer[]>([])
@@ -82,6 +151,49 @@ export default function POSClient() {
     session_id: string | null
     register_id: string | null
   } | null>(null)
+
+  // Offline detection and background queue sync
+  useEffect(() => {
+    setIsOnline(navigator.onLine)
+    const handleOnline = () => { setIsOnline(true); syncPendingSales(); }
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    // Check existing offline sales in localStorage
+    const savedQueue = localStorage.getItem('mr_tender_offline_sales')
+    if (savedQueue) {
+      try {
+        const parsed = JSON.parse(savedQueue)
+        setPendingSyncCount(parsed.length)
+      } catch {}
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  // Sync offline sales when back online
+  async function syncPendingSales() {
+    const savedQueue = localStorage.getItem('mr_tender_offline_sales')
+    if (!savedQueue) return
+    try {
+      const queue = JSON.parse(savedQueue)
+      if (queue.length === 0) return
+
+      for (const item of queue) {
+        await supabase.rpc('process_sale', { p_sale_data: item.payload })
+      }
+      localStorage.removeItem('mr_tender_offline_sales')
+      setPendingSyncCount(0)
+      playSound('success')
+    } catch (e) {
+      console.error('Error syncing offline sales:', e)
+    }
+  }
 
   // Fetch session data, products and customers
   useEffect(() => {
@@ -181,6 +293,9 @@ export default function POSClient() {
             const stock = whStock ? Number(whStock.quantity) : 0
             const catName = p.categories?.name || 'General'
 
+            // Detect weighed product by name (fruver, quesos, carnes)
+            const isWeighed = /kg|kilo|libra|\blb\b|gramo|\bgr\b|queso|carne|pollo|fruta|verdura/i.test(p.name)
+
             return {
               id: p.id,
               name: p.name,
@@ -189,6 +304,7 @@ export default function POSClient() {
               sku: p.sku || p.barcode || '',
               stock,
               category: catName,
+              unit_type: isWeighed ? 'lb' : 'unit',
               category_id: p.category_id,
               warehouse_id
             }
@@ -197,10 +313,23 @@ export default function POSClient() {
 
           const cats = ['Todos', ...Array.from(new Set(loadedProducts.map(p => p.category)))]
           setCategories(cats)
+
+          // Save local backup for offline mode
+          localStorage.setItem('mr_tender_cached_products', JSON.stringify(loadedProducts))
         }
       } catch (err: any) {
         console.error('Error loading POS data:', err)
         setError('Error al cargar datos del POS')
+
+        // Try restoring offline cache
+        const cached = localStorage.getItem('mr_tender_cached_products')
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached)
+            setProducts(parsed)
+            setCategories(['Todos', ...Array.from(new Set(parsed.map((p: any) => p.category))) as string[]])
+          } catch {}
+        }
       }
     }
 
@@ -213,44 +342,74 @@ export default function POSClient() {
     return matchCat && matchSearch
   })
 
-  const addToCart = useCallback((product: Product) => {
+  const addToCart = useCallback((product: Product, quantity = 1) => {
+    playSound('beep')
     setCart(prev => {
       const existing = prev.find(i => i.id === product.id)
       if (existing) {
+        const newQty = existing.quantity + quantity
         return prev.map(i => i.id === product.id
-          ? { ...i, quantity: i.quantity + 1, lineTotal: (i.quantity + 1) * i.price * (1 - i.discount / 100) }
+          ? { ...i, quantity: newQty, lineTotal: newQty * i.price * (1 - i.discount / 100) }
           : i
         )
       }
-      return [...prev, { ...product, quantity: 1, discount: 0, lineTotal: product.price }]
+      return [...prev, { ...product, quantity, discount: 0, lineTotal: quantity * product.price }]
     })
   }, [])
 
   const updateQty = (id: string, qty: number) => {
-    if (qty < 1) { removeFromCart(id); return }
-    setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: qty, lineTotal: qty * i.price * (1 - i.discount / 100) } : i))
+    playSound('tap')
+    if (qty <= 0) { removeFromCart(id); return }
+    const rounded = Math.round(qty * 1000) / 1000
+    setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: rounded, lineTotal: rounded * i.price * (1 - i.discount / 100) } : i))
   }
 
-  const removeFromCart = (id: string) => setCart(prev => prev.filter(i => i.id !== id))
+  const removeFromCart = (id: string) => {
+    playSound('tap')
+    setCart(prev => prev.filter(i => i.id !== id))
+  }
 
   const subtotal = cart.reduce((s, i) => s + i.lineTotal, 0)
   const discountAmt = subtotal * (discount / 100)
   const total = subtotal - discountAmt
-  const change = paymentMethod === 'cash' ? Math.max(0, Number(receivedAmount) - total) : 0
+  const change = paymentMethod === 'cash' ? Math.max(0, (Number(receivedAmount) || 0) - total) : 0
+
+  // Handle Touch Numpad operations
+  function handleNumpadKey(key: string) {
+    playSound('tap')
+    if (key === 'C') {
+      setReceivedAmount('')
+    } else if (key === 'back') {
+      setReceivedAmount(prev => prev.slice(0, -1))
+    } else if (key === 'exact') {
+      setReceivedAmount(String(total))
+    } else if (key === '00') {
+      if (!receivedAmount || receivedAmount === '0') return
+      setReceivedAmount(prev => prev + '00')
+    } else {
+      // number digit
+      setReceivedAmount(prev => {
+        if (prev === '0') return key
+        return (prev + key).slice(0, 9)
+      })
+    }
+  }
 
   // Handle Barcode scan in POS
   function handleCameraScan(code: string) {
     const cleanCode = code.trim()
     setSearch(cleanCode)
 
-    // Search in current inventory
     const foundInInventory = products.find(p => p.sku === cleanCode || p.name.toLowerCase().includes(cleanCode.toLowerCase()))
     if (foundInInventory) {
-      addToCart(foundInInventory)
+      if (foundInInventory.unit_type !== 'unit') {
+        setWeighingProduct(foundInInventory)
+      } else {
+        addToCart(foundInInventory)
+      }
       return
     }
 
-    // Check Colombia master catalog
     const master = findMasterProduct(cleanCode)
     if (master) {
       alert(`Producto detectado: "${master.name}". No está en tu inventario local aún. Puedes registrarlo con la cámara en 'Nuevo Producto'.`)
@@ -265,6 +424,7 @@ export default function POSClient() {
     if (paymentMethod === 'fiao') {
       if (!selectedCustomer) {
         setError('Debes seleccionar un cliente para fiar la compra')
+        playSound('error')
         return
       }
       const limit = Number(selectedCustomer.credit_limit || 0)
@@ -272,15 +432,17 @@ export default function POSClient() {
       const available = limit - used
 
       if (total > available) {
-        setError(`El cliente no tiene suficiente cupo disponible. Disponible: ${formatCurrency(available)} (Cupo: ${formatCurrency(limit)})`)
+        setError(`Cupo insuficiente. Disponible: ${formatCurrency(available)} (Cupo: ${formatCurrency(limit)})`)
+        playSound('error')
         return
       }
     }
 
-    // Validate Transfer/Nequi reference
+    // Validate Transfer reference
     if (paymentMethod === 'transfer') {
       if (!transferRef.trim()) {
-        setError('Ingresa el número de comprobante o aprobación Nequi/Daviplata')
+        setError('Ingresa el número de comprobante Nequi/Daviplata')
+        playSound('error')
         return
       }
     }
@@ -330,11 +492,26 @@ export default function POSClient() {
     }
 
     try {
+      if (!navigator.onLine) {
+        // Handle Offline Sale Storage
+        const localNumber = 'OFF-' + Math.floor(100000 + Math.random() * 900000)
+        const savedQueue = JSON.parse(localStorage.getItem('mr_tender_offline_sales') || '[]')
+        savedQueue.push({ payload: salePayload, created_at: new Date().toISOString() })
+        localStorage.setItem('mr_tender_offline_sales', JSON.stringify(savedQueue))
+        setPendingSyncCount(savedQueue.length)
+
+        setSaleNumber(localNumber)
+        playSound('success')
+        setStep('done')
+        return
+      }
+
       const { data, error: rpcErr } = await supabase.rpc('process_sale', { p_sale_data: salePayload })
       if (rpcErr) throw rpcErr
       if (data && data.success === false) throw new Error(data.error)
 
       setSaleNumber(data.number)
+      playSound('success')
       
       // If payment was Fiao, update customer credit_used
       if (paymentMethod === 'fiao' && selectedCustomer) {
@@ -349,12 +526,11 @@ export default function POSClient() {
           })
           .eq('id', selectedCustomer.id)
 
-        // Update local state
         setCustomerList(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, credit_used: newCreditUsed } : c))
         setSelectedCustomer(prev => prev ? { ...prev, credit_used: newCreditUsed } : null)
       }
 
-      // Update local products stock
+      // Update local stock
       setProducts(prev => prev.map(p => {
         const cartItem = cart.find(ci => ci.id === p.id)
         return cartItem ? { ...p, stock: p.stock - cartItem.quantity } : p
@@ -363,7 +539,8 @@ export default function POSClient() {
       setStep('done')
     } catch (err: any) {
       console.error('Error processing sale:', err)
-      setError(err.message || 'Error al procesar la venta en el servidor')
+      setError(err.message || 'Error al procesar la venta')
+      playSound('error')
     } finally {
       setLoading(false)
     }
@@ -407,10 +584,9 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: 14 }}>
         
-        {/* Printable Ticket Receipt (80mm Thermal Style) */}
+        {/* Printable Ticket Receipt */}
         <div id="pos-ticket" className="neu-card animate-scale-in" style={{ background: '#fff', color: '#0F172A', padding: '20px 16px', borderRadius: 16, width: '100%', maxWidth: 360, margin: '0 auto 16px', fontFamily: 'monospace', fontSize: '0.8rem', border: '1px solid #CBD5E1', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
           
-          {/* Header */}
           <div style={{ textAlign: 'center', marginBottom: 10, borderBottom: '1px dashed #94A3B8', paddingBottom: 8 }}>
             <div style={{ fontWeight: 900, fontSize: '1.05rem', letterSpacing: '-0.02em' }}>{businessName}</div>
             <div style={{ fontSize: '0.68rem', color: '#475569' }}>NIT: 901.234.567-1 - Reg. DIAN</div>
@@ -419,7 +595,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             <div style={{ fontWeight: 800, fontSize: '0.85rem', marginTop: 4, color: '#1E293B' }}>Factura POS Nº: {saleNumber}</div>
           </div>
 
-          {/* Customer */}
           {selectedCustomer && (
             <div style={{ borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6, fontSize: '0.75rem' }}>
               <div><strong>Cliente:</strong> {selectedCustomer.full_name}</div>
@@ -427,7 +602,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             </div>
           )}
 
-          {/* Items */}
           <div style={{ borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontWeight: 800, borderBottom: '1px solid #E2E8F0', paddingBottom: 4, marginBottom: 4, fontSize: '0.72rem' }}>
               <span>Cant/Producto</span>
@@ -436,14 +610,13 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             </div>
             {cart.map(item => (
               <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', marginBottom: 3, fontSize: '0.75rem' }}>
-                <div>{item.quantity}x {item.name}</div>
+                <div>{item.quantity} {item.unit_type === 'unit' ? 'x' : item.unit_type} {item.name}</div>
                 <div style={{ textAlign: 'right' }}>{formatCurrency(item.price)}</div>
                 <div style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(item.lineTotal)}</div>
               </div>
             ))}
           </div>
 
-          {/* Totals */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#64748B' }}><span>IVA Incluido (19%):</span><span>{formatCurrency(total * 0.19)}</span></div>
@@ -455,7 +628,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             {change > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--accent-green)', fontWeight: 800 }}><span>Cambio:</span><span>{formatCurrency(change)}</span></div>}
           </div>
 
-          {/* DIAN CUFE & QR */}
           <div style={{ textAlign: 'center', marginTop: 6 }}>
             <img src={`https://api.qrserver.com/v1/create-qr-code/?size=70x70&data=CUFE-DIAN-${saleNumber}`} alt="QR DIAN" style={{ width: 60, height: 60, margin: '0 auto 2px' }} />
             <div style={{ fontSize: '0.55rem', color: '#94A3B8', wordBreak: 'break-all' }}>
@@ -497,19 +669,27 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
           {/* LEFT: Products Search Panel */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%', overflow: 'hidden' }}>
-            {/* Search & Camera scanner */}
-            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+            
+            {/* Search, Scanner & Offline Badge */}
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0, alignItems: 'center' }}>
               <div className="input-group" style={{ flex: 1 }}>
                 <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
-                <input className="input-neu" placeholder="Buscar por nombre o código EAN..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
+                <input className="input-neu" placeholder="Buscar por nombre o código..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
               </div>
               <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} style={{ padding: '8px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
                 <Camera size={16} strokeWidth={2} />
                 <span>Escanear</span>
               </button>
+
+              {!isOnline && (
+                <span className="badge badge-amber" title="Modo Offline Activo" style={{ padding: '6px 8px', display: 'flex', alignItems: 'center', gap: 4, fontSize: '0.7rem' }}>
+                  <WifiOff size={13} />
+                  <span>Offline</span>
+                </span>
+              )}
             </div>
 
-            {/* Categories (Wrapping, No Horizontal Scroll) */}
+            {/* Categories */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
               {categories.map(c => (
                 <button key={c} className="btn-neu" onClick={() => setCategory(c)}
@@ -522,7 +702,20 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             {/* Product grid results */}
             <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, alignContent: 'start', paddingRight: 4 }}>
               {filtered.map(product => (
-                <button key={product.id} className="pos-product-btn" onClick={() => addToCart(product)} style={{ padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <button key={product.id} className="pos-product-btn" onClick={() => {
+                  if (product.unit_type !== 'unit') {
+                    setWeighingProduct(product)
+                  } else {
+                    addToCart(product)
+                  }
+                }} style={{ padding: '10px 8px', display: 'flex', flexDirection: 'column', gap: 4, position: 'relative' }}>
+                  
+                  {product.unit_type !== 'unit' && (
+                    <span style={{ position: 'absolute', top: 6, right: 6, background: 'var(--accent-purple-lt)', color: 'var(--accent-purple)', fontSize: '0.62rem', fontWeight: 800, padding: '2px 4px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
+                      <Scale size={10} /> {product.unit_type}
+                    </span>
+                  )}
+
                   <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2px' }}>
                     <Package size={18} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
                   </div>
@@ -548,7 +741,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--bg-deep)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
                 <ShoppingCart size={16} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
-                <span>Carrito ({cart.reduce((s, i) => s + i.quantity, 0)})</span>
+                <span>Carrito ({cart.reduce((s, i) => s + (i.unit_type === 'unit' ? i.quantity : 1), 0)})</span>
               </div>
               {cart.length > 0 && (
                 <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '3px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}>Limpiar</button>
@@ -571,16 +764,20 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                           {item.name}
                         </div>
                         <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
-                          {formatCurrency(item.price)} c/u
+                          {formatCurrency(item.price)} {item.unit_type !== 'unit' ? `x ${item.unit_type}` : 'c/u'}
                         </div>
                       </div>
 
+                      {/* Quantity Controls */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - 1)} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>−</button>
-                        <span style={{ minWidth: 18, textAlign: 'center', fontWeight: 800, fontSize: '0.82rem' }}>{item.quantity}</span>
-                        <button className="btn-neu btn-icon-sm btn-primary" onClick={() => updateQty(item.id, item.quantity + 1)} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>+</button>
+                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>−</button>
+                        <span style={{ minWidth: 26, textAlign: 'center', fontWeight: 800, fontSize: '0.8rem' }}>
+                          {item.quantity}{item.unit_type !== 'unit' ? item.unit_type : ''}
+                        </span>
+                        <button className="btn-neu btn-icon-sm btn-primary" onClick={() => updateQty(item.id, item.quantity + (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>+</button>
                       </div>
 
+                      {/* Line Total */}
                       <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 60 }}>
                         <div style={{ fontWeight: 800, fontSize: '0.82rem', color: 'var(--accent-blue)' }}>{formatCurrency(item.lineTotal)}</div>
                       </div>
@@ -620,7 +817,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                   <span>Total</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span>
                 </div>
               </div>
-              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => setStep('payment')} style={{ width: '100%', padding: '12px', fontSize: '0.9rem', justifyContent: 'center' }}>
+              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => { setReceivedAmount(String(total)); setStep('payment'); playSound('tap'); }} style={{ width: '100%', padding: '12px', fontSize: '0.9rem', justifyContent: 'center' }}>
                 Cobrar {formatCurrency(total)}
               </button>
             </div>
@@ -628,148 +825,222 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
         </div>
       )}
 
-      {/* ── STEP 2: INSTANT FULL-SCREEN COMPACT CHECKOUT (NO SCROLL) ── */}
+      {/* ── STEP 2: INSTANT FULL-SCREEN TOUCH NUMPAD CHECKOUT (ZERO SCROLL) ── */}
       {step === 'payment' && (
-        <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', padding: '16px 18px', boxSizing: 'border-box' }}>
+        <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', padding: '14px 16px', boxSizing: 'border-box' }}>
           
-          {/* Header Row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexShrink: 0 }}>
+          {/* Top Row: Back & Total Display */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexShrink: 0 }}>
             <button className="btn-neu btn-ghost" onClick={() => setStep('cart')} style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}>
               <ArrowLeft size={14} />
               <span>Volver</span>
             </button>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total a Cobrar</div>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total a Cobrar</div>
               <div style={{ fontSize: '1.45rem', fontWeight: 900, color: 'var(--accent-blue)', lineHeight: 1 }}>{formatCurrency(total)}</div>
             </div>
           </div>
 
-          <div className="divider" style={{ margin: '4px 0 10px' }} />
+          {/* Quick Selectors Row (Cliente + Método en 2 columnas compactas) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8, marginBottom: 8, flexShrink: 0 }}>
+            <div>
+              <label style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Cliente</label>
+              <select className="input-neu" value={selectedCustomer?.id || ''} onChange={e => {
+                const found = customerList.find(c => c.id === e.target.value)
+                setSelectedCustomer(found || null)
+                setError('')
+              }} style={{ fontSize: '0.78rem', width: '100%', padding: '6px 8px' }}>
+                <option value="">-- General --</option>
+                {customerList.map(c => (
+                  <option key={c.id} value={c.id}>{c.full_name} (${c.credit_used})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Método</label>
+              <select className="input-neu" value={paymentMethod} onChange={e => {
+                setPaymentMethod(e.target.value)
+                setError('')
+              }} style={{ fontSize: '0.78rem', fontWeight: 700, width: '100%', padding: '6px 8px' }}>
+                <option value="cash">💵 Efectivo</option>
+                <option value="transfer">📱 Nequi</option>
+                <option value="fiao">📝 Fiar</option>
+                <option value="card_debit">💳 Débito</option>
+                <option value="card_credit">💳 Crédito</option>
+              </select>
+            </div>
+          </div>
 
-          {/* Form Content - Compact Fixed Layout */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, justifyContent: 'space-between' }}>
+          {/* Body: Integrated Touch Keypad for Cash or Transfer/Fiao panels */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0, overflow: 'hidden' }}>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* 1. Cliente Selector */}
-              <div>
-                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 3 }}>
-                  Cliente
-                </label>
-                <select className="input-neu" value={selectedCustomer?.id || ''} onChange={e => {
-                  const found = customerList.find(c => c.id === e.target.value)
-                  setSelectedCustomer(found || null)
-                  setError('')
-                }} style={{ fontSize: '0.85rem', width: '100%', padding: '8px 10px' }}>
-                  <option value="">-- Público General --</option>
-                  {customerList.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.full_name} (Deuda: ${c.credit_used} / Cupo: ${c.credit_limit})
-                    </option>
+            {/* CASH: Display + Touch Numpad */}
+            {paymentMethod === 'cash' && (
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0 }}>
+                {/* Cash Received Display & Change */}
+                <div style={{ background: 'var(--bg-deep)', padding: '8px 12px', borderRadius: 'var(--radius-md)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
+                  <div>
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Efectivo Recibido</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)' }}>
+                      {receivedAmount ? formatCurrency(Number(receivedAmount)) : '$0'}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Cambio / Vueltos</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 900, color: change >= 0 && Number(receivedAmount) >= total ? 'var(--accent-green)' : 'var(--text-muted)' }}>
+                      {formatCurrency(change)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Fast Denomination Chips */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, flexShrink: 0 }}>
+                  <button type="button" className="btn-neu" onClick={() => handleNumpadKey('exact')} style={{ padding: '6px 2px', fontSize: '0.72rem', fontWeight: 800, textAlign: 'center', color: 'var(--accent-blue)' }}>
+                    Exacto
+                  </button>
+                  {[5000, 10000, 20000, 50000].map(amt => (
+                    <button key={amt} type="button" className="btn-neu" onClick={() => { setReceivedAmount(String(amt)); playSound('tap'); }} style={{ padding: '6px 2px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'center' }}>
+                      ${amt / 1000}k
+                    </button>
                   ))}
-                </select>
+                </div>
+
+                {/* Integrated 3x4 Touch Numpad Grid (No OS keyboard popup) */}
+                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, minHeight: 0 }}>
+                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'].map(k => (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => handleNumpadKey(k)}
+                      className="btn-neu"
+                      style={{ fontSize: k === 'back' ? '1rem' : '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+                    >
+                      {k === 'back' ? <Delete size={18} /> : k}
+                    </button>
+                  ))}
+                </div>
               </div>
+            )}
 
-              {/* 2. Método de Pago Selector (Select dropdown with default 'cash') */}
-              <div>
-                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 3 }}>
-                  Método de Pago
-                </label>
-                <select className="input-neu" value={paymentMethod} onChange={e => {
-                  setPaymentMethod(e.target.value)
-                  setError('')
-                }} style={{ fontSize: '0.88rem', fontWeight: 700, color: 'var(--text-primary)', width: '100%', padding: '9px 10px' }}>
-                  <option value="cash">Efectivo</option>
-                  <option value="transfer">Nequi / Daviplata</option>
-                  <option value="fiao">Fiar (Crédito)</option>
-                  <option value="card_debit">Tarjeta Débito</option>
-                  <option value="card_credit">Tarjeta Crédito</option>
-                </select>
+            {/* NEQUI / DAVIPLATA */}
+            {paymentMethod === 'transfer' && (
+              <div style={{ background: 'var(--accent-purple-lt)', padding: '12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 8, flex: 1, justifyContent: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Smartphone size={16} /> Nequi / Daviplata
+                  </span>
+                  <span style={{ fontWeight: 900, fontSize: '1rem', color: 'var(--accent-purple)' }}>{formatCurrency(total)}</span>
+                </div>
+                <div style={{ background: '#fff', padding: 8, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, margin: '0 auto' }}>
+                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=Nequi-${total}`} alt="QR" style={{ width: 85, height: 85 }} />
+                  <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Escanea para pagar</span>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Nº de Comprobante / Aprobación *</label>
+                  <input className="input-neu" placeholder="Ej: 987654" value={transferRef} onChange={e => { setTransferRef(e.target.value); setError(''); }} autoFocus required style={{ fontWeight: 700, padding: '8px 10px', fontSize: '0.85rem', width: '100%' }} />
+                </div>
               </div>
+            )}
 
-              {/* 3. Conditional Payment Details */}
-              {paymentMethod === 'cash' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--bg-deep)', padding: '10px 12px', borderRadius: 'var(--radius-md)' }}>
+            {/* FIAO */}
+            {paymentMethod === 'fiao' && (
+              <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '12px', borderRadius: 'var(--radius-md)', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                {selectedCustomer ? (
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Efectivo Recibido</span>
-                      {Number(receivedAmount) > 0 && (
-                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-green)' }}>
-                          Cambio: {formatCurrency(change)}
-                        </span>
-                      )}
+                    <div style={{ fontSize: '0.88rem', fontWeight: 800, color: 'var(--accent-blue)' }}>Fiar a: {selectedCustomer.full_name}</div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.4 }}>
+                      Deuda actual: <strong>{formatCurrency(selectedCustomer.credit_used)}</strong><br />
+                      Cupo disponible: <strong>{formatCurrency(selectedCustomer.credit_limit - selectedCustomer.credit_used)}</strong> de {formatCurrency(selectedCustomer.credit_limit)}
                     </div>
-                    <input className="input-neu" type="number" placeholder={total.toFixed(0)} value={receivedAmount} onChange={e => setReceivedAmount(e.target.value)} autoFocus style={{ fontSize: '1.15rem', fontWeight: 900, textAlign: 'right', padding: '6px 10px', width: '100%' }} />
                   </div>
-
-                  {/* Quick cash chips */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4 }}>
-                    {[total, 5000, 10000, 20000, 50000, 100000].filter((amt, idx, arr) => arr.indexOf(amt) === idx && (amt >= total || amt === total)).slice(0, 4).map(amt => (
-                      <button key={amt} type="button" className="btn-neu" onClick={() => setReceivedAmount(String(amt))} style={{ padding: '5px 2px', fontSize: '0.72rem', fontWeight: 700, textAlign: 'center' }}>
-                        {amt === total ? 'Exacto' : `$${(amt/1000).toFixed(0)}k`}
-                      </button>
-                    ))}
+                ) : (
+                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-coral)', fontWeight: 700 }}>
+                    Selecciona un cliente en la parte superior para habilitar el fiao.
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+            )}
 
-              {paymentMethod === 'transfer' && (
-                <div style={{ background: 'var(--accent-purple-lt)', padding: '10px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontWeight: 800, fontSize: '0.75rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <Smartphone size={14} /> Nequi / Daviplata
-                    </span>
-                    <span style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--accent-purple)' }}>{formatCurrency(total)}</span>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
-                      Nº de Comprobante / Aprobación *
-                    </label>
-                    <input
-                      className="input-neu"
-                      placeholder="Ej: NQ-987654"
-                      value={transferRef}
-                      onChange={e => { setTransferRef(e.target.value); setError(''); }}
-                      autoFocus
-                      required
-                      style={{ fontWeight: 700, padding: '6px 8px', fontSize: '0.82rem', width: '100%' }}
-                    />
-                  </div>
-                </div>
-              )}
+            {/* CARDS */}
+            {(paymentMethod === 'card_debit' || paymentMethod === 'card_credit') && (
+              <div style={{ background: 'var(--bg-deep)', padding: '16px', borderRadius: 'var(--radius-md)', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <CreditCard size={32} style={{ color: 'var(--accent-blue)' }} />
+                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Datáfono / Datafono POS</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Pasa la tarjeta en el datáfono por <strong>{formatCurrency(total)}</strong></div>
+              </div>
+            )}
 
-              {paymentMethod === 'fiao' && (
-                <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '10px', borderRadius: 'var(--radius-md)' }}>
-                  {selectedCustomer ? (
-                    <div>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-blue)' }}>Fiar a: {selectedCustomer.full_name}</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 2, lineHeight: 1.3 }}>
-                        Deuda actual: <strong>{formatCurrency(selectedCustomer.credit_used)}</strong><br />
-                        Cupo disponible: <strong>{formatCurrency(selectedCustomer.credit_limit - selectedCustomer.credit_used)}</strong> de {formatCurrency(selectedCustomer.credit_limit)}
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ fontSize: '0.72rem', color: 'var(--accent-coral)', fontWeight: 600 }}>
-                      Selecciona un cliente arriba para poder fiarle esta compra.
-                    </div>
-                  )}
-                </div>
-              )}
+            {error && (
+              <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem' }}>
+                {error}
+              </div>
+            )}
+          </div>
 
-              {error && (
-                <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '6px 10px', borderRadius: 'var(--radius-sm)', fontSize: '0.75rem' }}>
-                  {error}
-                </div>
-              )}
+          {/* Confirm Button Always Pinned at Bottom */}
+          <div style={{ marginTop: 'auto', paddingTop: 6, flexShrink: 0 }}>
+            <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
+              style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 800, justifyContent: 'center' }}>
+              {loading ? 'Procesando...' : paymentMethod === 'fiao' ? `Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `Confirmar Nequi (${formatCurrency(total)})` : 'Confirmar pago'}
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* ── MODAL: WEIGHED PRODUCT PICKER (KG / LB / G) ── */}
+      {weighingProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Scale size={20} style={{ color: 'var(--accent-purple)' }} />
+              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Venta por Peso / Granel</h3>
+            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
+              <strong>{weighingProduct.name}</strong> ({formatCurrency(weighingProduct.price)} x {weighingProduct.unit_type})
+            </p>
+
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                Cantidad ({weighingProduct.unit_type})
+              </label>
+              <input
+                className="input-neu"
+                type="number"
+                step="0.05"
+                min="0.05"
+                value={weightValue}
+                onChange={e => setWeightValue(e.target.value)}
+                autoFocus
+                style={{ fontSize: '1.2rem', fontWeight: 900, textAlign: 'center', width: '100%' }}
+              />
             </div>
 
-            {/* Big Confirm Button Always Visible at bottom */}
-            <div style={{ marginTop: 'auto', paddingTop: 8 }}>
-              <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
-                style={{ width: '100%', padding: '13px', fontSize: '0.95rem', fontWeight: 800, justifyContent: 'center' }}>
-                {loading ? 'Procesando...' : paymentMethod === 'fiao' ? `Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `Confirmar Nequi (${formatCurrency(total)})` : 'Confirmar pago'}
+            {/* Quick weight chips */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginTop: 8 }}>
+              {['0.25', '0.5', '1', '2'].map(w => (
+                <button key={w} type="button" className="btn-neu" onClick={() => setWeightValue(w)} style={{ padding: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                  {w} {weighingProduct.unit_type}
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, padding: '8px 10px', background: 'var(--bg-deep)', borderRadius: 8 }}>
+              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total a cobrar:</span>
+              <strong style={{ fontSize: '1rem', color: 'var(--accent-blue)' }}>
+                {formatCurrency(Number(weightValue || 0) * weighingProduct.price)}
+              </strong>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+              <button type="button" className="btn-neu" onClick={() => setWeighingProduct(null)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+              <button type="button" className="btn-neu btn-primary" onClick={() => {
+                addToCart(weighingProduct, parseFloat(weightValue) || 1)
+                setWeighingProduct(null)
+              }} style={{ flex: 1, padding: 10 }}>
+                Agregar al Carrito
               </button>
             </div>
-
           </div>
         </div>
       )}
