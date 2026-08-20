@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
 export interface ScannedProductFeedback {
+  found?: boolean
   name: string
   price?: number
   sku?: string
@@ -32,12 +33,32 @@ function playScanBeep() {
   } catch {}
 }
 
+function playErrorTone() {
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+    if (!AudioCtx) return
+    const ctx = new AudioCtx()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sawtooth'
+    osc.frequency.setValueAtTime(280, ctx.currentTime)
+    osc.frequency.setValueAtTime(180, ctx.currentTime + 0.1)
+    gain.gain.setValueAtTime(0.16, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25)
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.25)
+  } catch {}
+}
+
 export default function CameraScanner({ onScan, onClose, continuous = true }: CameraScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null)
   const [error, setError] = useState<string>('')
   const [manualCode, setManualCode] = useState('')
   const [isProcessing, setIsProcessing] = useState(false)
   const [flashSuccess, setFlashSuccess] = useState(false)
+  const [flashRed, setFlashRed] = useState(false)
   const [noCodeDetected, setNoCodeDetected] = useState(false)
   const [lastProduct, setLastProduct] = useState<ScannedProductFeedback | null>(null)
   const [scanCount, setScanCount] = useState(0)
@@ -90,22 +111,45 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
     const clean = code.trim()
     if (!clean) return
 
-    // 1. Play audio beep & vibration
+    // 1. Trigger scan callback to inspect product status
+    const result = await onScan(clean)
+    const isFound = result && result.found !== false && !result.isExpress
+
+    if (!isFound) {
+      // Product NOT registered in inventory:
+      // Play alert tone, flash red, and close scanner so user goes to create product modal
+      playErrorTone()
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate([180, 80, 180]) } catch {}
+      }
+
+      setFlashRed(true)
+      setFlashSuccess(false)
+      setNoCodeDetected(false)
+
+      setTimeout(() => {
+        setFlashRed(false)
+        onClose()
+      }, 400)
+      return
+    }
+
+    // Product IS registered:
+    // Play audio beep & vibration
     playScanBeep()
     if ('vibrate' in navigator) {
       try { navigator.vibrate([90, 40, 90]) } catch {}
     }
 
-    // 2. Trigger green flash animation
+    // Trigger green flash animation
     setFlashSuccess(true)
+    setFlashRed(false)
     setNoCodeDetected(false)
     setTimeout(() => setFlashSuccess(false), 900)
 
-    // 3. Handle scan callback
-    const result = await onScan(clean)
     setScanCount(prev => prev + 1)
 
-    // 4. Show product confirmation banner
+    // Show product confirmation banner
     const feedback: ScannedProductFeedback = result || {
       name: `Código: ${clean}`,
       sku: clean
@@ -117,7 +161,7 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
       setLastProduct(null)
     }, 3500)
 
-    // 5. If not continuous, close modal
+    // If not continuous, close modal
     if (!continuous) {
       setTimeout(() => {
         onClose()
@@ -195,8 +239,12 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
           borderRadius: 24,
           textAlign: 'center',
           position: 'relative',
-          border: flashSuccess ? '2px solid #22C55E' : '1px solid #334155',
-          boxShadow: flashSuccess ? '0 0 30px rgba(34, 197, 94, 0.4)' : '0 10px 40px rgba(0,0,0,0.6)',
+          border: flashRed ? '2px solid #EF4444' : flashSuccess ? '2px solid #22C55E' : '1px solid #334155',
+          boxShadow: flashRed
+            ? '0 0 35px rgba(239, 68, 68, 0.6)'
+            : flashSuccess
+            ? '0 0 30px rgba(34, 197, 94, 0.4)'
+            : '0 10px 40px rgba(0,0,0,0.6)',
           transition: 'border 0.2s ease, box-shadow 0.2s ease'
         }}
       >
@@ -268,11 +316,15 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
                 position: 'absolute',
                 width: '80%',
                 height: 150,
-                border: flashSuccess
+                border: flashRed
+                  ? '3px solid #EF4444'
+                  : flashSuccess
                   ? '3px solid #22C55E'
-                  : '2px dashed #38BDF8',
+                  : '2px dashed #D97706',
                 borderRadius: 14,
-                boxShadow: flashSuccess
+                boxShadow: flashRed
+                  ? '0 0 25px rgba(239, 68, 68, 0.9), 0 0 0 9999px rgba(0,0,0,0.5)'
+                  : flashSuccess
                   ? '0 0 25px rgba(34, 197, 94, 0.8), 0 0 0 9999px rgba(0,0,0,0.5)'
                   : '0 0 0 9999px rgba(0,0,0,0.45)',
                 pointerEvents: 'none',
@@ -287,10 +339,12 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
                 style={{
                   width: '92%',
                   height: 2,
-                  background: flashSuccess ? '#22C55E' : '#EF4444',
-                  boxShadow: flashSuccess
+                  background: flashRed ? '#EF4444' : flashSuccess ? '#22C55E' : '#EA580C',
+                  boxShadow: flashRed
+                    ? '0 0 12px #EF4444'
+                    : flashSuccess
                     ? '0 0 12px #22C55E'
-                    : '0 0 8px rgba(239, 68, 68, 0.7)',
+                    : '0 0 8px rgba(234, 88, 12, 0.7)',
                   opacity: 0.85
                 }}
               />
@@ -375,11 +429,15 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
             fontSize: '0.95rem',
             fontWeight: 800,
             color: '#FFFFFF',
-            background: flashSuccess ? '#22C55E' : 'linear-gradient(135deg, #2563EB, #3B82F6)',
+            background: flashRed
+              ? '#EF4444'
+              : flashSuccess
+              ? '#22C55E'
+              : 'linear-gradient(135deg, #C26D2D, #D97706)',
             border: 'none',
             borderRadius: 14,
             cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+            boxShadow: '0 4px 14px rgba(194, 109, 45, 0.4)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',

@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'Punto de venta y control de inventario para tiendas y pequeños negocios.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#0F172A',
-    theme_color: '#4A90E2',
+    background_color: '#FFFFFF',
+    theme_color: '#C26D2D',
     icons: [
       {
         src: '/icon-192.png',

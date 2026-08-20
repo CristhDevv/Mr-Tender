@@ -485,7 +485,7 @@ export default function POSClient() {
       } else {
         addToCart(foundInInventory)
       }
-      return { name: foundInInventory.name, price: foundInInventory.price, sku: foundInInventory.sku }
+      return { found: true, name: foundInInventory.name, price: foundInInventory.price, sku: foundInInventory.sku }
     }
 
     const master = findMasterProduct(cleanCode)
@@ -496,8 +496,10 @@ export default function POSClient() {
       cost: master ? String(master.suggestedCost) : '',
       stock: '10'
     })
+    setShowScanner(false)
     setShowExpressModal(true)
     return {
+      found: false,
       name: master ? master.name : `Producto nuevo (${cleanCode})`,
       price: master ? master.suggestedPrice : 0,
       sku: cleanCode,
