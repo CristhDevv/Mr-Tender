@@ -485,7 +485,7 @@ export default function POSClient() {
       } else {
         addToCart(foundInInventory)
       }
-      return
+      return { name: foundInInventory.name, price: foundInInventory.price, sku: foundInInventory.sku }
     }
 
     const master = findMasterProduct(cleanCode)
@@ -497,6 +497,12 @@ export default function POSClient() {
       stock: '10'
     })
     setShowExpressModal(true)
+    return {
+      name: master ? master.name : `Producto nuevo (${cleanCode})`,
+      price: master ? master.suggestedPrice : 0,
+      sku: cleanCode,
+      isExpress: true
+    }
   }
 
   // Create Express Product

@@ -50,17 +50,40 @@ const plans = [
 
 export default function LandingPage() {
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ background: 'var(--bg)', minHeight: '100vh', width: '100%', overflowX: 'hidden' }}>
 
       {/* ── NAV ── */}
-      <nav style={{ background: 'var(--bg)', boxShadow: '0 2px 16px var(--shadow-dark)', position: 'sticky', top: 0, zIndex: 50, padding: '0 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 68 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 36, height: 36, borderRadius: 10, background: 'var(--accent-blue)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '4px 4px 10px rgba(74,144,217,0.4)', color: '#fff', fontWeight: 800, fontSize: 18 }}>M</div>
-          <span style={{ fontWeight: 800, fontSize: '1.1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</span>
-        </div>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <Link href="/login" className="btn-neu btn-ghost" style={{ padding: '9px 18px', fontSize: '0.85rem' }}>Iniciar sesión</Link>
-          <Link href="/register" className="btn-neu btn-primary" style={{ padding: '9px 20px', fontSize: '0.85rem' }}>Comenzar gratis</Link>
+      <nav style={{ 
+        background: 'var(--bg)', 
+        boxShadow: '0 2px 16px var(--shadow-dark)', 
+        position: 'sticky', 
+        top: 0, 
+        zIndex: 50, 
+        padding: '0 clamp(12px, 3vw, 32px)', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        height: 64,
+        width: '100%',
+        maxWidth: '100vw'
+      }}>
+        <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+          <img 
+            src="/icon-192.png" 
+            alt="Mr Tender Logo" 
+            style={{ width: 34, height: 34, borderRadius: 9, objectFit: 'cover', boxShadow: '2px 2px 6px var(--shadow-dark)' }} 
+          />
+          <span style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+            Mr Tender
+          </span>
+        </Link>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <Link href="/login" className="btn-neu btn-ghost" style={{ padding: '7px 12px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+            Iniciar sesión
+          </Link>
+          <Link href="/register" className="btn-neu btn-primary" style={{ padding: '7px 14px', fontSize: '0.82rem', whiteSpace: 'nowrap' }}>
+            Comenzar gratis
+          </Link>
         </div>
       </nav>
 

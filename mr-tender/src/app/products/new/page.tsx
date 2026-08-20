@@ -335,6 +335,7 @@ export default function NewProductPage() {
       {/* Camera Scanner Modal */}
       {showScanner && (
         <CameraScanner
+          continuous={false}
           onScan={(code) => handleCodeLookup(code)}
           onClose={() => setShowScanner(false)}
         />
