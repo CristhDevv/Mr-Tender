@@ -16,7 +16,7 @@ interface CustomerItem {
 }
 
 const SPANISH_NUMBERS: Record<string, number> = {
-  un: 1, uno: 1, una: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5,
+  un: 1, uno: 1, una: 1, unos: 1, unas: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5,
   seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10,
   once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
   dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19, veinte: 20,
@@ -29,23 +29,33 @@ function normalize(text: string): string {
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w\s\d]/g, ' ')
+    .replace(/\s+/g, ' ')
     .trim()
 }
 
-// Fast string similarity helper (Dice's coefficient)
-function stringSimilarity(str1: string, str2: string): number {
-  const s1 = normalize(str1)
-  const s2 = normalize(str2)
-  if (s1 === s2) return 1.0
-  if (s1.includes(s2) || s2.includes(s1)) return 0.85
+// Smart similarity score between spoken segment and product name
+function computeMatchScore(spoken: string, productName: string): number {
+  const s = normalize(spoken)
+  const p = normalize(productName)
+  if (s === p) return 1.0
+  if (p.includes(s) || s.includes(p)) return 0.90
 
-  const words1 = s1.split(/\s+/)
-  const words2 = s2.split(/\s+/)
-  const common = words1.filter(w => words2.includes(w) && w.length > 2)
-  if (common.length > 0) {
-    return (2 * common.length) / (words1.length + words2.length)
+  const spokenWords = s.split(/\s+/).filter(w => w.length > 2)
+  const productWords = p.split(/\s+/).filter(w => w.length > 2)
+
+  if (spokenWords.length === 0 || productWords.length === 0) return 0
+
+  let matches = 0
+  for (const sw of spokenWords) {
+    if (productWords.some(pw => pw.includes(sw) || sw.includes(pw))) {
+      matches++
+    }
   }
-  return 0
+
+  // Weight by fraction of spoken query matched
+  const coverage = matches / spokenWords.length
+  return coverage
 }
 
 export async function POST(req: NextRequest) {
@@ -63,6 +73,7 @@ export async function POST(req: NextRequest) {
     const normText = normalize(transcript)
     const result: {
       action: 'add_items' | 'remove_item' | 'clear_cart' | 'select_customer' | 'set_payment' | 'set_discount' | 'mixed'
+      transcript: string
       itemsToAdd: Array<{ product: ProductItem; quantity: number }>
       itemsToRemove: string[]
       selectedCustomer: CustomerItem | null
@@ -72,6 +83,7 @@ export async function POST(req: NextRequest) {
       feedbackMessage: string
     } = {
       action: 'mixed',
+      transcript,
       itemsToAdd: [],
       itemsToRemove: [],
       selectedCustomer: null,
@@ -82,9 +94,9 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Check for Cart Clear Intent
-    if (/(limpia|limpiar|borra|borrar|cancela|cancelar|vaciar)\s*(el\s*carrito|la\s*orden|todo)/i.test(normText)) {
+    if (/(limpia|limpiar|borra|borrar|cancela|cancelar|vaciar)\s*(el\s*carrito|la\s*orden|todo)?/i.test(normText)) {
       result.action = 'clear_cart'
-      result.feedbackMessage = 'Carrito vaciado'
+      result.feedbackMessage = 'Vaciar el carrito actual'
       return NextResponse.json(result)
     }
 
@@ -96,7 +108,7 @@ export async function POST(req: NextRequest) {
 
         if (normText.includes(custNorm) || (firstName.length > 2 && normText.includes(firstName))) {
           result.selectedCustomer = cust
-          if (/(fiale|fiar|anotale|a la cuenta|al fiao|en cuenta)/i.test(normText)) {
+          if (/(fiale|fiar|fiao|anotale|a la cuenta|al fiao|en cuenta|credito)/i.test(normText)) {
             result.paymentMethod = 'fiao'
           }
           break
@@ -107,14 +119,15 @@ export async function POST(req: NextRequest) {
     // 3. Check for Payment Method & Cash Received
     if (/(efectivo|paga con|recibo|con billete de|pago de)\s*(\$?\s*[\d\.\,]+|\d+ mil)/i.test(normText)) {
       result.paymentMethod = 'cash'
-      const match = normText.match(/(?:paga con|recibo|billete de|pago de)\s*(\d+(?:\.\d+)?|\d+ mil|\d+mil)/i)
+      const match = normText.match(/(?:paga con|recibo|billete de|pago de|efectivo)\s*(\d+(?:\.\d+)?|\d+ mil|\d+mil)/i)
       if (match) {
         const valStr = match[1].replace(/\./g, '').trim()
         if (valStr.includes('mil')) {
           const num = parseFloat(valStr.replace('mil', '').trim()) || 1
           result.receivedAmount = num * 1000
         } else {
-          result.receivedAmount = parseFloat(valStr) || null
+          const valNum = parseFloat(valStr) || 0
+          result.receivedAmount = valNum < 100 ? valNum * 1000 : valNum
         }
       }
     } else if (/(tarjeta|datafono|datáfono|debito|credito)/i.test(normText)) {
@@ -145,9 +158,11 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // Clean action words, numbers, and filler prepositions
         const cleanSeg = seg
-          .replace(/\b(agrega|agregar|anota|anotale|pon|ponme|dame|lleva|llevar|un|uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b/gi, '')
-          .replace(/\b(kilo|kilos|libra|libras|paquete|paquetes|caja|cajas|de|la|el|los|las|por favor)\b/gi, '')
+          .replace(/\b(vende|vender|venta|cobra|cobrar|factura|facturar|agrega|agregar|anota|anotale|pon|ponme|dame|lleva|llevar|pasame|sirveme|despacha|despachame|quiero|necesito|pedir)\b/gi, '')
+          .replace(/\b(un|uno|una|unos|unas|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b/gi, '')
+          .replace(/\b(kilo|kilos|libra|libras|paquete|paquetes|caja|cajas|de|la|el|los|las|por favor|fiale|a|al|favor)\b/gi, '')
           .trim()
 
         if (cleanSeg.length < 2) continue
@@ -156,14 +171,14 @@ export async function POST(req: NextRequest) {
         let bestScore = 0
 
         for (const prod of products) {
-          const score = stringSimilarity(cleanSeg, prod.name)
-          if (score > bestScore && score >= 0.35) {
+          const score = computeMatchScore(cleanSeg, prod.name)
+          if (score > bestScore && score >= 0.3) {
             bestScore = score
             bestMatch = prod
           }
         }
 
-        if (bestMatch && bestScore >= 0.35) {
+        if (bestMatch && bestScore >= 0.3) {
           const existing = result.itemsToAdd.find(it => it.product.id === bestMatch!.id)
           if (existing) {
             existing.quantity += qty
@@ -177,23 +192,23 @@ export async function POST(req: NextRequest) {
     const feedbackParts: string[] = []
     if (result.itemsToAdd.length > 0) {
       const itemsList = result.itemsToAdd.map(it => `${it.quantity}x ${it.product.name}`).join(', ')
-      feedbackParts.push(`Agregado: ${itemsList}`)
+      feedbackParts.push(`${itemsList}`)
     }
     if (result.selectedCustomer) {
       feedbackParts.push(`Cliente: ${result.selectedCustomer.full_name}`)
     }
     if (result.paymentMethod) {
-      feedbackParts.push(`Método: ${result.paymentMethod === 'fiao' ? 'Fiao' : result.paymentMethod === 'cash' ? 'Efectivo' : result.paymentMethod}`)
+      feedbackParts.push(`Método: ${result.paymentMethod === 'fiao' ? 'Fiao (Crédito)' : result.paymentMethod === 'cash' ? 'Efectivo' : result.paymentMethod}`)
     }
     if (result.receivedAmount) {
       feedbackParts.push(`Paga con: $${result.receivedAmount.toLocaleString('es-CO')}`)
     }
 
-    result.feedbackMessage = feedbackParts.join(' • ') || 'Comando procesado'
+    result.feedbackMessage = feedbackParts.join(' • ') || 'No se detectaron productos específicos'
 
     return NextResponse.json(result)
   } catch (err: any) {
-    console.error('Error in audio-pos API:', err)
-    return NextResponse.json({ error: err.message || 'Error procesando comando de voz' }, { status: 500 })
+    console.error('Audio-POS route error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
   }
 }
