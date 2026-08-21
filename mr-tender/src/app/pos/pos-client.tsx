@@ -101,6 +101,16 @@ interface Product {
   unit_type?: string
   category_id?: string
   warehouse_id?: string
+  is_pharmacy?: boolean
+  generic_name?: string
+  concentration?: string
+  laboratory?: string
+  unit_price?: number
+  blister_price?: number | null
+  box_price?: number | null
+  units_per_box?: number
+  units_per_blister?: number
+  prescription_type?: 'otc' | 'rx' | 'controlled'
 }
 
 interface CartItem extends Product {
@@ -153,9 +163,11 @@ export default function POSClient() {
   const [heldCarts, setHeldCarts] = useState<HeldCart[]>([])
   const [showHeldModal, setShowHeldModal] = useState(false)
 
-  // Weighed product modal
+  // Pharmacy & Weighing product selection
   const [weighingProduct, setWeighingProduct] = useState<Product | null>(null)
+  const [selectedFractionProduct, setSelectedFractionProduct] = useState<Product | null>(null)
   const [weightValue, setWeightValue] = useState('0.5')
+  const [scaleConnected, setScaleConnected] = useState<boolean>(false)
 
   // Express product creation modal from POS
   const [showExpressModal, setShowExpressModal] = useState(false)
@@ -318,25 +330,34 @@ export default function POSClient() {
           }
         }
 
-        // Get products with stock
-        const { data: prodData } = await supabase
-          .from('products')
-          .select(`
-            id, name, sale_price, cost_price, sku, barcode, category_id,
-            categories (name),
-            inventory (quantity, warehouse_id)
-          `)
-          .eq('tenant_id', tenant_id)
-          .eq('is_active', true)
-        
-        if (prodData) {
-          const loadedProducts: Product[] = prodData.map((p: any) => {
+        // Get products with stock and pharmacy medicines
+        const [prodRes, medRes] = await Promise.all([
+          supabase
+            .from('products')
+            .select(`
+              id, name, sale_price, cost_price, sku, barcode, category_id,
+              categories (name),
+              inventory (quantity, warehouse_id)
+            `)
+            .eq('tenant_id', tenant_id)
+            .eq('is_active', true),
+          supabase
+            .from('pharmacy_medicines')
+            .select('*')
+            .eq('tenant_id', tenant_id)
+            .eq('is_active', true)
+        ])
+
+        const loadedProducts: Product[] = []
+
+        if (prodRes.data) {
+          prodRes.data.forEach((p: any) => {
             const whStock = p.inventory?.find((inv: any) => inv.warehouse_id === warehouse_id)
             const stock = whStock ? Number(whStock.quantity) : 0
             const catName = p.categories?.name || 'General'
             const isWeighed = /kg|kilo|libra|\blb\b|gramo|\bgr\b|queso|carne|pollo|fruta|verdura/i.test(p.name)
 
-            return {
+            loadedProducts.push({
               id: p.id,
               name: p.name,
               price: Number(p.sale_price),
@@ -347,15 +368,40 @@ export default function POSClient() {
               unit_type: isWeighed ? 'lb' : 'unit',
               category_id: p.category_id,
               warehouse_id
-            }
+            })
           })
-          setProducts(loadedProducts)
-
-          const cats = ['Todos', ...Array.from(new Set(loadedProducts.map(p => p.category)))]
-          setCategories(cats)
-
-          localStorage.setItem('mr_tender_cached_products', JSON.stringify(loadedProducts))
         }
+
+        if (medRes.data) {
+          medRes.data.forEach((m: any) => {
+            loadedProducts.push({
+              id: m.id,
+              name: `${m.trade_name} (${m.generic_name} ${m.concentration || ''})`,
+              price: Number(m.unit_price || m.box_price || 0),
+              cost: Number(m.unit_price * 0.6 || 0),
+              sku: m.invima_registration || '',
+              stock: 50,
+              category: 'Farmacia 💊',
+              unit_type: 'unit',
+              warehouse_id,
+              is_pharmacy: true,
+              generic_name: m.generic_name,
+              concentration: m.concentration,
+              laboratory: m.laboratory,
+              unit_price: Number(m.unit_price || 0),
+              blister_price: m.blister_price ? Number(m.blister_price) : null,
+              box_price: m.box_price ? Number(m.box_price) : null,
+              units_per_box: Number(m.units_per_box || 1),
+              units_per_blister: Number(m.units_per_blister || 1),
+              prescription_type: m.prescription_type
+            })
+          })
+        }
+
+        setProducts(loadedProducts)
+        const cats = ['Todos', ...Array.from(new Set(loadedProducts.map(p => p.category)))]
+        setCategories(cats)
+        localStorage.setItem('mr_tender_cached_products', JSON.stringify(loadedProducts))
       } catch (err: any) {
         console.error('Error loading POS data:', err)
         setError('Error al cargar datos del POS')
@@ -882,6 +928,37 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
               )}
             </div>
 
+            {/* Smart Generic Suggestions Banner */}
+            {search.trim() !== '' && (() => {
+              const q = search.toLowerCase()
+              const matchedMed = products.find(p => p.is_pharmacy && p.generic_name && (p.name.toLowerCase().includes(q) || p.generic_name.toLowerCase().includes(q)))
+              if (!matchedMed?.generic_name) return null
+              const alternatives = products.filter(p => p.is_pharmacy && p.generic_name?.toLowerCase() === matchedMed.generic_name?.toLowerCase())
+              if (alternatives.length <= 1) return null
+
+              return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', background: 'rgba(139,114,190,0.08)', borderRadius: 10, border: '1px solid rgba(139,114,190,0.25)', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--accent-purple)' }}>💡 Alternativas con {matchedMed.generic_name}:</span>
+                  {alternatives.map(alt => (
+                    <button
+                      key={alt.id}
+                      onClick={() => {
+                        if (alt.is_pharmacy && (alt.blister_price || alt.box_price)) {
+                          setSelectedFractionProduct(alt)
+                        } else {
+                          addToCart(alt)
+                        }
+                      }}
+                      className="btn-neu"
+                      style={{ padding: '3px 8px', fontSize: '0.72rem', background: '#fff', color: 'var(--text-primary)', fontWeight: 700 }}
+                    >
+                      {alt.laboratory || alt.name.split(' ')[0]}: {formatCurrency(alt.price)}
+                    </button>
+                  ))}
+                </div>
+              )
+            })()}
+
             {/* Categories */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', flexShrink: 0 }}>
               {categories.map(c => (
@@ -896,7 +973,9 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             <div style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 8, alignContent: 'start', paddingRight: 4 }}>
               {filtered.map(product => (
                 <button key={product.id} className="pos-product-btn" onClick={() => {
-                  if (product.unit_type !== 'unit') {
+                  if (product.is_pharmacy && (product.blister_price || product.box_price)) {
+                    setSelectedFractionProduct(product)
+                  } else if (product.unit_type !== 'unit') {
                     setWeighingProduct(product)
                   } else {
                     addToCart(product)
@@ -1334,6 +1413,118 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                 Agregar al Carrito
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: PHARMACY FRACTION SELECTOR */}
+      {selectedFractionProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 420, padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  💊 {selectedFractionProduct.name.split('(')[0].trim()}
+                </h3>
+                <div style={{ fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
+                  {selectedFractionProduct.generic_name} {selectedFractionProduct.concentration} • {selectedFractionProduct.laboratory || 'Genérico'}
+                </div>
+              </div>
+              <button onClick={() => setSelectedFractionProduct(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 14 }}>
+              Selecciona la presentación que desea el cliente:
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {/* Option 1: Unit / Pastilla */}
+              <button
+                onClick={() => {
+                  addToCart({
+                    ...selectedFractionProduct,
+                    name: `${selectedFractionProduct.name.split('(')[0].trim()} (Unidad/Pastilla)`,
+                    price: selectedFractionProduct.unit_price || selectedFractionProduct.price
+                  })
+                  setSelectedFractionProduct(null)
+                }}
+                className="btn-neu"
+                style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1.2rem' }}>🔘</span>
+                  <div style={{ textAlign: 'left' }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Pastilla / Unidad Suelta</div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Venta fraccionada</div>
+                  </div>
+                </div>
+                <span style={{ fontWeight: 800, color: 'var(--accent-blue)', fontSize: '0.95rem' }}>
+                  {formatCurrency(selectedFractionProduct.unit_price || selectedFractionProduct.price)}
+                </span>
+              </button>
+
+              {/* Option 2: Blíster */}
+              {selectedFractionProduct.blister_price && (
+                <button
+                  onClick={() => {
+                    addToCart({
+                      ...selectedFractionProduct,
+                      name: `${selectedFractionProduct.name.split('(')[0].trim()} (Blíster x${selectedFractionProduct.units_per_blister || 10})`,
+                      price: selectedFractionProduct.blister_price!
+                    })
+                    setSelectedFractionProduct(null)
+                  }}
+                  className="btn-neu"
+                  style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '1.2rem' }}>💊</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Blíster (x{selectedFractionProduct.units_per_blister || 10} uds)</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tira completa</div>
+                    </div>
+                  </div>
+                  <span style={{ fontWeight: 800, color: 'var(--accent-emerald)', fontSize: '0.95rem' }}>
+                    {formatCurrency(selectedFractionProduct.blister_price)}
+                  </span>
+                </button>
+              )}
+
+              {/* Option 3: Caja Completa */}
+              {selectedFractionProduct.box_price && (
+                <button
+                  onClick={() => {
+                    addToCart({
+                      ...selectedFractionProduct,
+                      name: `${selectedFractionProduct.name.split('(')[0].trim()} (Caja x${selectedFractionProduct.units_per_box || 30})`,
+                      price: selectedFractionProduct.box_price!
+                    })
+                    setSelectedFractionProduct(null)
+                  }}
+                  className="btn-neu"
+                  style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ fontSize: '1.2rem' }}>📦</span>
+                    <div style={{ textAlign: 'left' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Caja Completa (x{selectedFractionProduct.units_per_box || 30} uds)</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Empaque original</div>
+                    </div>
+                  </div>
+                  <span style={{ fontWeight: 800, color: 'var(--accent-purple)', fontSize: '0.95rem' }}>
+                    {formatCurrency(selectedFractionProduct.box_price)}
+                  </span>
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={() => setSelectedFractionProduct(null)}
+              className="btn-neu btn-ghost"
+              style={{ width: '100%', padding: '10px', marginTop: 14, fontSize: '0.82rem' }}
+            >
+              Cancelar
+            </button>
           </div>
         </div>
       )}
