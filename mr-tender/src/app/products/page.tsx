@@ -15,7 +15,12 @@ import {
   Download,
   FileSpreadsheet,
   Printer,
-  X
+  X,
+  Edit2,
+  Trash2,
+  Boxes,
+  Check,
+  TrendingUp
 } from 'lucide-react'
 
 interface DBProduct {
@@ -26,8 +31,9 @@ interface DBProduct {
   sale_price: number
   cost_price: number
   is_active: boolean
+  category_id?: string | null
   categories?: { name: string } | null
-  inventory?: { quantity: number }[]
+  inventory?: { id?: string; quantity: number; warehouse_id?: string }[]
 }
 
 export default function ProductsPage() {
@@ -36,6 +42,7 @@ export default function ProductsPage() {
   const [selectedCategory, setSelectedCategory] = useState('Todos')
   const [products, setProducts] = useState<DBProduct[]>([])
   const [categories, setCategories] = useState<string[]>(['Todos'])
+  const [categoryList, setCategoryList] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(true)
   const [tenantId, setTenantId] = useState('')
   const [warehouseId, setWarehouseId] = useState('')
@@ -43,6 +50,27 @@ export default function ProductsPage() {
   // Modals
   const [showImportModal, setShowImportModal] = useState(false)
   const [showTagsModal, setShowTagsModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showQuickStockModal, setShowQuickStockModal] = useState(false)
+
+  // Edit / Create Product State
+  const [editingProduct, setEditingProduct] = useState<DBProduct | null>(null)
+  const [savingProduct, setSavingProduct] = useState(false)
+  const [productForm, setProductForm] = useState({
+    name: '',
+    sku: '',
+    category_id: '',
+    cost_price: '0',
+    sale_price: '0',
+    stock: '0',
+    is_active: true
+  })
+
+  // Quick Stock Adjustment State
+  const [stockProduct, setStockProduct] = useState<DBProduct | null>(null)
+  const [stockDelta, setStockDelta] = useState('1')
+  const [stockActionType, setStockActionType] = useState<'add' | 'remove' | 'set'>('add')
+  const [savingStock, setSavingStock] = useState(false)
 
   // Import State
   const [importing, setImporting] = useState(false)
@@ -55,37 +83,33 @@ export default function ProductsPage() {
 
   async function loadProducts() {
     try {
+      setLoading(true)
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) return
 
       const tid = user.user_metadata?.tenant_id
+      if (!tid) return
       setTenantId(tid)
 
-      const { data: wh } = await supabase
-        .from('warehouses')
-        .select('id')
-        .eq('tenant_id', tid)
-        .eq('is_active', true)
-        .limit(1)
-
-      if (wh?.[0]) setWarehouseId(wh[0].id)
-
-      const { data, error } = await supabase
-        .from('products')
-        .select(`
-          id, sku, name, product_type, sale_price, cost_price, is_active,
+      const [whRes, catsRes, prodsRes] = await Promise.all([
+        supabase.from('warehouses').select('id').eq('tenant_id', tid).eq('is_active', true).limit(1),
+        supabase.from('categories').select('id, name').eq('tenant_id', tid),
+        supabase.from('products').select(`
+          id, sku, name, product_type, sale_price, cost_price, is_active, category_id,
           categories (name),
-          inventory (quantity)
-        `)
-        .eq('tenant_id', tid)
-        .order('name', { ascending: true })
+          inventory (id, quantity, warehouse_id)
+        `).eq('tenant_id', tid).order('name', { ascending: true })
+      ])
 
-      if (error) throw error
-
-      if (data) {
-        setProducts(data as any)
-        const cats = ['Todos', ...Array.from(new Set(data.map((p: any) => p.categories?.name || 'General')))]
+      if (whRes.data?.[0]) setWarehouseId(whRes.data[0].id)
+      if (catsRes.data) {
+        setCategoryList(catsRes.data)
+        const cats = ['Todos', ...Array.from(new Set(catsRes.data.map(c => c.name)))]
         setCategories(cats)
+      }
+
+      if (prodsRes.data) {
+        setProducts(prodsRes.data as any)
       }
     } catch (err) {
       console.error('Error loading products:', err)
@@ -106,6 +130,127 @@ export default function ProductsPage() {
     return p.inventory.reduce((acc, curr) => acc + Number(curr.quantity), 0)
   }
 
+  // Open Edit Product Modal
+  function handleOpenEdit(p: DBProduct) {
+    setEditingProduct(p)
+    setProductForm({
+      name: p.name,
+      sku: p.sku || '',
+      category_id: p.category_id || '',
+      cost_price: String(p.cost_price || 0),
+      sale_price: String(p.sale_price || 0),
+      stock: String(getStock(p)),
+      is_active: p.is_active
+    })
+    setShowEditModal(true)
+  }
+
+  // Save Product (Create or Update)
+  async function handleSaveProduct(e: React.FormEvent) {
+    e.preventDefault()
+    if (!tenantId || savingProduct) return
+    if (!productForm.name.trim()) return alert('El nombre es obligatorio')
+
+    setSavingProduct(true)
+    try {
+      const saleP = parseFloat(productForm.sale_price) || 0
+      const costP = parseFloat(productForm.cost_price) || 0
+      const stockQty = parseFloat(productForm.stock) || 0
+
+      if (editingProduct) {
+        // Update product
+        const { error: prodErr } = await supabase
+          .from('products')
+          .update({
+            name: productForm.name.trim(),
+            sku: productForm.sku.trim() || null,
+            category_id: productForm.category_id || null,
+            cost_price: costP,
+            sale_price: saleP,
+            is_active: productForm.is_active
+          })
+          .eq('id', editingProduct.id)
+
+        if (prodErr) throw prodErr
+
+        // Update inventory record if warehouse is present
+        if (warehouseId) {
+          const invRecord = editingProduct.inventory?.[0]
+          if (invRecord?.id) {
+            await supabase.from('inventory').update({ quantity: stockQty, avg_cost: costP }).eq('id', invRecord.id)
+          } else {
+            await supabase.from('inventory').insert([{ tenant_id: tenantId, product_id: editingProduct.id, warehouse_id: warehouseId, quantity: stockQty, avg_cost: costP }])
+          }
+        }
+
+        setShowEditModal(false)
+        await loadProducts()
+      }
+    } catch (err: any) {
+      alert('Error al guardar producto: ' + err.message)
+    } finally {
+      setSavingProduct(false)
+    }
+  }
+
+  // Delete Product
+  async function handleDeleteProduct(p: DBProduct) {
+    if (!confirm(`¿Eliminar definitivamente "${p.name}"?`)) return
+    try {
+      const { error } = await supabase.from('products').delete().eq('id', p.id)
+      if (error) throw error
+      setProducts(prev => prev.filter(item => item.id !== p.id))
+    } catch (err: any) {
+      alert('Error al eliminar: ' + err.message)
+    }
+  }
+
+  // Quick Stock Adjustment
+  function handleOpenQuickStock(p: DBProduct) {
+    setStockProduct(p)
+    setStockDelta('1')
+    setStockActionType('add')
+    setShowQuickStockModal(true)
+  }
+
+  async function handleApplyQuickStock(e: React.FormEvent) {
+    e.preventDefault()
+    if (!stockProduct || !tenantId || !warehouseId || savingStock) return
+    setSavingStock(true)
+
+    try {
+      const current = getStock(stockProduct)
+      const delta = parseFloat(stockDelta) || 0
+      let newQty = current
+
+      if (stockActionType === 'add') newQty = current + delta
+      else if (stockActionType === 'remove') newQty = Math.max(0, current - delta)
+      else if (stockActionType === 'set') newQty = delta
+
+      const invRecord = stockProduct.inventory?.[0]
+      if (invRecord?.id) {
+        const { error } = await supabase.from('inventory').update({ quantity: newQty }).eq('id', invRecord.id)
+        if (error) throw error
+      } else {
+        const { error } = await supabase.from('inventory').insert([{
+          tenant_id: tenantId,
+          product_id: stockProduct.id,
+          warehouse_id: warehouseId,
+          quantity: newQty,
+          avg_cost: stockProduct.cost_price || 0
+        }])
+        if (error) throw error
+      }
+
+      setShowQuickStockModal(false)
+      await loadProducts()
+    } catch (err: any) {
+      alert('Error al actualizar stock: ' + err.message)
+    } finally {
+      setSavingStock(false)
+    }
+  }
+
   // Handle CSV file upload & parsing
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -116,9 +261,7 @@ export default function ProductsPage() {
       const lines = text.split(/\r\n|\n/).filter(l => l.trim() !== '')
       if (lines.length <= 1) return
 
-      const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
       const rows: any[] = []
-
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',').map(c => c.trim())
         if (cols.length >= 2 && cols[0]) {
@@ -161,37 +304,34 @@ export default function ProductsPage() {
             tenant_id: tenantId,
             name: row.name,
             sku: row.sku,
-            barcode: row.sku,
             sale_price: row.sale_price,
             cost_price: row.cost_price,
-            min_stock: 3,
-            max_stock: 100,
+            product_type: 'single',
             is_active: true
           }])
-          .select()
+          .select('id')
           .single()
 
-        if (!pErr && newP && warehouseId) {
+        if (pErr) continue
+
+        if (warehouseId && newP) {
           await supabase.from('inventory').insert([{
             tenant_id: tenantId,
-            warehouse_id: warehouseId,
             product_id: newP.id,
+            warehouse_id: warehouseId,
             quantity: row.stock,
             avg_cost: row.cost_price
           }])
         }
       }
 
-      setImportSuccess(`¡Se importaron ${parsedRows.length} productos con éxito!`)
-      setParsedRows([])
-      await loadProducts()
+      setImportSuccess(`¡${parsedRows.length} productos importados correctamente!`)
       setTimeout(() => {
         setShowImportModal(false)
-        setImportSuccess('')
-      }, 1800)
+        loadProducts()
+      }, 1200)
     } catch (err: any) {
-      console.error('Error importing:', err)
-      alert('Error durante la importación: ' + err.message)
+      alert('Error en importación: ' + err.message)
     } finally {
       setImporting(false)
     }
@@ -200,7 +340,7 @@ export default function ProductsPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando productos...</div>
+        <div style={{ fontSize: '1rem', fontWeight: 600 }}>Cargando catálogo...</div>
       </div>
     )
   }
@@ -211,8 +351,8 @@ export default function ProductsPage() {
       {/* Header & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Catálogo de Productos</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>{products.length} productos registrados</p>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Catálogo de Productos</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2, margin: 0 }}>{products.length} productos registrados</p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => setShowTagsModal(true)} className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -263,14 +403,14 @@ export default function ProductsPage() {
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {categories.map(c => (
             <button key={c} className="btn-neu" onClick={() => setSelectedCategory(c)}
-              style={{ padding: '6px 12px', fontSize: '0.75rem', background: selectedCategory === c ? 'var(--accent-blue)' : 'var(--bg)', color: selectedCategory === c ? '#fff' : 'var(--text-secondary)', boxShadow: selectedCategory === c ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
+              style={{ padding: '6px 12px', fontSize: '0.75rem', background: selectedCategory === c ? 'var(--accent-blue)' : 'var(--bg)', color: selectedCategory === c ? '#fff' : 'var(--text-secondary)' }}>
               {c}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Products Responsive List */}
+      {/* Products Interactive List with Actions */}
       <div className="neu-card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {filtered.map(product => {
           const stock = getStock(product)
@@ -278,9 +418,26 @@ export default function ProductsPage() {
           const catName = product.categories?.name || 'General'
 
           return (
-            <div key={product.id} className="neu-flat" style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-              
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200, flex: 1 }}>
+            <div
+              key={product.id}
+              className="neu-flat"
+              style={{
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 10,
+                transition: 'background 0.15s ease'
+              }}
+            >
+              {/* Product Info (Clickable) */}
+              <div
+                onClick={() => handleOpenEdit(product)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200, flex: 1, cursor: 'pointer' }}
+                title="Haz clic para editar este producto"
+              >
                 <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-blue)', flexShrink: 0 }}>
                   <Package size={18} strokeWidth={2} />
                 </div>
@@ -294,13 +451,14 @@ export default function ProductsPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexShrink: 0 }}>
+              {/* Price, Margin & Stock */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0 }}>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>{formatCurrency(product.sale_price)}</div>
                   <div style={{ fontSize: '0.65rem', color: 'var(--accent-green)' }}>Margen {margin}%</div>
                 </div>
 
-                <div style={{ textAlign: 'right', minWidth: 60 }}>
+                <div style={{ textAlign: 'right', minWidth: 55 }}>
                   <div style={{ fontWeight: 800, fontSize: '0.85rem', color: stock <= 5 ? 'var(--accent-coral)' : 'var(--text-primary)' }}>
                     {stock} u
                   </div>
@@ -312,6 +470,38 @@ export default function ProductsPage() {
                     {product.is_active ? 'Activo' : 'Inactivo'}
                   </span>
                 </div>
+
+                {/* Explicit Action Buttons */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, borderLeft: '1px solid var(--border-color)', paddingLeft: 10 }}>
+                  <button
+                    onClick={() => handleOpenQuickStock(product)}
+                    className="btn-neu btn-ghost"
+                    style={{ padding: '6px 8px', fontSize: '0.72rem', color: 'var(--accent-emerald)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    title="Ajustar stock rápido"
+                  >
+                    <Boxes size={14} />
+                    <span>Stock</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleOpenEdit(product)}
+                    className="btn-neu btn-ghost"
+                    style={{ padding: '6px 8px', fontSize: '0.72rem', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    title="Editar producto"
+                  >
+                    <Edit2 size={14} />
+                    <span>Editar</span>
+                  </button>
+
+                  <button
+                    onClick={() => handleDeleteProduct(product)}
+                    className="btn-neu btn-ghost"
+                    style={{ padding: '6px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    title="Eliminar producto"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
               </div>
 
             </div>
@@ -319,94 +509,282 @@ export default function ProductsPage() {
         })}
 
         {filtered.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)' }}>
-            <Package size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
-            <div style={{ fontSize: '0.85rem' }}>No se encontraron productos</div>
+          <div style={{ textAlign: 'center', padding: '36px 16px', color: 'var(--text-muted)' }}>
+            <Package size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+            <div style={{ fontSize: '0.85rem' }}>No se encontraron productos en el catálogo</div>
           </div>
         )}
       </div>
 
-      {/* ── MODAL: BULK CSV IMPORT ── */}
-      {showImportModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 460, padding: 22 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                <FileSpreadsheet size={20} style={{ color: 'var(--accent-green)' }} />
-                <span>Importar Productos Masivamente</span>
+      {/* ── MODAL: EDIT PRODUCT ── */}
+      {showEditModal && editingProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 520, padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Edit2 size={18} color="var(--accent-blue)" />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Editar Producto
+                </h3>
               </div>
-              <button className="btn-neu btn-ghost" onClick={() => setShowImportModal(false)} style={{ padding: '2px 6px' }}>✕</button>
+              <button className="btn-neu btn-ghost" onClick={() => setShowEditModal(false)} style={{ padding: '4px 8px' }}>
+                <X size={16} />
+              </button>
             </div>
 
-            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 14 }}>
-              Carga tu catálogo completo desde un archivo Excel guardado como CSV.
+            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Nombre del Producto *</label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={productForm.name}
+                  onChange={e => setProductForm({ ...productForm, name: e.target.value })}
+                  required
+                  style={{ width: '100%', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Código SKU / Barras</label>
+                  <input
+                    type="text"
+                    className="input-neu"
+                    value={productForm.sku}
+                    onChange={e => setProductForm({ ...productForm, sku: e.target.value })}
+                    placeholder="770123..."
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Categoría</label>
+                  <select
+                    className="input-neu"
+                    value={productForm.category_id}
+                    onChange={e => setProductForm({ ...productForm, category_id: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.82rem', background: 'var(--bg-deep)', cursor: 'pointer' }}
+                  >
+                    <option value="">General</option>
+                    {categoryList.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, borderTop: '1px solid var(--border-color)', paddingTop: 10 }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Costo Compra ($)</label>
+                  <input
+                    type="number"
+                    className="input-neu"
+                    value={productForm.cost_price}
+                    onChange={e => setProductForm({ ...productForm, cost_price: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Venta ($) *</label>
+                  <input
+                    type="number"
+                    className="input-neu"
+                    value={productForm.sale_price}
+                    onChange={e => setProductForm({ ...productForm, sale_price: e.target.value })}
+                    required
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Stock Actual (Uds)</label>
+                  <input
+                    type="number"
+                    className="input-neu"
+                    value={productForm.stock}
+                    onChange={e => setProductForm({ ...productForm, stock: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                <input
+                  type="checkbox"
+                  id="prod_active"
+                  checked={productForm.is_active}
+                  onChange={e => setProductForm({ ...productForm, is_active: e.target.checked })}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <label htmlFor="prod_active" style={{ fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                  Producto activo para venta en POS
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
+                <button type="button" className="btn-neu btn-ghost" onClick={() => setShowEditModal(false)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={savingProduct} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Check size={15} strokeWidth={2.5} />
+                  <span>{savingProduct ? 'Guardando...' : 'Actualizar Producto'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: QUICK STOCK ADJUSTMENT ── */}
+      {showQuickStockModal && stockProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 420, padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Boxes size={18} color="var(--accent-emerald)" />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Ajustar Stock
+                </h3>
+              </div>
+              <button className="btn-neu btn-ghost" onClick={() => setShowQuickStockModal(false)} style={{ padding: '4px 8px' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+              Producto: <strong>{stockProduct.name}</strong> (Stock actual: <strong>{getStock(stockProduct)} uds</strong>)
             </p>
 
-            <button onClick={downloadCsvTemplate} className="btn-neu" style={{ width: '100%', padding: '9px', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14 }}>
-              <Download size={14} />
-              <span>Descargar Plantilla Excel/CSV de Ejemplo</span>
-            </button>
+            <form onSubmit={handleApplyQuickStock} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Tipo de Operación</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6 }}>
+                  {[
+                    { id: 'add', label: '+ Añadir' },
+                    { id: 'remove', label: '- Restar / Merma' },
+                    { id: 'set', label: '= Fijar Exacto' }
+                  ].map(op => (
+                    <button
+                      key={op.id}
+                      type="button"
+                      onClick={() => setStockActionType(op.id as any)}
+                      className={`btn-neu ${stockActionType === op.id ? 'btn-primary' : 'btn-ghost'}`}
+                      style={{ padding: '6px 8px', fontSize: '0.75rem' }}
+                    >
+                      {op.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-            <div style={{ border: '2px dashed var(--border-color)', borderRadius: 'var(--radius-md)', padding: 16, textAlign: 'center', marginBottom: 14, background: 'var(--bg-deep)' }}>
-              <input type="file" accept=".csv, .txt" onChange={handleCsvFile} style={{ display: 'block', margin: '0 auto', fontSize: '0.8rem' }} />
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Cantidad de Unidades</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  className="input-neu"
+                  value={stockDelta}
+                  onChange={e => setStockDelta(e.target.value)}
+                  required
+                  style={{ width: '100%', fontSize: '0.9rem', fontWeight: 700 }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
+                <button type="button" className="btn-neu btn-ghost" onClick={() => setShowQuickStockModal(false)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                  Cancelar
+                </button>
+                <button type="submit" disabled={savingStock} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.8rem' }}>
+                  {savingStock ? 'Guardando...' : 'Aplicar Ajuste'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: IMPORT EXCEL / CSV ── */}
+      {showImportModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 540, padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Upload size={18} color="var(--accent-blue)" />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Importación Masiva de Productos
+                </h3>
+              </div>
+              <button className="btn-neu btn-ghost" onClick={() => setShowImportModal(false)} style={{ padding: '4px 8px' }}>
+                <X size={16} />
+              </button>
             </div>
 
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
+              Carga tu catálogo completo desde un archivo CSV o Excel exportado. Descarga la plantilla estándar para asegurar las columnas correctas:
+            </p>
+
+            <button onClick={downloadCsvTemplate} className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.78rem', display: 'inline-flex', alignItems: 'center', gap: 6, margin: '8px 0 14px' }}>
+              <Download size={14} />
+              <span>Descargar Plantilla CSV</span>
+            </button>
+
+            <input type="file" accept=".csv" onChange={handleCsvFile} style={{ display: 'block', marginBottom: 12, fontSize: '0.8rem' }} />
+
             {parsedRows.length > 0 && (
-              <div style={{ background: 'var(--accent-blue-lt)', padding: 10, borderRadius: 8, fontSize: '0.78rem', color: 'var(--accent-blue)', fontWeight: 700, marginBottom: 14 }}>
-                ✓ {parsedRows.length} productos detectados listos para importar
+              <div className="neu-flat" style={{ padding: '10px 12px', borderRadius: 8, fontSize: '0.78rem', marginBottom: 14 }}>
+                <strong>{parsedRows.length} productos detectados listos para importar.</strong>
               </div>
             )}
 
             {importSuccess && (
-              <div style={{ background: 'var(--accent-green-lt)', color: 'var(--accent-green)', padding: 10, borderRadius: 8, fontSize: '0.8rem', fontWeight: 800, marginBottom: 14 }}>
+              <div style={{ padding: '10px 12px', borderRadius: 8, background: 'var(--accent-green-lt)', color: 'var(--accent-green)', fontWeight: 700, fontSize: '0.8rem', marginBottom: 14 }}>
                 {importSuccess}
               </div>
             )}
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn-neu" onClick={() => setShowImportModal(false)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
-              <button className="btn-neu btn-primary" disabled={parsedRows.length === 0 || importing} onClick={executeBulkImport} style={{ flex: 1, padding: 10 }}>
-                {importing ? 'Importando...' : `Importar (${parsedRows.length})`}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+              <button className="btn-neu btn-ghost" onClick={() => setShowImportModal(false)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                Cerrar
               </button>
+              {parsedRows.length > 0 && (
+                <button className="btn-neu btn-primary" onClick={executeBulkImport} disabled={importing} style={{ padding: '8px 20px', fontSize: '0.8rem' }}>
+                  {importing ? 'Importando...' : 'Iniciar Importación'}
+                </button>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* ── MODAL: BARCODE PRICE TAGS PRINTABLE ── */}
+      {/* ── MODAL: PRINT TAGS ── */}
       {showTagsModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 520, maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, flexShrink: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)' }}>
-                <Tag size={18} style={{ color: 'var(--accent-blue)' }} />
-                <span>Generador de Etiquetas de Precios</span>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 500, padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Printer size={18} color="var(--accent-blue)" />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  Impresión de Etiquetas de Gondola
+                </h3>
               </div>
-              <button className="btn-neu btn-ghost" onClick={() => setShowTagsModal(false)} style={{ padding: '2px 6px' }}>✕</button>
+              <button className="btn-neu btn-ghost" onClick={() => setShowTagsModal(false)} style={{ padding: '4px 8px' }}>
+                <X size={16} />
+              </button>
             </div>
 
-            {/* Printable Sticker Sheet */}
-            <div id="price-tags-sheet" style={{ flex: 1, overflowY: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, padding: 10, background: '#fff', borderRadius: 8, border: '1px solid #E2E8F0' }}>
-              {products.slice(0, 16).map(p => (
-                <div key={p.id} style={{ border: '1px dashed #94A3B8', padding: 8, borderRadius: 6, textAlign: 'center', background: '#fff' }}>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {p.name}
-                  </div>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#0F172A', margin: '4px 0' }}>
-                    {formatCurrency(p.sale_price)}
-                  </div>
-                  <div style={{ fontSize: '0.6rem', color: '#64748B', fontFamily: 'monospace' }}>
-                    {p.sku || 'SIN-CODIGO'}
-                  </div>
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=45x45&data=${p.sku || p.name}`} alt="QR" style={{ width: 35, height: 35, margin: '4px auto 0' }} />
-                </div>
-              ))}
-            </div>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+              Se generará una hoja lista para imprimir con el nombre, código de barras y precio de venta de los {filtered.length} productos filtrados.
+            </p>
 
-            <div style={{ display: 'flex', gap: 8, marginTop: 14, flexShrink: 0 }}>
-              <button className="btn-neu" onClick={() => setShowTagsModal(false)} style={{ flex: 1, padding: 10 }}>Cerrar</button>
-              <button className="btn-neu btn-primary" onClick={() => window.print()} style={{ flex: 1, padding: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <Printer size={15} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 16 }}>
+              <button className="btn-neu btn-ghost" onClick={() => setShowTagsModal(false)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
+                Cancelar
+              </button>
+              <button className="btn-neu btn-primary" onClick={() => window.print()} style={{ padding: '8px 20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Printer size={14} />
                 <span>Imprimir Etiquetas</span>
               </button>
             </div>

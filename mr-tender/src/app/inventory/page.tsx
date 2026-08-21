@@ -14,10 +14,12 @@ import {
   Building2,
   Boxes,
   CheckCircle2,
-  FileSpreadsheet,
   Filter,
   RefreshCw,
-  Download
+  Download,
+  History,
+  Edit2,
+  FileSpreadsheet
 } from 'lucide-react'
 
 interface DBInventory {
@@ -304,12 +306,45 @@ export default function InventoryPage() {
       if (data && data.success === false) throw new Error(data.error)
       setShowTrfModal(false)
       loadInventory()
-      alert('Transferencia entre almacenes completada')
     } catch (err: any) {
       alert(err.message || 'Error al procesar la transferencia')
     } finally {
       setSubmittingAction(false)
     }
+  }
+
+  function openAdjustmentForProduct(item: any) {
+    const pId = item.products?.id || (productsList.find(p => p.name === item.products?.name)?.id) || ''
+    const whId = item.warehouses?.id || warehouses[0]?.id || ''
+    setAdjForm({
+      warehouse_id: whId,
+      product_id: pId,
+      adjustment_type: 'decrease',
+      reason: 'Merma / Deterioro',
+      notes: '',
+      quantity: '1'
+    })
+    setShowAdjModal(true)
+  }
+
+  function openTransferForProduct(item: any) {
+    const pId = item.products?.id || (productsList.find(p => p.name === item.products?.name)?.id) || ''
+    const whId = item.warehouses?.id || warehouses[0]?.id || ''
+    const destWh = warehouses.find(w => w.id !== whId)?.id || ''
+    setTrfForm({
+      from_warehouse_id: whId,
+      to_warehouse_id: destWh,
+      product_id: pId,
+      quantity: '1',
+      notes: ''
+    })
+    setShowTrfModal(true)
+  }
+
+  function viewKardexForProduct(item: any) {
+    const pName = item.products?.name || ''
+    setKardexSearch(pName)
+    setTab('movements')
   }
 
   if (loading) {
@@ -420,14 +455,49 @@ export default function InventoryPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--bg-deep)', paddingTop: 6, fontSize: '0.75rem' }}>
-                    <div style={{ color: 'var(--text-secondary)' }}>
-                      Stock: <strong style={{ color: isOut ? 'var(--accent-coral)' : isLow ? 'var(--accent-amber)' : 'var(--text-primary)' }}>{item.quantity} uds</strong>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginLeft: 4 }}>(Mín: {min})</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 8, marginTop: 4, flexWrap: 'wrap', gap: 8, fontSize: '0.75rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <div style={{ color: 'var(--text-secondary)' }}>
+                        Stock: <strong style={{ color: isOut ? 'var(--accent-coral)' : isLow ? 'var(--accent-amber)' : 'var(--text-primary)' }}>{item.quantity} uds</strong>
+                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginLeft: 4 }}>(Mín: {min})</span>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ color: 'var(--text-muted)', marginRight: 4 }}>Total:</span>
+                        <strong style={{ color: 'var(--accent-blue)', fontSize: '0.82rem' }}>{formatCurrency(Number(item.quantity) * Number(item.avg_cost))}</strong>
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <span style={{ color: 'var(--text-muted)', marginRight: 4 }}>Total:</span>
-                      <strong style={{ color: 'var(--accent-blue)', fontSize: '0.82rem' }}>{formatCurrency(Number(item.quantity) * Number(item.avg_cost))}</strong>
+
+                    {/* Quick Action Buttons for this item */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <button
+                        onClick={() => openAdjustmentForProduct(item)}
+                        className="btn-neu btn-ghost"
+                        style={{ padding: '5px 9px', fontSize: '0.72rem', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 4 }}
+                        title="Registrar merma o ajuste para este producto"
+                      >
+                        <Wrench size={13} />
+                        <span>Merma / Ajuste</span>
+                      </button>
+
+                      <button
+                        onClick={() => openTransferForProduct(item)}
+                        className="btn-neu btn-ghost"
+                        style={{ padding: '5px 9px', fontSize: '0.72rem', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4 }}
+                        title="Transferir a otro almacén"
+                      >
+                        <ArrowLeftRight size={13} />
+                        <span>Transferir</span>
+                      </button>
+
+                      <button
+                        onClick={() => viewKardexForProduct(item)}
+                        className="btn-neu btn-ghost"
+                        style={{ padding: '5px 9px', fontSize: '0.72rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 4 }}
+                        title="Ver historial de movimientos en Kardex"
+                      >
+                        <History size={13} />
+                        <span>Kardex</span>
+                      </button>
                     </div>
                   </div>
                 </div>
