@@ -11,7 +11,7 @@ const COPILOT_TOOLS = [
     functionDeclarations: [
       {
         name: 'get_sales_overview',
-        description: 'Consulta métricas y resumen de ventas del negocio para el día de hoy, esta semana o este mes.',
+        description: 'Consulta métricas y resumen de ventas del negocio para el día de hoy, esta semana o este mes con el desglose exacto por medios de pago (Efectivo, Nequi/Transferencia, Tarjeta, Fiao).',
         parameters: {
           type: 'OBJECT',
           properties: {
@@ -26,7 +26,7 @@ const COPILOT_TOOLS = [
       },
       {
         name: 'query_inventory',
-        description: 'Busca existencias de productos en bodega, alertas de bajo stock o productos/medicamentos próximos a vencer.',
+        description: 'Busca existencias de productos en bodega, alertas de bajo stock o medicamentos en droguería.',
         parameters: {
           type: 'OBJECT',
           properties: {
@@ -68,7 +68,7 @@ const COPILOT_TOOLS = [
         parameters: {
           type: 'OBJECT',
           properties: {
-            sale_number: { type: 'STRING', description: 'Número o folio de la venta (ej: POS-001 o 1001).' }
+            sale_number: { type: 'STRING', description: 'Número o folio de la venta (ej: POS-001 o V-20260821-b02875).' }
           },
           required: ['sale_number']
         }
@@ -96,7 +96,7 @@ const COPILOT_TOOLS = [
           properties: {
             topic: {
               type: 'STRING',
-              description: 'Tema o duda sobre el ERP (ej: pos_sale, cash_closing, refunds, pharmacy_lots, customer_credit, tax_calculation).'
+              description: 'Tema o duda sobre el ERP (ej: pos_sale, cash_closing, refunds, pharmacy_fefo, customer_credit, tax_calculation).'
             }
           },
           required: ['topic']
@@ -144,18 +144,18 @@ export async function POST(req: NextRequest) {
     const allowedPerms: string[] = Array.isArray(permissions) ? permissions : (isAdmin ? ['*'] : [])
 
     const systemInstruction = `
-Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas y operaciones de Mr. Tender ERP para tiendas, minimercados y droguerías en Colombia.
+Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas y operaciones de Mr. Tender ERP para comercios y droguerías en Colombia.
 
 👤 USUARIO ACTUAL:
 - Nombre: ${user_name || 'Usuario'}
 - Rol en la tienda: ${user_role || 'Empleado'} (${isAdmin ? 'Administrador / Dueño con acceso total' : 'Empleado con permisos restringidos'})
 - Permisos activos: ${JSON.stringify(allowedPerms)}
 
-🛡️ REGLAS DE SEGURIDAD Y PRIVACIDAD (INQUEBRANTABLES):
-1. Si el usuario es 'Cajero' o 'Empleado' y solicita información de utilidades financieras, márgenes de ganancia, costos de compra o salarios de compañeros (permisos 'reports.financial' o 'products.view_costs'), DEBES DENEGAR CORTÉSMENTE la respuesta indicando que su rol no tiene los permisos necesarios.
-2. Si el usuario es Administrador y pide explicar conceptos difíciles de contabilidad colombiana, impuestos (DIAN, IVA, Retefuente, régimen simple), método FEFO o cuadres de caja, explícaselo con extrema claridad, profesionalismo y ejemplos prácticos con moneda COP ($).
-3. Utiliza formato Markdown elegante (tablas, negritas, viñetas cortas y emojis comerciales).
-4. Cuando uses herramientas (tools), entrega respuestas directas y sintetizadas con cifras claras.
+🛡️ REGLAS DE SEGURIDAD Y PRIVACIDAD:
+1. Si el usuario es 'Cajero' o 'Empleado' y solicita información confidencial de utilidades globales, márgenes financieros o costos de compra sin tener el permiso ('reports.financial' o 'products.view_costs'), DEBES DENEGAR CORTÉSMENTE la respuesta indicando que su rol no tiene los permisos requeridos.
+2. Si el usuario es Administrador y pide información de ventas, inventario o reportes, dale la respuesta de forma clara, directa, desglosada y profesional en Pesos Colombianos (COP $).
+3. Utiliza formato Markdown elegante (viñetas cortas, cifras en negrita con formato de moneda $).
+4. Cuando consultes 'get_sales_overview', muestra siempre el Total Vendido, el número de pedidos y el desglose de cada medio de pago (Efectivo, Nequi / Transferencia, Tarjetas, Fiao).
 `
 
     // Build chat contents for Gemini API
@@ -210,7 +210,6 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
     const functionCallPart = modelParts.find((p: any) => p.functionCall)
 
     if (!functionCallPart) {
-      // Direct text response
       const text = modelParts.map((p: any) => p.text || '').join('\n')
       return NextResponse.json({ reply: text })
     }
@@ -226,35 +225,75 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
       if (!isAdmin && !allowedPerms.includes('reports.sales') && !allowedPerms.includes('*')) {
         toolResult = { error: 'Acceso denegado. No tienes permisos para ver reportes de ventas.' }
       } else {
-        const todayStr = new Date().toISOString().split('T')[0]
-        let startDate = todayStr + 'T00:00:00'
+        // Calculate start date in Colombian local timezone (UTC-5)
+        const now = new Date()
+        const bogotaDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(now) // 'YYYY-MM-DD'
+        let startDate = `${bogotaDateStr}T00:00:00-05:00`
+        
         if (funcArgs.period === 'week') {
-          startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          startDate = weekAgo.toISOString()
         } else if (funcArgs.period === 'month') {
-          startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+          startDate = `${bogotaDateStr.substring(0, 7)}-01T00:00:00-05:00`
         }
 
-        const { data: sales, error } = await supabase
+        // Fetch sales
+        const { data: sales, error: salesErr } = await supabase
           .from('sales')
-          .select('id, number, total, payment_method, created_at, sale_payments(payment_method, amount)')
+          .select('id, number, total, subtotal, tax_amount, created_at')
           .eq('tenant_id', tenant_id)
           .gte('created_at', startDate)
 
-        if (error) {
-          toolResult = { error: error.message }
+        if (salesErr) {
+          toolResult = { error: salesErr.message }
         } else {
           const totalSales = sales?.reduce((sum, s) => sum + Number(s.total || 0), 0) || 0
-          const cashTotal = sales?.filter(s => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0) || 0
-          const transferTotal = sales?.filter(s => s.payment_method === 'transfer').reduce((sum, s) => sum + Number(s.total || 0), 0) || 0
-          const fiaoTotal = sales?.filter(s => s.payment_method === 'fiao').reduce((sum, s) => sum + Number(s.total || 0), 0) || 0
+          const saleIds = sales?.map(s => s.id) || []
+
+          let cashTotal = 0
+          let transferTotal = 0
+          let cardTotal = 0
+          let fiaoTotal = 0
+
+          if (saleIds.length > 0) {
+            const { data: payments } = await supabase
+              .from('sale_payments')
+              .select('sale_id, payment_method, amount')
+              .in('sale_id', saleIds)
+
+            if (payments && payments.length > 0) {
+              payments.forEach(p => {
+                const amt = Number(p.amount || 0)
+                const method = (p.payment_method || '').toLowerCase()
+
+                if (method === 'cash' || method.includes('efectivo')) {
+                  cashTotal += amt
+                } else if (method === 'transfer' || method.includes('nequi') || method.includes('daviplata') || method.includes('bancolombia')) {
+                  transferTotal += amt
+                } else if (method === 'card' || method.includes('tarjeta') || method.includes('debito') || method.includes('credito')) {
+                  cardTotal += amt
+                } else if (method === 'fiao' || method.includes('credit')) {
+                  fiaoTotal += amt
+                } else {
+                  cashTotal += amt
+                }
+              })
+            } else {
+              // If no explicit sale_payments recorded, default gross to cash
+              cashTotal = totalSales
+            }
+          }
 
           toolResult = {
-            count: sales?.length || 0,
-            totalGross: totalSales,
-            cash: cashTotal,
-            transfer_nequi: transferTotal,
-            fiao_credit: fiaoTotal,
-            period: funcArgs.period
+            period: funcArgs.period,
+            sales_count: sales?.length || 0,
+            total_sales_cop: totalSales,
+            payment_methods_breakdown: {
+              efectivo_cash: cashTotal,
+              nequi_transferencia: transferTotal,
+              tarjetas_card: cardTotal,
+              fiao_credito: fiaoTotal
+            }
           }
         }
       }
@@ -290,7 +329,24 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
           filtered = filtered.filter(p => p.stock <= 5)
         }
 
-        toolResult = { products: filtered.slice(0, 10), totalFound: filtered.length }
+        // Also check pharmacy medicines if searched
+        let pharmMeds: any[] = []
+        if (funcArgs.query) {
+          const { data: pMeds } = await supabase
+            .from('pharmacy_medicines')
+            .select('trade_name, generic_name, concentration, unit_price, cost_price')
+            .eq('tenant_id', tenant_id)
+            .ilike('trade_name', `%${funcArgs.query}%`)
+            .limit(5)
+
+          pharmMeds = pMeds || []
+        }
+
+        toolResult = {
+          products: filtered.slice(0, 10),
+          pharmacyMedicines: pharmMeds,
+          totalFound: filtered.length + pharmMeds.length
+        }
       }
     } else if (funcName === 'query_customers_debt') {
       let queryBuilder = supabase
@@ -336,7 +392,7 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
             sale_price: funcArgs.price,
             cost_price: funcArgs.cost || (funcArgs.price * 0.7),
             sku,
-            unit_type: 'unit',
+            product_type: 'single',
             is_active: true
           }])
           .select()
@@ -344,7 +400,6 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
         if (prodErr) {
           toolResult = { error: prodErr.message }
         } else {
-          // Add initial inventory
           const prodId = newProd[0].id
           const { data: wh } = await supabase.from('warehouses').select('id').eq('tenant_id', tenant_id).limit(1)
           if (wh?.[0]?.id) {
@@ -371,12 +426,7 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
     } else if (funcName === 'generate_invoice_pdf') {
       const { data: saleData } = await supabase
         .from('sales')
-        .select(`
-          id, number, total, subtotal, tax_amount, payment_method, created_at,
-          customers (full_name, phone),
-          sale_items (product_name, quantity, unit_price, total),
-          tenant_settings (business_name, phone)
-        `)
+        .select('id, number, total, subtotal, tax_amount, customer_id, created_at')
         .eq('tenant_id', tenant_id)
         .or(`number.eq.${funcArgs.sale_number},id.eq.${funcArgs.sale_number}`)
         .limit(1)
@@ -384,9 +434,17 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
       if (!saleData || saleData.length === 0) {
         toolResult = { error: `No se encontró ninguna factura con folio ${funcArgs.sale_number}` }
       } else {
-        const s = saleData[0] as any
-        const tenantSetting = Array.isArray(s.tenant_settings) ? s.tenant_settings[0] : s.tenant_settings
-        const customer = Array.isArray(s.customers) ? s.customers[0] : s.customers
+        const s = saleData[0]
+        const [custRes, itemsRes, payRes, setRes] = await Promise.all([
+          s.customer_id ? supabase.from('customers').select('full_name, phone').eq('id', s.customer_id).limit(1) : Promise.resolve({ data: null }),
+          supabase.from('sale_items').select('product_name, quantity, unit_price, total').eq('sale_id', s.id),
+          supabase.from('sale_payments').select('payment_method, amount').eq('sale_id', s.id),
+          supabase.from('tenant_settings').select('business_name, phone').eq('tenant_id', tenant_id).limit(1)
+        ])
+
+        const customer = custRes.data?.[0]
+        const tenantSetting = setRes.data?.[0]
+        const payment = payRes.data?.[0]
 
         generatedPdfData = {
           type: 'invoice',
@@ -396,7 +454,7 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
             saleNumber: s.number,
             date: new Date(s.created_at).toLocaleString('es-CO'),
             customerName: customer?.full_name || 'Público General',
-            items: s.sale_items?.map((it: any) => ({
+            items: itemsRes.data?.map((it: any) => ({
               name: it.product_name,
               quantity: it.quantity,
               unitPrice: it.unit_price,
@@ -405,7 +463,7 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
             subtotal: s.subtotal || s.total,
             taxAmount: s.tax_amount || 0,
             total: s.total,
-            paymentMethod: s.payment_method === 'fiao' ? 'Fiao (Crédito)' : s.payment_method === 'cash' ? 'Efectivo' : 'Nequi / Transferencia'
+            paymentMethod: payment?.payment_method === 'fiao' ? 'Fiao (Crédito)' : payment?.payment_method === 'transfer' ? 'Nequi / Transferencia' : 'Efectivo'
           }
         }
 
@@ -413,7 +471,7 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
           success: true,
           saleNumber: s.number,
           total: s.total,
-          itemCount: s.sale_items?.length || 0,
+          itemCount: itemsRes.data?.length || 0,
           customer: customer?.full_name || 'Público General'
         }
       }
@@ -421,16 +479,27 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
       if (!isAdmin && !allowedPerms.includes('reports.financial') && !allowedPerms.includes('*')) {
         toolResult = { error: 'Acceso denegado. No tienes permisos para exportar el Estado de Resultados.' }
       } else {
-        const todayStr = new Date().toISOString().split('T')[0]
+        const now = new Date()
+        const bogotaDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(now)
         const startDate = funcArgs.period === 'today'
-          ? todayStr + 'T00:00:00'
-          : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+          ? `${bogotaDateStr}T00:00:00-05:00`
+          : `${bogotaDateStr.substring(0, 7)}-01T00:00:00-05:00`
 
         const { data: sales } = await supabase
           .from('sales')
-          .select('total, discount_amount, sale_items (cost_price, quantity, total)')
+          .select('id, total, discount_amount')
           .eq('tenant_id', tenant_id)
           .gte('created_at', startDate)
+
+        const saleIds = sales?.map(s => s.id) || []
+        let saleItems: any[] = []
+        if (saleIds.length > 0) {
+          const { data: items } = await supabase
+            .from('sale_items')
+            .select('cost_price, quantity, total')
+            .in('sale_id', saleIds)
+          saleItems = items || []
+        }
 
         const { data: tSettings } = await supabase.from('tenant_settings').select('business_name').eq('tenant_id', tenant_id).limit(1)
 
@@ -441,9 +510,10 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
         sales?.forEach(s => {
           grossSales += Number(s.total || 0)
           discounts += Number(s.discount_amount || 0)
-          s.sale_items?.forEach((it: any) => {
-            costOfGoods += (Number(it.cost_price || 0) * Number(it.quantity || 1))
-          })
+        })
+
+        saleItems.forEach(it => {
+          costOfGoods += (Number(it.cost_price || 0) * Number(it.quantity || 1))
         })
 
         const netSales = grossSales - discounts
