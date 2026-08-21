@@ -9,15 +9,11 @@ import {
   X,
   Send,
   Mic,
-  MicOff,
   FileText,
   Download,
   RotateCcw,
   User,
-  ShieldCheck,
-  ChevronRight,
-  Maximize2,
-  Minimize2
+  ChevronRight
 } from 'lucide-react'
 
 interface ChatMessage {
@@ -35,6 +31,133 @@ const QUICK_SUGGESTIONS = [
   '📄 Generar PDF del estado de resultados de hoy',
   '💡 ¿Cómo hago un arqueo y cierre de caja?'
 ]
+
+// ── RICH MARKDOWN PARSER FOR CRISP ELEGANT COPILOT MESSAGES ──
+function renderInlineFormatting(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = []
+  let remaining = text
+  let key = 0
+
+  while (remaining.length > 0) {
+    const boldMatch = remaining.match(/\*\*(.+?)\*\*/)
+    const codeMatch = remaining.match(/`(.+?)`/)
+    const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/)
+
+    let earliestType: 'bold' | 'code' | 'italic' | null = null
+    let earliestIndex = remaining.length
+
+    if (boldMatch && boldMatch.index !== undefined && boldMatch.index < earliestIndex) {
+      earliestIndex = boldMatch.index
+      earliestType = 'bold'
+    }
+    if (codeMatch && codeMatch.index !== undefined && codeMatch.index < earliestIndex) {
+      earliestIndex = codeMatch.index
+      earliestType = 'code'
+    }
+    if (italicMatch && italicMatch.index !== undefined && italicMatch.index < earliestIndex) {
+      earliestIndex = italicMatch.index
+      earliestType = 'italic'
+    }
+
+    if (!earliestType) {
+      parts.push(remaining)
+      break
+    }
+
+    if (earliestIndex > 0) {
+      parts.push(remaining.substring(0, earliestIndex))
+    }
+
+    if (earliestType === 'bold' && boldMatch) {
+      parts.push(
+        <strong key={key++} style={{ fontWeight: 800, color: '#F1F5F9' }}>
+          {boldMatch[1]}
+        </strong>
+      )
+      remaining = remaining.substring(earliestIndex + boldMatch[0].length)
+    } else if (earliestType === 'code' && codeMatch) {
+      parts.push(
+        <code
+          key={key++}
+          style={{
+            background: 'rgba(255,255,255,0.15)',
+            padding: '2px 5px',
+            borderRadius: 4,
+            fontSize: '0.74rem',
+            fontFamily: 'monospace',
+            color: '#93C5FD'
+          }}
+        >
+          {codeMatch[1]}
+        </code>
+      )
+      remaining = remaining.substring(earliestIndex + codeMatch[0].length)
+    } else if (earliestType === 'italic' && italicMatch) {
+      parts.push(
+        <em key={key++} style={{ fontStyle: 'italic', color: '#CBD5E1' }}>
+          {italicMatch[1]}
+        </em>
+      )
+      remaining = remaining.substring(earliestIndex + italicMatch[0].length)
+    }
+  }
+
+  return parts
+}
+
+function FormattedMessage({ text, role }: { text: string; role: 'user' | 'assistant' }) {
+  if (role === 'user') return <div>{text}</div>
+
+  const lines = text.split('\n')
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+      {lines.map((line, idx) => {
+        let trimmed = line.trim()
+        if (!trimmed) return <div key={idx} style={{ height: 2 }} />
+
+        // Headings: ###, ##, #
+        if (trimmed.startsWith('### ') || trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+          const headerText = trimmed.replace(/^#+\s*/, '')
+          return (
+            <div key={idx} style={{ fontWeight: 800, fontSize: '0.86rem', color: '#93C5FD', marginTop: 4, marginBottom: 2 }}>
+              {renderInlineFormatting(headerText)}
+            </div>
+          )
+        }
+
+        // Bullet point: * or -
+        if (trimmed.startsWith('* ') || trimmed.startsWith('- ')) {
+          const bulletContent = trimmed.substring(2)
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, paddingLeft: 2 }}>
+              <span style={{ color: '#60A5FA', fontSize: '0.85rem', lineHeight: '1.2' }}>•</span>
+              <div style={{ flex: 1, lineHeight: 1.45 }}>{renderInlineFormatting(bulletContent)}</div>
+            </div>
+          )
+        }
+
+        // Numbered list: 1. 2.
+        const numMatch = trimmed.match(/^(\d+)\.\s+(.*)/)
+        if (numMatch) {
+          return (
+            <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, paddingLeft: 2 }}>
+              <span style={{ color: '#93C5FD', fontWeight: 700, fontSize: '0.75rem' }}>{numMatch[1]}.</span>
+              <div style={{ flex: 1, lineHeight: 1.45 }}>{renderInlineFormatting(numMatch[2])}</div>
+            </div>
+          )
+        }
+
+        // Standard Paragraph line
+        return (
+          <div key={idx} style={{ lineHeight: 1.45 }}>
+            {renderInlineFormatting(trimmed)}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 export default function CopilotWidget() {
   const [isOpen, setIsOpen] = useState(false)
@@ -143,32 +266,22 @@ export default function CopilotWidget() {
 
       const data = await res.json()
 
-      const aiMsg: ChatMessage = {
-        id: 'msg-ai-' + Date.now(),
+      const assistantMsg: ChatMessage = {
+        id: 'msg-' + Date.now() + '-reply',
         role: 'assistant',
-        content: data.reply || 'Lo siento, no pude procesar la respuesta.',
+        content: data.reply || 'Hecho.',
         timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }),
         generatedPdf: data.generatedPdf
       }
 
-      setMessages(prev => [...prev, aiMsg])
-
-      // Auto trigger PDF download if generated
-      if (data.generatedPdf) {
-        if (data.generatedPdf.type === 'invoice') {
-          generateInvoicePdf(data.generatedPdf.data)
-        } else if (data.generatedPdf.type === 'pnl') {
-          generatePnlPdf(data.generatedPdf.data)
-        }
-      }
-    } catch (err) {
-      console.error('Copilot error:', err)
+      setMessages(prev => [...prev, assistantMsg])
+    } catch (err: any) {
       setMessages(prev => [
         ...prev,
         {
-          id: 'err-' + Date.now(),
+          id: 'msg-' + Date.now() + '-err',
           role: 'assistant',
-          content: '⚠️ Ocurrió un error al consultar con el asistente. Intenta de nuevo.',
+          content: '⚠️ Ocurrió un error al conectar con el asistente. Verifica tu conexión e intenta de nuevo.',
           timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
         }
       ])
@@ -177,21 +290,22 @@ export default function CopilotWidget() {
     }
   }
 
-  function handleDownloadPdf(pdf: any) {
-    if (!pdf) return
-    if (pdf.type === 'invoice') {
-      generateInvoicePdf(pdf.data)
-    } else if (pdf.type === 'pnl') {
-      generatePnlPdf(pdf.data)
+  function handleDownloadPdf(pdfMeta: any) {
+    if (!pdfMeta) return
+    if (pdfMeta.type === 'invoice') {
+      generateInvoicePdf(pdfMeta.data)
+    } else if (pdfMeta.type === 'pnl') {
+      generatePnlPdf(pdfMeta.data)
     }
   }
 
   return (
     <>
-      {/* ── OMNIPRESENT FLOATING TRIGGER BUTTON ── */}
+      {/* ── FLOATING TRIGGER PILL ── */}
       <button
-        onClick={() => setIsOpen(prev => !prev)}
-        title="Tender Copilot AI - Asistente Inteligente"
+        onClick={() => setIsOpen(!isOpen)}
+        className="copilot-trigger-btn animate-scale-in"
+        title="Abrir Asistente Copilot AI"
         style={{
           position: 'fixed',
           bottom: 24,
@@ -301,32 +415,32 @@ export default function CopilotWidget() {
             </div>
           </div>
 
-          {/* Messages Area */}
+          {/* Messages Body */}
           <div style={{
             flex: 1,
             overflowY: 'auto',
-            padding: '16px',
+            padding: 16,
             display: 'flex',
             flexDirection: 'column',
             gap: 12
           }}>
             
-            {/* Initial Welcome Message */}
+            {/* Welcome message if empty */}
             {messages.length === 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
                 <div style={{
+                  padding: 14,
+                  borderRadius: 14,
                   background: 'rgba(30, 41, 59, 0.6)',
                   border: '1px solid rgba(255, 255, 255, 0.08)',
-                  borderRadius: 14,
-                  padding: '14px',
-                  color: '#E2E8F0'
+                  color: '#CBD5E1',
+                  fontSize: '0.8rem',
+                  lineHeight: 1.45
                 }}>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#F8FAFC', marginBottom: 4 }}>
-                    👋 ¡Hola, {userMetadata?.full_name}!
+                  <div style={{ fontWeight: 800, color: '#fff', marginBottom: 4, fontSize: '0.88rem' }}>
+                    👋 ¡Hola, {userMetadata?.full_name || 'Comerciante'}!
                   </div>
-                  <p style={{ fontSize: '0.78rem', color: '#94A3B8', margin: 0, lineHeight: 1.4 }}>
-                    Soy tu asistente inteligente de Mr. Tender. Puedo consultar tus ventas, verificar existencias de inventario, revisar deudas de clientes, generar facturas o reportes en PDF y resolver cualquier duda del sistema.
-                  </p>
+                  Soy tu copiloto inteligente de <strong>Mr. Tender</strong>. Puedo ayudarte a consultar ventas en vivo, buscar stock, revisar fiaos, generar PDFs y guiarte en cualquier proceso de tu negocio.
                 </div>
 
                 {/* Suggestions Chips */}
@@ -363,7 +477,7 @@ export default function CopilotWidget() {
               </div>
             )}
 
-            {/* Render Messages */}
+            {/* Render Formatted Messages */}
             {messages.map(msg => (
               <div
                 key={msg.id}
@@ -376,7 +490,7 @@ export default function CopilotWidget() {
               >
                 <div
                   style={{
-                    maxWidth: '86%',
+                    maxWidth: '88%',
                     padding: '10px 14px',
                     borderRadius: msg.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                     background: msg.role === 'user'
@@ -386,12 +500,10 @@ export default function CopilotWidget() {
                     color: '#fff',
                     fontSize: '0.8rem',
                     lineHeight: 1.45,
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
                     boxShadow: msg.role === 'user' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
                   }}
                 >
-                  {msg.content}
+                  <FormattedMessage text={msg.content} role={msg.role} />
 
                   {/* Download PDF Card if returned by tool */}
                   {msg.generatedPdf && (
@@ -424,29 +536,27 @@ export default function CopilotWidget() {
                   )}
                 </div>
 
-                <span style={{ fontSize: '0.62rem', color: '#64748B', padding: '0 4px' }}>
+                <div style={{ fontSize: '0.62rem', color: '#64748B', padding: '0 4px' }}>
                   {msg.timestamp}
-                </span>
+                </div>
               </div>
             ))}
 
-            {/* Typing Indicator */}
+            {/* Loading typing bubble */}
             {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', background: 'rgba(30, 41, 59, 0.7)', borderRadius: 12, alignSelf: 'flex-start' }}>
-                <Sparkles size={13} color="#8B5CF6" className="animate-spin" />
-                <span style={{ fontSize: '0.72rem', color: '#94A3B8', fontStyle: 'italic' }}>
-                  Consultando y procesando...
-                </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', background: 'rgba(30, 41, 59, 0.85)', borderRadius: '14px 14px 14px 2px', width: 'fit-content', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Sparkles size={14} color="#8B5CF6" className="animate-spin" />
+                <span style={{ fontSize: '0.75rem', color: '#94A3B8' }}>Consultando información del negocio...</span>
               </div>
             )}
 
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Footer Input Bar */}
+          {/* Input & Voice Controls */}
           <div style={{
-            padding: '12px 14px',
-            background: 'rgba(15, 23, 42, 0.9)',
+            padding: '10px 14px',
+            background: 'rgba(30, 41, 59, 0.7)',
             borderTop: '1px solid rgba(255, 255, 255, 0.08)',
             display: 'flex',
             alignItems: 'center',
@@ -455,50 +565,67 @@ export default function CopilotWidget() {
           }}>
             <button
               onClick={toggleVoiceInput}
-              className="btn-neu"
-              title={isListening ? 'Detener dictado' : 'Hablar por micrófono'}
               style={{
-                padding: '8px',
-                borderRadius: '50%',
-                background: isListening ? 'linear-gradient(135deg, #EF4444, #DC2626)' : 'rgba(255, 255, 255, 0.08)',
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                border: 'none',
+                background: isListening ? '#EF4444' : 'rgba(255, 255, 255, 0.08)',
                 color: '#fff',
-                boxShadow: isListening ? '0 0 12px rgba(239, 68, 68, 0.6)' : 'none',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
                 flexShrink: 0
               }}
+              title={isListening ? 'Escuchando... haz clic para detener' : 'Dictar por voz'}
             >
-              {isListening ? <MicOff size={15} /> : <Mic size={15} />}
+              <Mic size={16} />
             </button>
 
             <input
               type="text"
-              className="input-neu"
-              placeholder={isListening ? 'Escuchando tu voz...' : 'Pregunta o pide algo a la IA...'}
+              placeholder="Pregunta o pide algo a la IA..."
               value={input}
               onChange={e => setInput(e.target.value)}
-              onKeyDown={e => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSendMessage()
-                }
-              }}
+              onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
+              disabled={loading}
               style={{
                 flex: 1,
-                fontSize: '0.8rem',
-                background: 'rgba(0, 0, 0, 0.4)',
+                padding: '9px 12px',
+                borderRadius: 10,
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
                 color: '#fff',
-                border: isListening ? '1px solid #EF4444' : '1px solid rgba(255, 255, 255, 0.1)'
+                fontSize: '0.8rem',
+                outline: 'none'
               }}
             />
 
             <button
               onClick={() => handleSendMessage()}
-              disabled={!input.trim() || loading}
-              className="btn-neu btn-primary"
-              style={{ padding: '8px 12px', flexShrink: 0 }}
+              disabled={loading || !input.trim()}
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                border: 'none',
+                background: input.trim() && !loading ? 'linear-gradient(135deg, #2563EB, #7C3AED)' : 'rgba(255, 255, 255, 0.08)',
+                color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: input.trim() && !loading ? 'pointer' : 'default',
+                opacity: input.trim() && !loading ? 1 : 0.4,
+                flexShrink: 0,
+                transition: 'all 0.15s ease'
+              }}
             >
               <Send size={15} />
             </button>
           </div>
+
         </div>
       )}
     </>

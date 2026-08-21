@@ -144,18 +144,17 @@ export async function POST(req: NextRequest) {
     const allowedPerms: string[] = Array.isArray(permissions) ? permissions : (isAdmin ? ['*'] : [])
 
     const systemInstruction = `
-Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas y operaciones de Mr. Tender ERP para comercios y droguerías en Colombia.
+Eres Tender Copilot AI, el asistente inteligente de Mr. Tender ERP para comercios y droguerías en Colombia.
 
 👤 USUARIO ACTUAL:
 - Nombre: ${user_name || 'Usuario'}
 - Rol en la tienda: ${user_role || 'Empleado'} (${isAdmin ? 'Administrador / Dueño con acceso total' : 'Empleado con permisos restringidos'})
 - Permisos activos: ${JSON.stringify(allowedPerms)}
 
-🛡️ REGLAS DE SEGURIDAD Y PRIVACIDAD:
-1. Si el usuario es 'Cajero' o 'Empleado' y solicita información confidencial de utilidades globales, márgenes financieros o costos de compra sin tener el permiso ('reports.financial' o 'products.view_costs'), DEBES DENEGAR CORTÉSMENTE la respuesta indicando que su rol no tiene los permisos requeridos.
-2. Si el usuario es Administrador y pide información de ventas, inventario o reportes, dale la respuesta de forma clara, directa, desglosada y profesional en Pesos Colombianos (COP $).
-3. Utiliza formato Markdown elegante (viñetas cortas, cifras en negrita con formato de moneda $).
-4. Cuando consultes 'get_sales_overview', muestra siempre el Total Vendido, el número de pedidos y el desglose de cada medio de pago (Efectivo, Nequi / Transferencia, Tarjetas, Fiao).
+🛡️ REGLAS DE RESPUESTA:
+1. Si el usuario es 'Cajero' o 'Empleado' y solicita información confidencial de utilidades financieras globales sin tener permiso ('reports.financial'), deniégalo cortésmente.
+2. Si el usuario pregunta por ventas, entrega siempre un desglose limpio y claro en Pesos Colombianos con el símbolo $ (ejemplo: $ 2.800).
+3. Muestra el número total de pedidos y el valor cobrado por cada método de pago (Efectivo, Nequi / Transferencia, Tarjetas, Fiao).
 `
 
     // Build chat contents for Gemini API
@@ -225,24 +224,32 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
       if (!isAdmin && !allowedPerms.includes('reports.sales') && !allowedPerms.includes('*')) {
         toolResult = { error: 'Acceso denegado. No tienes permisos para ver reportes de ventas.' }
       } else {
-        // Calculate start date in Colombian local timezone (UTC-5)
-        const now = new Date()
-        const bogotaDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(now) // 'YYYY-MM-DD'
-        let startDate = `${bogotaDateStr}T00:00:00-05:00`
-        
+        const todayStr = new Date().toISOString().split('T')[0]
+        let startDate = todayStr + 'T00:00:00'
+        let endDate = todayStr + 'T23:59:59'
+
         if (funcArgs.period === 'week') {
-          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          startDate = weekAgo.toISOString()
+          startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+          endDate = new Date().toISOString()
         } else if (funcArgs.period === 'month') {
-          startDate = `${bogotaDateStr.substring(0, 7)}-01T00:00:00-05:00`
+          startDate = todayStr.substring(0, 7) + '-01T00:00:00'
+          endDate = todayStr + 'T23:59:59'
         }
 
-        // Fetch sales
-        const { data: sales, error: salesErr } = await supabase
+        let query = supabase
           .from('sales')
           .select('id, number, total, subtotal, tax_amount, created_at')
-          .eq('tenant_id', tenant_id)
           .gte('created_at', startDate)
+
+        if (funcArgs.period === 'today') {
+          query = query.lte('created_at', endDate)
+        }
+
+        if (tenant_id) {
+          query = query.eq('tenant_id', tenant_id)
+        }
+
+        const { data: sales, error: salesErr } = await query
 
         if (salesErr) {
           toolResult = { error: salesErr.message }
@@ -279,7 +286,7 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
                 }
               })
             } else {
-              // If no explicit sale_payments recorded, default gross to cash
+              // Fallback to cash if no granular payment entries
               cashTotal = totalSales
             }
           }
@@ -301,8 +308,11 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
       let queryBuilder = supabase
         .from('products')
         .select('id, name, sku, sale_price, cost_price, inventory(quantity, warehouse_id)')
-        .eq('tenant_id', tenant_id)
         .limit(20)
+
+      if (tenant_id) {
+        queryBuilder = queryBuilder.eq('tenant_id', tenant_id)
+      }
 
       if (funcArgs.query) {
         queryBuilder = queryBuilder.ilike('name', `%${funcArgs.query}%`)
@@ -329,16 +339,17 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
           filtered = filtered.filter(p => p.stock <= 5)
         }
 
-        // Also check pharmacy medicines if searched
+        // Also search pharmacy medicines
         let pharmMeds: any[] = []
         if (funcArgs.query) {
-          const { data: pMeds } = await supabase
+          let pQuery = supabase
             .from('pharmacy_medicines')
             .select('trade_name, generic_name, concentration, unit_price, cost_price')
-            .eq('tenant_id', tenant_id)
             .ilike('trade_name', `%${funcArgs.query}%`)
             .limit(5)
 
+          if (tenant_id) pQuery = pQuery.eq('tenant_id', tenant_id)
+          const { data: pMeds } = await pQuery
           pharmMeds = pMeds || []
         }
 
@@ -352,13 +363,11 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
       let queryBuilder = supabase
         .from('customers')
         .select('id, full_name, phone, credit_limit, credit_used')
-        .eq('tenant_id', tenant_id)
         .order('credit_used', { ascending: false })
         .limit(15)
 
-      if (funcArgs.customer_name) {
-        queryBuilder = queryBuilder.ilike('full_name', `%${funcArgs.customer_name}%`)
-      }
+      if (tenant_id) queryBuilder = queryBuilder.eq('tenant_id', tenant_id)
+      if (funcArgs.customer_name) queryBuilder = queryBuilder.ilike('full_name', `%${funcArgs.customer_name}%`)
 
       const { data: custs, error } = await queryBuilder
 
@@ -424,12 +433,14 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
         }
       }
     } else if (funcName === 'generate_invoice_pdf') {
-      const { data: saleData } = await supabase
+      let query = supabase
         .from('sales')
         .select('id, number, total, subtotal, tax_amount, customer_id, created_at')
-        .eq('tenant_id', tenant_id)
         .or(`number.eq.${funcArgs.sale_number},id.eq.${funcArgs.sale_number}`)
         .limit(1)
+
+      if (tenant_id) query = query.eq('tenant_id', tenant_id)
+      const { data: saleData } = await query
 
       if (!saleData || saleData.length === 0) {
         toolResult = { error: `No se encontró ninguna factura con folio ${funcArgs.sale_number}` }
@@ -479,17 +490,18 @@ Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas 
       if (!isAdmin && !allowedPerms.includes('reports.financial') && !allowedPerms.includes('*')) {
         toolResult = { error: 'Acceso denegado. No tienes permisos para exportar el Estado de Resultados.' }
       } else {
-        const now = new Date()
-        const bogotaDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(now)
+        const todayStr = new Date().toISOString().split('T')[0]
         const startDate = funcArgs.period === 'today'
-          ? `${bogotaDateStr}T00:00:00-05:00`
-          : `${bogotaDateStr.substring(0, 7)}-01T00:00:00-05:00`
+          ? todayStr + 'T00:00:00'
+          : todayStr.substring(0, 7) + '-01T00:00:00'
 
-        const { data: sales } = await supabase
+        let sQuery = supabase
           .from('sales')
           .select('id, total, discount_amount')
-          .eq('tenant_id', tenant_id)
           .gte('created_at', startDate)
+
+        if (tenant_id) sQuery = sQuery.eq('tenant_id', tenant_id)
+        const { data: sales } = await sQuery
 
         const saleIds = sales?.map(s => s.id) || []
         let saleItems: any[] = []
