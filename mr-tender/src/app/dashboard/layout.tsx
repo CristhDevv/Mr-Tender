@@ -17,42 +17,87 @@ import {
   BarChart3,
   BookOpen,
   UserCheck,
-  Globe,
   Settings,
   LogOut,
   Menu,
   Plus,
   Pill,
-  ShieldAlert,
   Lock,
   ChevronLeft,
   ChevronRight,
-  PanelLeftClose,
-  PanelLeftOpen
+  ChevronDown
 } from 'lucide-react'
 
-interface NavItemDef {
+interface NavSubItem {
   href: string
-  Icon: any
   label: string
+  Icon: any
   moduleKey?: string
   requiredPermission?: string
 }
 
-const ALL_NAV_ITEMS: NavItemDef[] = [
-  { href: '/dashboard',   Icon: LayoutDashboard, label: 'Inicio' },
-  { href: '/pos',         Icon: ShoppingCart,    label: 'Punto de Venta', moduleKey: 'pos',         requiredPermission: 'pos.view' },
-  { href: '/products',    Icon: Package,         label: 'Productos',                                requiredPermission: 'products.view' },
-  { href: '/pharmacy',    Icon: Pill,            label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
-  { href: '/inventory',   Icon: Boxes,           label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' },
-  { href: '/customers',   Icon: Users,           label: 'Clientes',       moduleKey: 'customers',    requiredPermission: 'customers.view' },
-  { href: '/suppliers',   Icon: Truck,           label: 'Proveedores',    moduleKey: 'suppliers',    requiredPermission: 'suppliers.view' },
-  { href: '/purchases',   Icon: ShoppingBag,     label: 'Compras',        moduleKey: 'purchases',    requiredPermission: 'purchases.view' },
-  { href: '/cash',        Icon: DollarSign,      label: 'Caja',           moduleKey: 'cash',         requiredPermission: 'cash.view' },
-  { href: '/reports',     Icon: BarChart3,       label: 'Reportes',       moduleKey: 'reports',      requiredPermission: 'reports.sales' },
-  { href: '/accounting',  Icon: BookOpen,        label: 'Contabilidad',   moduleKey: 'accounting',   requiredPermission: 'accounting.view' },
-  { href: '/employees',   Icon: UserCheck,       label: 'Personal',       moduleKey: 'employees',    requiredPermission: 'employees.view' },
-  { href: '/settings',    Icon: Settings,        label: 'Configuración',                            requiredPermission: 'settings.view' },
+interface NavSection {
+  id: string
+  label: string
+  Icon: any
+  href?: string // if direct link
+  items?: NavSubItem[]
+}
+
+const NAV_SECTIONS: NavSection[] = [
+  {
+    id: 'dashboard',
+    label: 'Inicio',
+    Icon: LayoutDashboard,
+    href: '/dashboard'
+  },
+  {
+    id: 'sales',
+    label: 'Ventas & Clientes',
+    Icon: ShoppingCart,
+    items: [
+      { href: '/pos',       Icon: ShoppingCart, label: 'Punto de Venta', moduleKey: 'pos',       requiredPermission: 'pos.view' },
+      { href: '/cash',      Icon: DollarSign,   label: 'Caja & Turnos',  moduleKey: 'cash',      requiredPermission: 'cash.view' },
+      { href: '/customers', Icon: Users,        label: 'Clientes',       moduleKey: 'customers', requiredPermission: 'customers.view' }
+    ]
+  },
+  {
+    id: 'catalog',
+    label: 'Catálogo & Stock',
+    Icon: Package,
+    items: [
+      { href: '/products',  Icon: Package, label: 'Productos',                                requiredPermission: 'products.view' },
+      { href: '/pharmacy',  Icon: Pill,    label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
+      { href: '/inventory', Icon: Boxes,   label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' }
+    ]
+  },
+  {
+    id: 'procurement',
+    label: 'Abastecimiento',
+    Icon: Truck,
+    items: [
+      { href: '/purchases', Icon: ShoppingBag, label: 'Compras',     moduleKey: 'purchases', requiredPermission: 'purchases.view' },
+      { href: '/suppliers', Icon: Truck,       label: 'Proveedores', moduleKey: 'suppliers', requiredPermission: 'suppliers.view' }
+    ]
+  },
+  {
+    id: 'finance',
+    label: 'Finanzas & Datos',
+    Icon: BarChart3,
+    items: [
+      { href: '/reports',    Icon: BarChart3, label: 'Reportes',     moduleKey: 'reports',    requiredPermission: 'reports.sales' },
+      { href: '/accounting', Icon: BookOpen,  label: 'Contabilidad', moduleKey: 'accounting', requiredPermission: 'accounting.view' }
+    ]
+  },
+  {
+    id: 'admin',
+    label: 'Administración',
+    Icon: Settings,
+    items: [
+      { href: '/employees', Icon: UserCheck, label: 'Personal',      moduleKey: 'employees',  requiredPermission: 'employees.view' },
+      { href: '/settings',  Icon: Settings,  label: 'Configuración',                          requiredPermission: 'settings.view' }
+    ]
+  }
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -63,6 +108,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [user, setUser] = useState<{ full_name?: string; email?: string } | null>(null)
   const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
     pos: true, inventory: true, cash: true, customers: true,
@@ -99,6 +145,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     loadUserAndModules()
   }, [])
 
+  // Auto-expand group that contains current active route
+  useEffect(() => {
+    NAV_SECTIONS.forEach(sec => {
+      if (sec.items?.some(it => pathname === it.href || (it.href !== '/dashboard' && pathname.startsWith(it.href)))) {
+        setOpenGroups(prev => ({ ...prev, [sec.id]: true }))
+      }
+    })
+  }, [pathname])
+
   function toggleCollapsed() {
     setCollapsed(prev => {
       const next = !prev
@@ -107,16 +162,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     })
   }
 
-  // Filter navigation items by Tenant enabled modules AND User Role permissions
-  const navItems = ALL_NAV_ITEMS.filter(item => {
-    if (item.moduleKey && enabledModules[item.moduleKey] === false) return false
-    if (isAdmin) return true
-    if (item.requiredPermission && !hasPermission(item.requiredPermission)) return false
-    return true
-  })
+  function toggleGroup(groupId: string) {
+    setOpenGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }))
+  }
+
+  // Filter items by permission & enabled module
+  function filterItems(items?: NavSubItem[]) {
+    if (!items) return []
+    return items.filter(item => {
+      if (item.moduleKey && enabledModules[item.moduleKey] === false) return false
+      if (isAdmin) return true
+      if (item.requiredPermission && !hasPermission(item.requiredPermission)) return false
+      return true
+    })
+  }
 
   // Check if current page is authorized for user
-  const currentNavItem = ALL_NAV_ITEMS.find(i => pathname === i.href || (i.href !== '/dashboard' && pathname.startsWith(i.href)))
+  const allSubItems = NAV_SECTIONS.flatMap(s => s.items || (s.href ? [{ href: s.href, label: s.label, Icon: s.Icon }] : []))
+  const currentNavItem = allSubItems.find(i => pathname === i.href || (i.href !== '/dashboard' && pathname.startsWith(i.href)))
   const isPageAuthorized = isAdmin || !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
 
   async function handleLogout() {
@@ -131,12 +194,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Mobile overlay */}
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 49 }} />}
 
-      {/* ── SIDEBAR (EXPANDABLE / COLLAPSIBLE TO ICONS) ── */}
+      {/* ── SIDEBAR (ORGANIZED IN COMPACT PROFESSIONAL SUBMENUS) ── */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
         
         {/* Brand Header with Collapse Toggle Button */}
         <div style={{
-          padding: collapsed ? '14px 10px' : '14px 14px 12px',
+          padding: collapsed ? '14px 10px' : '14px 14px 10px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: collapsed ? 'center' : 'space-between',
@@ -149,25 +212,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             title="Mr Tender - Panel Principal"
             style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}
           >
-            <img src="/logo.png" alt="Mr Tender" style={{ width: 34, height: 34, borderRadius: 9, objectFit: 'contain', flexShrink: 0 }} />
+            <img src="/logo.png" alt="Mr Tender" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', flexShrink: 0 }} />
             <div className="sidebar-brand-text" style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+              <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
                 Mr Tender
               </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 Gestión Empresarial
               </div>
             </div>
           </Link>
 
-          {/* Desktop Collapse / Expand Button */}
+          {/* Desktop Collapse Button */}
           <button
             onClick={toggleCollapsed}
             className="btn-neu btn-ghost sidebar-collapse-btn"
             title={collapsed ? "Expandir menú lateral" : "Colapsar a iconos"}
             style={{
-              padding: '6px',
-              borderRadius: 8,
+              padding: '5px',
+              borderRadius: 6,
               color: 'var(--text-secondary)',
               display: collapsed ? 'none' : 'flex',
               alignItems: 'center',
@@ -175,63 +238,129 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               flexShrink: 0
             }}
           >
-            <ChevronLeft size={16} />
+            <ChevronLeft size={15} />
           </button>
         </div>
 
-        {/* Small Expand Trigger when Collapsed */}
+        {/* Small Expand Button when Collapsed */}
         {collapsed && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 8px', flexShrink: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 6px', flexShrink: 0 }}>
             <button
               onClick={toggleCollapsed}
               className="btn-neu btn-ghost"
               title="Expandir menú lateral"
-              style={{ padding: '6px', borderRadius: 8, color: 'var(--text-secondary)' }}
+              style={{ padding: '5px', borderRadius: 6, color: 'var(--text-secondary)' }}
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={15} />
             </button>
           </div>
         )}
 
-        <div className="divider" style={{ margin: collapsed ? '0 10px 10px' : '0 14px 10px' }} />
+        <div className="divider" style={{ margin: collapsed ? '0 10px 8px' : '0 12px 8px' }} />
 
-        {/* Nav Items */}
-        <nav style={{ flex: 1, padding: collapsed ? '0 8px' : '0 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {navItems.map(item => {
-            const Icon = item.Icon
-            const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
+        {/* Navigation Sections with Accordion Submenus */}
+        <nav style={{ flex: 1, padding: collapsed ? '0 6px' : '0 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          {NAV_SECTIONS.map(section => {
+            // If single link (e.g. Inicio)
+            if (section.href) {
+              const Icon = section.Icon
+              const isActive = pathname === section.href
+              return (
+                <Link
+                  key={section.id}
+                  href={section.href}
+                  title={section.label}
+                  className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                  onClick={() => setSidebarOpen(false)}
+                >
+                  <Icon size={17} strokeWidth={2} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.85 }} />
+                  <span>{section.label}</span>
+                </Link>
+              )
+            }
+
+            // Submenu Accordion Group
+            const visibleSubItems = filterItems(section.items)
+            if (visibleSubItems.length === 0) return null
+
+            const isGroupOpen = openGroups[section.id] ?? false
+            const hasActiveChild = visibleSubItems.some(it => pathname === it.href || (it.href !== '/dashboard' && pathname.startsWith(it.href)))
+            const GroupIcon = section.Icon
+
+            // Collapsed Mode representation: click leads to first child
+            if (collapsed) {
+              return (
+                <Link
+                  key={section.id}
+                  href={visibleSubItems[0].href}
+                  title={`${section.label} (${visibleSubItems.map(i => i.label).join(', ')})`}
+                  className={`sidebar-nav-item ${hasActiveChild ? 'active' : ''}`}
+                >
+                  <GroupIcon size={17} strokeWidth={2} style={{ flexShrink: 0, opacity: hasActiveChild ? 1 : 0.85 }} />
+                </Link>
+              )
+            }
+
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                title={item.label}
-                className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
-                onClick={() => setSidebarOpen(false)}
-              >
-                <Icon size={18} strokeWidth={2} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.8 }} />
-                <span>{item.label}</span>
-              </Link>
+              <div key={section.id} style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Group Accordion Header */}
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(section.id)}
+                  className={`sidebar-group-header ${hasActiveChild ? 'has-active-child' : ''}`}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                    <GroupIcon size={16} strokeWidth={2} style={{ color: hasActiveChild ? 'var(--accent-blue)' : 'var(--text-secondary)' }} />
+                    <span>{section.label}</span>
+                  </div>
+                  <ChevronDown
+                    size={14}
+                    className={`sidebar-group-chevron ${isGroupOpen ? 'open' : ''}`}
+                  />
+                </button>
+
+                {/* Submenu Accordion Items */}
+                {isGroupOpen && (
+                  <div className="sidebar-sub-menu animate-fade-in">
+                    {visibleSubItems.map(subItem => {
+                      const SubIcon = subItem.Icon
+                      const isSubActive = pathname === subItem.href || (subItem.href !== '/dashboard' && pathname.startsWith(subItem.href))
+                      return (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href}
+                          onClick={() => setSidebarOpen(false)}
+                          className={`sidebar-sub-item ${isSubActive ? 'active' : ''}`}
+                        >
+                          <SubIcon size={14} strokeWidth={2} style={{ opacity: isSubActive ? 1 : 0.75, flexShrink: 0 }} />
+                          <span>{subItem.label}</span>
+                        </Link>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>
 
         {/* User Profile & Role Footer */}
-        <div className="divider" style={{ margin: collapsed ? '8px 10px 0' : '10px 14px 0' }} />
+        <div className="divider" style={{ margin: collapsed ? '6px 8px 0' : '8px 12px 0' }} />
         
-        <div className="user-footer-box" style={{ padding: collapsed ? '10px 6px' : '12px 14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: collapsed ? 0 : 6 }}>
+        <div className="user-footer-box" style={{ padding: collapsed ? '8px 4px' : '10px 12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: collapsed ? 0 : 4 }}>
             <div
               title={user?.full_name || 'Usuario'}
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: 8,
+                width: 28,
+                height: 28,
+                borderRadius: 7,
                 background: 'var(--accent-blue-lt)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 800,
-                fontSize: '0.8rem',
+                fontSize: '0.75rem',
                 color: 'var(--accent-blue)',
                 boxShadow: 'var(--neu-subtle)',
                 flexShrink: 0
@@ -241,25 +370,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
 
             <div className="user-info-text" style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user?.full_name || 'Usuario'}
               </div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user?.email}
               </div>
             </div>
           </div>
 
           {/* Dynamic Role Badge */}
-          <div className="role-pill-text" style={{ marginBottom: 8 }}>
+          <div className="role-pill-text" style={{ marginBottom: 6 }}>
             <span style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: '0.65rem',
+              fontSize: '0.62rem',
               fontWeight: 800,
-              padding: '2px 7px',
-              borderRadius: 6,
+              padding: '1px 6px',
+              borderRadius: 5,
               background: `${color}18`,
               color: color,
               border: `1px solid ${color}35`
@@ -275,8 +404,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             title="Cerrar sesión"
             style={{
               width: '100%',
-              padding: collapsed ? '8px 0' : '7px 10px',
-              fontSize: '0.78rem',
+              padding: collapsed ? '6px 0' : '6px 8px',
+              fontSize: '0.75rem',
               justifyContent: 'center',
               color: 'var(--accent-coral)',
               display: 'flex',
@@ -284,7 +413,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               gap: 6
             }}
           >
-            <LogOut size={15} strokeWidth={2} />
+            <LogOut size={14} strokeWidth={2} />
             <span className="role-pill-text">Cerrar sesión</span>
           </button>
         </div>
@@ -304,20 +433,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Clickable Brand Logo in Topbar */}
             <Link href="/dashboard" title="Mr Tender - Ir a Inicio" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <img src="/logo.png" alt="Mr Tender" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain' }} />
+              <img src="/logo.png" alt="Mr Tender" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'contain' }} />
             </Link>
 
-            <div style={{ width: 1, height: 18, background: 'var(--border-color)', margin: '0 2px', flexShrink: 0 }} />
+            <div style={{ width: 1, height: 16, background: 'var(--border-color)', margin: '0 2px', flexShrink: 0 }} />
 
             {/* Current Page Title */}
-            <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {ALL_NAV_ITEMS.find(i => i.href === pathname)?.label || 'Dashboard'}
+            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {allSubItems.find(i => i.href === pathname)?.label || 'Panel de Control'}
             </div>
           </div>
 
           {pathname !== '/pos' && hasPermission('pos.create_sale') && (
-            <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '8px 14px', fontSize: '0.8rem', flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={15} strokeWidth={2.5} />
+            <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '7px 12px', fontSize: '0.78rem', flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Plus size={14} strokeWidth={2.5} />
               <span>Nueva venta</span>
             </Link>
           )}
