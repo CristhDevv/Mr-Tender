@@ -47,7 +47,6 @@ const ALL_NAV_ITEMS: NavItemDef[] = [
   { href: '/reports',     Icon: BarChart3,       label: 'Reportes',       moduleKey: 'reports',      requiredPermission: 'reports.sales' },
   { href: '/accounting',  Icon: BookOpen,        label: 'Contabilidad',   moduleKey: 'accounting',   requiredPermission: 'accounting.view' },
   { href: '/employees',   Icon: UserCheck,       label: 'Empleados',      moduleKey: 'employees',    requiredPermission: 'employees.view' },
-  { href: '/ecommerce',   Icon: Globe,           label: 'E-commerce',     moduleKey: 'ecommerce',    requiredPermission: 'settings.edit' },
   { href: '/settings',    Icon: Settings,        label: 'Configuración',                            requiredPermission: 'settings.view' },
 ]
 
@@ -62,7 +61,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
     pos: true, inventory: true, cash: true, customers: true,
     suppliers: true, purchases: true, employees: true,
-    accounting: true, reports: true, ecommerce: true,
+    accounting: true, reports: true, ecommerce: false,
     pharmacy: false, restaurant: false
   })
 
