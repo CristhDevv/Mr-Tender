@@ -1,5 +1,6 @@
 'use client'
 import React, { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { generateInvoicePdf, generatePnlPdf } from '@/lib/pdf-generator'
@@ -13,7 +14,8 @@ import {
   Download,
   RotateCcw,
   User,
-  ChevronRight
+  ChevronRight,
+  ArrowUpRight
 } from 'lucide-react'
 
 interface ChatMessage {
@@ -25,27 +27,32 @@ interface ChatMessage {
 }
 
 const QUICK_SUGGESTIONS = [
+  '💡 ¿Cómo hago un arqueo y cierre de caja?',
+  '💊 Cliente con dolor de cabeza y fiebre: ¿qué sugerir y stock?',
+  '🌿 Cliente con acidez estomacal: ¿qué tenemos y posología?',
   '📊 ¿Cuánto vendimos hoy y por qué medios de pago?',
-  '📦 ¿Qué productos tienen stock bajo o crítico?',
-  '👥 ¿Cuáles clientes tienen deuda de fiao pendiente?',
-  '📄 Generar PDF del estado de resultados de hoy',
-  '💡 ¿Cómo hago un arqueo y cierre de caja?'
+  '📦 ¿Qué productos tienen stock bajo o crítico?'
 ]
 
 // ── RICH MARKDOWN PARSER FOR CRISP ELEGANT COPILOT MESSAGES ──
-function renderInlineFormatting(text: string): React.ReactNode[] {
+function renderInlineFormatting(text: string, onNavigate?: (href: string) => void): React.ReactNode[] {
   const parts: React.ReactNode[] = []
   let remaining = text
   let key = 0
 
   while (remaining.length > 0) {
+    const linkMatch = remaining.match(/\[([^\]]+)\]\(([^)]+)\)/)
     const boldMatch = remaining.match(/\*\*(.+?)\*\*/)
     const codeMatch = remaining.match(/`(.+?)`/)
     const italicMatch = remaining.match(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/)
 
-    let earliestType: 'bold' | 'code' | 'italic' | null = null
+    let earliestType: 'link' | 'bold' | 'code' | 'italic' | null = null
     let earliestIndex = remaining.length
 
+    if (linkMatch && linkMatch.index !== undefined && linkMatch.index < earliestIndex) {
+      earliestIndex = linkMatch.index
+      earliestType = 'link'
+    }
     if (boldMatch && boldMatch.index !== undefined && boldMatch.index < earliestIndex) {
       earliestIndex = boldMatch.index
       earliestType = 'bold'
@@ -68,7 +75,46 @@ function renderInlineFormatting(text: string): React.ReactNode[] {
       parts.push(remaining.substring(0, earliestIndex))
     }
 
-    if (earliestType === 'bold' && boldMatch) {
+    if (earliestType === 'link' && linkMatch) {
+      const label = linkMatch[1]
+      const href = linkMatch[2]
+
+      parts.push(
+        <button
+          key={key++}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            if (onNavigate) {
+              onNavigate(href)
+            }
+          }}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 5,
+            margin: '3px 2px',
+            padding: '4px 10px',
+            background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+            color: '#ffffff',
+            fontSize: '0.74rem',
+            fontWeight: 800,
+            borderRadius: 7,
+            border: '1px solid rgba(255, 255, 255, 0.25)',
+            boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)',
+            cursor: 'pointer',
+            verticalAlign: 'middle',
+            transition: 'all 0.15s ease'
+          }}
+          className="hover:scale-105 active:scale-95"
+          title={`Navegar a ${href}`}
+        >
+          <span>{label}</span>
+          <ArrowUpRight size={13} style={{ strokeWidth: 2.5 }} />
+        </button>
+      )
+      remaining = remaining.substring(earliestIndex + linkMatch[0].length)
+    } else if (earliestType === 'bold' && boldMatch) {
       parts.push(
         <strong key={key++} style={{ fontWeight: 800, color: '#F1F5F9' }}>
           {boldMatch[1]}
@@ -105,7 +151,7 @@ function renderInlineFormatting(text: string): React.ReactNode[] {
   return parts
 }
 
-function FormattedMessage({ text, role }: { text: string; role: 'user' | 'assistant' }) {
+function FormattedMessage({ text, role, onNavigate }: { text: string; role: 'user' | 'assistant'; onNavigate?: (href: string) => void }) {
   if (role === 'user') return <div>{text}</div>
 
   const lines = text.split('\n')
@@ -116,12 +162,34 @@ function FormattedMessage({ text, role }: { text: string; role: 'user' | 'assist
         let trimmed = line.trim()
         if (!trimmed) return <div key={idx} style={{ height: 2 }} />
 
+        // Blockquotes / Warnings / Disclaimers: >
+        if (trimmed.startsWith('>')) {
+          const quoteContent = trimmed.replace(/^>\s*/, '')
+          return (
+            <div
+              key={idx}
+              style={{
+                background: 'rgba(245, 158, 11, 0.12)',
+                borderLeft: '3px solid #F59E0B',
+                padding: '6px 10px',
+                borderRadius: '0 6px 6px 0',
+                margin: '3px 0',
+                fontSize: '0.74rem',
+                color: '#FEF08A',
+                lineHeight: 1.45
+              }}
+            >
+              {renderInlineFormatting(quoteContent, onNavigate)}
+            </div>
+          )
+        }
+
         // Headings: ###, ##, #
         if (trimmed.startsWith('### ') || trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
           const headerText = trimmed.replace(/^#+\s*/, '')
           return (
             <div key={idx} style={{ fontWeight: 800, fontSize: '0.86rem', color: '#93C5FD', marginTop: 4, marginBottom: 2 }}>
-              {renderInlineFormatting(headerText)}
+              {renderInlineFormatting(headerText, onNavigate)}
             </div>
           )
         }
@@ -132,7 +200,7 @@ function FormattedMessage({ text, role }: { text: string; role: 'user' | 'assist
           return (
             <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 7, paddingLeft: 2 }}>
               <span style={{ color: '#60A5FA', fontSize: '0.85rem', lineHeight: '1.2' }}>•</span>
-              <div style={{ flex: 1, lineHeight: 1.45 }}>{renderInlineFormatting(bulletContent)}</div>
+              <div style={{ flex: 1, lineHeight: 1.45 }}>{renderInlineFormatting(bulletContent, onNavigate)}</div>
             </div>
           )
         }
@@ -143,7 +211,7 @@ function FormattedMessage({ text, role }: { text: string; role: 'user' | 'assist
           return (
             <div key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: 6, paddingLeft: 2 }}>
               <span style={{ color: '#93C5FD', fontWeight: 700, fontSize: '0.75rem' }}>{numMatch[1]}.</span>
-              <div style={{ flex: 1, lineHeight: 1.45 }}>{renderInlineFormatting(numMatch[2])}</div>
+              <div style={{ flex: 1, lineHeight: 1.45 }}>{renderInlineFormatting(numMatch[2], onNavigate)}</div>
             </div>
           )
         }
@@ -151,7 +219,7 @@ function FormattedMessage({ text, role }: { text: string; role: 'user' | 'assist
         // Standard Paragraph line
         return (
           <div key={idx} style={{ lineHeight: 1.45 }}>
-            {renderInlineFormatting(trimmed)}
+            {renderInlineFormatting(trimmed, onNavigate)}
           </div>
         )
       })}
@@ -160,6 +228,7 @@ function FormattedMessage({ text, role }: { text: string; role: 'user' | 'assist
 }
 
 export default function CopilotWidget() {
+  const router = useRouter()
   const [isOpen, setIsOpen] = useState(false)
   const [input, setInput] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -172,6 +241,14 @@ export default function CopilotWidget() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
   const recognitionRef = useRef<any>(null)
   const supabase = createClient()
+
+  function handleNavigate(href: string) {
+    if (href.startsWith('http://') || href.startsWith('https://')) {
+      window.open(href, '_blank')
+    } else {
+      router.push(href)
+    }
+  }
 
   // Load user data
   useEffect(() => {
@@ -503,7 +580,7 @@ export default function CopilotWidget() {
                     boxShadow: msg.role === 'user' ? '0 4px 12px rgba(37, 99, 235, 0.3)' : 'none'
                   }}
                 >
-                  <FormattedMessage text={msg.content} role={msg.role} />
+                  <FormattedMessage text={msg.content} role={msg.role} onNavigate={handleNavigate} />
 
                   {/* Download PDF Card if returned by tool */}
                   {msg.generatedPdf && (

@@ -99,6 +99,29 @@ const COPILOT_TOOLS = [
           },
           required: ['topic']
         }
+      },
+      {
+        name: 'recommend_medicine_by_symptoms',
+        description: 'Asistente clínico-farmacéutico inteligente: Analiza los síntomas expresados por el cliente (ej: dolor de cabeza, fiebre, acidez, reflujo, tos seca/con flema, diarrea, congestión, cólicos, alergia) e investiga guías farmacológicas reales en internet para cruzar con el inventario disponible en la farmacia. Sugiere medicamentos en stock, posología orientativa, advertencias y el descargo legal obligatorio.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            symptoms: {
+              type: 'STRING',
+              description: 'Descripción de los síntomas o motivo de consulta del cliente (ej: ardor en el estómago y acidez, dolor de garganta y fiebre).'
+            },
+            patient_category: {
+              type: 'STRING',
+              enum: ['adulto', 'pediatrico', 'adulto_mayor', 'embarazo', 'general'],
+              description: 'Grupo etario o condición especial del paciente si fue mencionado.'
+            },
+            suspected_active_ingredients: {
+              type: 'STRING',
+              description: 'Principios activos sugeridos a buscar en inventario (ej: acetaminofen, omeprazol, ibuprofeno, loratadina, hidroxido de aluminio).'
+            }
+          },
+          required: ['symptoms']
+        }
       }
     ]
   }
@@ -140,17 +163,64 @@ export async function POST(req: NextRequest) {
     const allowedPerms: string[] = Array.isArray(permissions) ? permissions : (isAdmin ? ['*'] : [])
 
     const systemInstruction = `
-Eres Tender Copilot AI, el asistente inteligente de Mr. Tender ERP para comercios y droguerías en Colombia.
+Eres Tender Copilot AI, el copiloto inteligente y asistente clínico-farmacéutico de Mr. Tender ERP para comercios y droguerías en Colombia.
 
 👤 USUARIO ACTUAL:
 - Nombre: ${user_name || 'Usuario'}
 - Rol en la tienda: ${user_role || 'Empleado'} (${isAdmin ? 'Administrador / Dueño con acceso total' : 'Empleado con permisos restringidos'})
 - Permisos activos: ${JSON.stringify(allowedPerms)}
 
-🛡️ REGLAS DE RESPUESTA:
+🛡️ REGLAS GENERALES:
 1. Si el usuario es 'Cajero' o 'Empleado' y solicita información confidencial de utilidades financieras globales sin tener permiso ('reports.financial'), deniégalo cortésmente.
 2. Si el usuario pregunta por ventas, entrega siempre un desglose limpio y claro en Pesos Colombianos con el símbolo $ (ejemplo: $ 2.800).
 3. Muestra el número total de pedidos y el valor cobrado por cada método de pago (Efectivo, Nequi / Transferencia, Tarjetas, Fiao).
+
+💊 ASISTENCIA FARMACÉUTICA POR SÍNTOMAS (ORIENTACIÓN CLÍNICA Y POSOLOGÍA):
+Cuando el usuario mencione síntomas de un cliente (ej: ardor en el estómago, dolor de cabeza, fiebre, tos, diarrea, dolor muscular, alergia) o pida recomendación de medicamentos:
+1. **Invoca siempre** la función \`recommend_medicine_by_symptoms\` para consultar el catálogo de medicamentos y stock en tiempo real de la farmacia.
+2. **Cruce con Inventario Real**:
+   - Revisa los medicamentos disponibles en stock en la farmacia devueltos por la herramienta.
+   - Da **prioridad explícita** a los productos que actualmente TIENEN STOCK en la droguería (menciona nombre comercial, principio activo genérico, concentración, forma farmacéutica, unidades en stock y precio en COP).
+   - Si no hay stock del principio activo exacto, infórmalo con claridad y ofrece opciones terapéuticas alternativas disponibles en el inventario.
+3. **Investigación Farmacológica & Posología Estándar Orientativa**:
+   - Explica brevemente el mecanismo o razón por la cual el principio activo ayuda con el síntoma (basado en literatura médica y vademécums reales de internet).
+   - Proporciona la **posología estándar orientativa** (dosis sugerida para adultos o rango general, frecuencia en horas ej: cada 8 horas, vía de administración, si se toma con comidas o agua, y duración máxima recomendada del tratamiento).
+   - Clasifica claramente si el medicamento es de Venta Libre (**OTC**) o requiere Fórmula Médica (**Rx / Controlado**).
+4. **Fundamento en Datos Reales de Internet**:
+   - Señala con transparencia: *"Esta sugerencia está formulada a partir de información farmacológica real de vademécums médicos en internet y cruzada con el inventario físico disponible en tu droguería."*
+5. **DESCARGO DE RESPONSABILIDAD OBLIGATORIO**:
+   En toda respuesta que involucre sugerencia de medicamentos, síntomas o posología, incluye **OBLIGATORIAMENTE Y AL FINAL** el siguiente bloque exacto:
+   > ⚠️ **Aviso de Responsabilidad Legal y Farmacéutica:**
+   > Esta información es una sugerencia orientativa de apoyo basada en datos reales de internet e inventario actual. **La responsabilidad de sugerir, prescribir o suministrar un medicamento es única y exclusiva del vendedor / regente de farmacia.** No reemplaza la consulta o prescripción de un médico profesional. Si los síntomas persisten, son graves, o se trata de mujeres embarazadas o niños pequeños, se debe remitir inmediatamente a consulta médica.
+
+🧭 MAPA DE NAVEGACIÓN OFICIAL DE MR. TENDER (OBLIGATORIO PARA GUIAR AL USUARIO):
+El menú lateral (Sidebar) de Mr. Tender está organizado en menús y submenús desplegables. NUNCA des nombres inventados como "menú de caja" o "ve a compras". Indica SIEMPRE la ruta exacta paso a paso con el menú principal, submenú y añade el BOTÓN DINÁMICO interactivo en formato Markdown \`[Texto Descriptivo ➔](/ruta)\`.
+
+Jerarquía oficial de módulos y rutas:
+1. 🏠 **Inicio** ➔ Dashboard principal y resumen gerencial: \`[Ir a Inicio ➔](/dashboard)\`
+2. 🛒 **Ventas & Clientes** (Menú lateral):
+   - **Punto de Venta** ➔ Pantalla para cobrar y registrar pedidos (o botón superior "+ Nueva venta"): \`[Abrir Punto de Venta ➔](/pos)\`
+   - **Caja & Turnos** ➔ Apertura de turno, arqueo físico de caja, ingresos/retiros de efectivo y cierre de caja: \`[Ir a Caja & Turnos ➔](/cash)\`
+   - **Clientes** ➔ Directorio de clientes, saldos fiaos y límites de crédito: \`[Ver Clientes y Fiaos ➔](/customers)\`
+3. 📦 **Catálogo & Stock** (Menú lateral):
+   - **Productos** ➔ Catálogo de artículos, precios, códigos SKU y categorías: \`[Gestionar Productos ➔](/products)\`
+   - **Droguería** ➔ Medicamentos, lotes, fechas de vencimiento FEFO y registro INVIMA: \`[Ir a Droguería & Lotes ➔](/pharmacy)\`
+   - **Inventario** ➔ Existencias físicas por bodega, transferencias y ajustes de stock: \`[Ver Inventario ➔](/inventory)\`
+4. 🚚 **Abastecimiento** (Menú lateral):
+   - **Compras** ➔ Registro de facturas de compra y órdenes a proveedores: \`[Ir a Compras ➔](/purchases)\`
+   - **Proveedores** ➔ Directorio de laboratorios y distribuidores: \`[Ver Proveedores ➔](/suppliers)\`
+5. 📊 **Finanzas & Datos** (Menú lateral):
+   - **Reportes** ➔ Ventas por periodo, métodos de pago, rentabilidad y gráficos: \`[Ver Reportes ➔](/reports)\`
+   - **Contabilidad** ➔ Libro diario, balances y asientos contables: \`[Ir a Contabilidad ➔](/accounting)\`
+6. ⚙️ **Administración** (Menú lateral):
+   - **Personal** ➔ Gestión de empleados, cajeros, roles y permisos: \`[Gestionar Personal ➔](/employees)\`
+   - **Configuración** ➔ Datos de la empresa, módulos activos, tickets e impuestos: \`[Ir a Configuración ➔](/settings)\`
+
+🎯 REGLA DE ORO PARA TUTORIALES Y GUÍAS DINÁMICAS:
+Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, registrar una venta, ajustar inventario, cobrar fiao, ver reportes, etc.):
+1. **Ruta guiada exacta**: Indica la ubicación exacta: *"En el menú lateral izquierdo, haz clic en **[Menú Principal]** ➡️ **[Submenú]**"*.
+2. **Botón interactivo**: Incluye de inmediato el botón de acción Markdown: ej: \`[Ir a Caja & Turnos ➔](/cash)\` o \`[Abrir Punto de Venta ➔](/pos)\`.
+3. **Pasos claros dentro de la pantalla**: Explica de manera concisa y numerada los botones exactos que debe oprimir dentro de esa vista.
 `
 
     // Build chat contents for Gemini API
@@ -554,13 +624,167 @@ Eres Tender Copilot AI, el asistente inteligente de Mr. Tender ERP para comercio
       }
     } else if (funcName === 'get_system_guide') {
       const GUIDES: Record<string, string> = {
-        pos_sale: 'Para vender en el POS: 1) Busca productos por nombre, código o usa el micrófono "Voz AI". 2) Ajusta cantidades. 3) Clic en Cobrar. 4) Selecciona Efectivo, Nequi o Fiao y finaliza.',
-        cash_closing: 'Para cerrar caja: 1) Ve al menú Caja. 2) Clic en "Cerrar Turno". 3) Cuenta el dinero físico del cajón y escribe el monto. El sistema calculará automáticamente si hay sobrante o faltante.',
-        refunds: 'Para procesar una devolución: 1) En el POS o Caja, abre el menú Devoluciones. 2) Ingresa el número de folio de la venta. 3) Selecciona los ítems a reintegrar y confirma.',
-        pharmacy_fefo: 'El sistema de droguería utiliza el método FEFO (First Expired, First Out), asignando automáticamente en cada venta el lote con la fecha de vencimiento más próxima para evitar pérdidas.'
+        cash_closing: `📍 **Ruta en el menú lateral:** **Ventas & Clientes** ➡️ **Caja & Turnos**
+
+[Ir a Caja & Turnos ➔](/cash)
+
+**Paso a paso para arqueo y cierre de caja:**
+1. Haz clic en el botón interactivo superior para ir a **Caja & Turnos** (o búscalo en el menú lateral izquierdo desplegando **Ventas & Clientes**).
+2. En la parte superior derecha de la pantalla, haz clic en el botón **"Cerrar Turno"** o **"Arqueo de Caja"**.
+3. **Conteo Físico**: Cuenta el dinero físico que tienes en la gaveta o cajón (billetes y monedas).
+4. **Ingresar el Monto**: Escribe el total de dinero físico en el campo *"Efectivo en caja"*.
+5. El sistema comparará automáticamente el monto contra las ventas registradas y te indicará si la caja está cuadrada o si existe sobrante o faltante.
+6. Haz clic en **"Confirmar Cierre"** para finalizar el turno.`,
+
+        pos_sale: `📍 **Ruta en el menú lateral:** **Ventas & Clientes** ➡️ **Punto de Venta** (o el botón naranja superior **+ Nueva venta**)
+
+[Abrir Punto de Venta ➔](/pos)
+
+**Paso a paso para registrar una venta en el POS:**
+1. Abre el **Punto de Venta** con el botón superior o el botón **+ Nueva venta** en la barra superior.
+2. Busca los productos por nombre o código de barras, o pulsa el micrófono **"Voz AI"** para dictar los artículos.
+3. Ajusta las cantidades deseadas en el panel del carrito.
+4. Haz clic en el botón principal **"Cobrar"**.
+5. Selecciona el medio de pago (**Efectivo**, **Nequi / Transferencia**, **Tarjeta** o **Fiao**) y finaliza la venta.`,
+
+        refunds: `📍 **Ruta en el menú lateral:** **Ventas & Clientes** ➡️ **Punto de Venta**
+
+[Abrir Punto de Venta ➔](/pos)
+
+**Paso a paso para procesar devoluciones:**
+1. En el **Punto de Venta**, pulsa el botón **"Devoluciones"**.
+2. Escribe el número de ticket o folio de la venta a devolver.
+3. Marca los productos a reintegrar y el motivo de la devolución.
+4. Confirma para reingresar el stock al inventario y ajustar el arqueo de caja.`,
+
+        pharmacy_fefo: `📍 **Ruta en el menú lateral:** **Catálogo & Stock** ➡️ **Droguería**
+
+[Ir a Droguería & Lotes ➔](/pharmacy)
+
+**Gestión de Medicamentos y Lotes FEFO (First Expired, First Out):**
+1. En el módulo **Droguería**, ingresa a la pestaña **"Control de Lotes"** para ver los medicamentos ordenados por fecha de vencimiento más próxima.
+2. El sistema aplica el método FEFO de forma automática: al facturar en el POS, descuenta primero el lote con vencimiento más cercano.
+3. Puedes registrar nuevos lotes con su fecha de vencimiento, registro INVIMA y cantidades iniciales.`,
+
+        inventory_stock: `📍 **Ruta en el menú lateral:** **Catálogo & Stock** ➡️ **Inventario**
+
+[Ver Inventario ➔](/inventory)
+
+**Gestión de Inventario y Bodegas:**
+1. En **Inventario** puedes monitorear el stock de cada bodega y productos con alertas de stock bajo.
+2. Para corregir cantidades por conteo físico o mermas, haz clic en **"Ajustar Stock"**.`,
+
+        customer_credit: `📍 **Ruta en el menú lateral:** **Ventas & Clientes** ➡️ **Clientes**
+
+[Ver Clientes y Fiaos ➔](/customers)
+
+**Gestión de Fiaos y Cuentas por Cobrar:**
+1. En **Clientes**, consulta la lista de deudores, montos pendientes y cupos de crédito asignados.
+2. Para registrar un pago o abono a la cuenta de un cliente, haz clic sobre el cliente y pulsa **"Registrar Abono"**.`
       }
 
-      toolResult = { guide: GUIDES[funcArgs.topic] || 'Consulta la guía general del ERP o navega por los menús del panel.' }
+      toolResult = { guide: GUIDES[funcArgs.topic] || 'Consulta el menú lateral para acceder a los módulos de Mr. Tender.' }
+    } else if (funcName === 'recommend_medicine_by_symptoms') {
+      try {
+        // 1. Fetch pharmacy medicines with their lots and stock
+        let pharmQuery = supabase
+          .from('pharmacy_medicines')
+          .select(`
+            id,
+            trade_name,
+            generic_name,
+            concentration,
+            pharmaceutical_form,
+            laboratory,
+            prescription_type,
+            unit_price,
+            blister_price,
+            box_price,
+            pharmacy_lots (
+              lot_number,
+              expiration_date,
+              current_quantity,
+              status
+            )
+          `)
+
+        if (tenant_id) {
+          pharmQuery = pharmQuery.eq('tenant_id', tenant_id)
+        }
+
+        const { data: pharmData, error: pharmErr } = await pharmQuery
+
+        // 2. Fetch general store products that could be OTC/wellness/first-aid
+        let prodQuery = supabase
+          .from('products')
+          .select(`
+            id,
+            name,
+            sku,
+            sale_price,
+            inventory (
+              quantity
+            )
+          `)
+          .limit(40)
+
+        if (tenant_id) {
+          prodQuery = prodQuery.eq('tenant_id', tenant_id)
+        }
+
+        const { data: prodData } = await prodQuery
+
+        // Process and structure pharmacy items with current physical stock
+        const processedMedicines = (pharmData || []).map((m: any) => {
+          const validLots = (m.pharmacy_lots || []).filter((l: any) =>
+            Number(l.current_quantity || 0) > 0 && l.status !== 'expired'
+          )
+          const totalStock = validLots.reduce((sum: number, l: any) => sum + Number(l.current_quantity || 0), 0)
+          const lotDates = validLots.map((l: any) => l.expiration_date).filter(Boolean).sort()
+
+          return {
+            id: m.id,
+            trade_name: m.trade_name,
+            generic_name: m.generic_name,
+            concentration: m.concentration,
+            pharmaceutical_form: m.pharmaceutical_form,
+            laboratory: m.laboratory,
+            prescription_type: m.prescription_type || 'otc',
+            unit_price_cop: m.unit_price,
+            blister_price_cop: m.blister_price,
+            box_price_cop: m.box_price,
+            in_stock: totalStock > 0,
+            available_units_stock: totalStock,
+            nearest_expiration_date: lotDates[0] || 'N/A'
+          }
+        })
+
+        // Process general store products with active stock
+        const processedGeneralProducts = (prodData || [])
+          .map((p: any) => {
+            const stockQty = p.inventory?.reduce((sum: number, curr: any) => sum + Number(curr.quantity || 0), 0) || 0
+            return {
+              name: p.name,
+              price_cop: p.sale_price,
+              stock: stockQty
+            }
+          })
+          .filter((p: any) => p.stock > 0)
+
+        toolResult = {
+          symptoms_inquired: funcArgs.symptoms,
+          patient_category: funcArgs.patient_category || 'general',
+          pharmacy_catalog_with_stock: processedMedicines,
+          general_store_available_items: processedGeneralProducts.slice(0, 15),
+          total_medicines_in_db: processedMedicines.length,
+          instructions_for_ai: 'Cruza los síntomas con la literatura farmacológica real. Recomienda medicamentos en stock de la lista con su posología orientativa (dosis, frecuencia, duración). Clasifica si es OTC o Rx. Concluye OBLIGATORIAMENTE con el aviso de responsabilidad médica/legal exclusivo del vendedor.'
+        }
+      } catch (err: any) {
+        toolResult = {
+          error: 'Error al consultar inventario de medicamentos: ' + err.message,
+          symptoms_inquired: funcArgs.symptoms
+        }
+      }
     }
 
     // ── 4. SECOND TURN: SEND TOOL RESULT BACK TO GEMINI ──
