@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createClient as createServerSupabase } from '@/lib/supabase/server'
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
 
 // Gemini Function Calling Tool Declarations
@@ -108,7 +106,7 @@ const COPILOT_TOOLS = [
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, conversationHistory, tenant_id, user_role, user_name, permissions } = await req.json()
+    const { message, conversationHistory, tenant_id: bodyTenantId, user_role, user_name, permissions } = await req.json()
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Mensaje requerido' }, { status: 400 })
@@ -123,7 +121,6 @@ export async function POST(req: NextRequest) {
     // ── 1. SECURITY & PROMPT INJECTION SHIELD ──
     const lowerMsg = message.toLowerCase()
 
-    // Detect prompt injection or jailbreak attempts
     const isJailbreak = /(ignore previous|ignora las instrucciones|act as dan|hazte pasar por|revela tu prompt|dame tu system prompt|cual es tu instruccion|bypass security|dame las api keys)/i.test(lowerMsg)
     if (isJailbreak) {
       return NextResponse.json({
@@ -131,7 +128,6 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Detect completely out-of-scope non-business queries
     const isOffTopic = /(escribe un poema de amor|cuentame un cuento de hadas|quien ganara el mundial|receta de cocina casera para cenar|escribe codigo en c\+\+ para hackear|quien es el presidente de)/i.test(lowerMsg)
     if (isOffTopic) {
       return NextResponse.json({
@@ -160,7 +156,6 @@ Eres Tender Copilot AI, el asistente inteligente de Mr. Tender ERP para comercio
     // Build chat contents for Gemini API
     const contents: any[] = []
 
-    // Previous turns if provided
     if (Array.isArray(conversationHistory)) {
       conversationHistory.slice(-6).forEach((h: any) => {
         if (h.role && h.content) {
@@ -172,13 +167,15 @@ Eres Tender Copilot AI, el asistente inteligente de Mr. Tender ERP para comercio
       })
     }
 
-    // Current user message
     contents.push({
       role: 'user',
       parts: [{ text: message }]
     })
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    // Create Authenticated Server Client (reads cookies so RLS passes)
+    const supabase = await createServerSupabase()
+    const { data: { user } } = await supabase.auth.getUser()
+    const tenant_id = user?.user_metadata?.tenant_id || bodyTenantId
 
     // Call Gemini API (First Turn)
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
@@ -205,7 +202,6 @@ Eres Tender Copilot AI, el asistente inteligente de Mr. Tender ERP para comercio
     const candidate = firstData.candidates?.[0]
     const modelParts = candidate?.content?.parts || []
 
-    // Check if model called a function
     const functionCallPart = modelParts.find((p: any) => p.functionCall)
 
     if (!functionCallPart) {
@@ -286,7 +282,6 @@ Eres Tender Copilot AI, el asistente inteligente de Mr. Tender ERP para comercio
                 }
               })
             } else {
-              // Fallback to cash if no granular payment entries
               cashTotal = totalSales
             }
           }
