@@ -34,6 +34,21 @@ const PANEL_STYLE: React.CSSProperties = {
   boxShadow: 'var(--neu-card)', maxHeight: '90vh', overflowY: 'auto',
 }
 
+const AVAILABLE_MODULES = [
+  { id: 'pos', name: 'Punto de Venta (POS)', icon: '🛒', description: 'Venta rápida, escaneo y tickets' },
+  { id: 'inventory', name: 'Inventario & Kardex', icon: '📦', description: 'Stock, Kardex, ajustes y traslados' },
+  { id: 'cash', name: 'Caja & Turnos', icon: '💵', description: 'Aperturas, arqueos y control de efectivo' },
+  { id: 'customers', name: 'Clientes & Fiados', icon: '👥', description: 'Libreta de fiao, abonos y WhatsApp' },
+  { id: 'suppliers', name: 'Proveedores', icon: '🚚', description: 'Directorio y contactos de proveedores' },
+  { id: 'purchases', name: 'Compras', icon: '🛍️', description: 'Registro de compras y costos' },
+  { id: 'employees', name: 'Empleados & Asistencia', icon: '⏰', description: 'Control de personal y fichajes' },
+  { id: 'reports', name: 'Reportes & Analítica', icon: '📊', description: 'Ventas, márgenes y exportación' },
+  { id: 'accounting', name: 'Contabilidad', icon: '📈', description: 'Plan de cuentas y asientos automáticos' },
+  { id: 'ecommerce', name: 'E-commerce / Catálogo Web', icon: '🌐', description: 'Tienda virtual con pedidos por WhatsApp' },
+  { id: 'pharmacy', name: 'Droguería & Farmacia', icon: '💊', description: 'Lotes, FEFO, INVIMA, genéricos y controlados' },
+  { id: 'restaurant', name: 'Restaurante & Mesas', icon: '🍽️', description: 'Mesas, comandas y cocina' },
+]
+
 export default function TenantsAdminPage() {
   const supabase = createClient()
   const [tenants, setTenants] = useState<Tenant[]>([])
@@ -49,6 +64,12 @@ export default function TenantsAdminPage() {
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState<string | null>(null)
 
+  // Modules Modal state
+  const [selectedTenantForModules, setSelectedTenantForModules] = useState<Tenant | null>(null)
+  const [tenantModules, setTenantModules] = useState<Record<string, boolean>>({})
+  const [loadingModules, setLoadingModules] = useState(false)
+  const [savingModules, setSavingModules] = useState(false)
+
   useEffect(() => { fetchTenants() }, [])
 
   async function fetchTenants() {
@@ -57,6 +78,55 @@ export default function TenantsAdminPage() {
     if (error) setError(error.message)
     else setTenants(data || [])
     setLoading(false)
+  }
+
+  async function openModulesModal(t: Tenant) {
+    setSelectedTenantForModules(t)
+    setLoadingModules(true)
+    try {
+      const { data } = await supabase
+        .from('tenant_settings')
+        .select('enabled_modules')
+        .eq('tenant_id', t.id)
+        .limit(1)
+
+      const defaultMods: Record<string, boolean> = {
+        pos: true, inventory: true, cash: true, customers: true,
+        suppliers: true, purchases: true, employees: true,
+        accounting: true, reports: true, ecommerce: true,
+        pharmacy: false, restaurant: false
+      }
+
+      if (data?.[0]?.enabled_modules) {
+        setTenantModules({ ...defaultMods, ...data[0].enabled_modules })
+      } else {
+        setTenantModules(defaultMods)
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoadingModules(false)
+    }
+  }
+
+  async function handleSaveModules() {
+    if (!selectedTenantForModules || savingModules) return
+    setSavingModules(true)
+    try {
+      const { data, error } = await supabase.rpc('superadmin_update_tenant_modules', {
+        p_tenant_id: selectedTenantForModules.id,
+        p_modules: tenantModules
+      })
+
+      if (error) throw error
+      alert(`Módulos de "${selectedTenantForModules.name}" actualizados correctamente`)
+      setSelectedTenantForModules(null)
+    } catch (err: any) {
+      console.error(err)
+      alert(err.message || 'Error al guardar módulos')
+    } finally {
+      setSavingModules(false)
+    }
   }
 
   function openCreate() { setForm(EMPTY_FORM); setModal('create'); setCreatedInfo(null) }
@@ -207,6 +277,9 @@ export default function TenantsAdminPage() {
                     </td>
                     <td style={{ padding: '14px 18px', textAlign: 'right' }}>
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                        <button onClick={() => openModulesModal(t)} className="btn-neu btn-ghost" style={{ padding: '5px 10px', fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: 700 }}>
+                          🧩 Módulos
+                        </button>
                         <button onClick={() => openEdit(t)} className="btn-neu btn-ghost" style={{ padding: '5px 10px', fontSize: '0.75rem' }}>✎ Editar</button>
                         <button onClick={() => toggleStatus(t.id, t.status)} className="btn-neu btn-ghost" style={{ padding: '5px 10px', fontSize: '0.75rem', color: t.status === 'active' ? 'var(--accent-coral)' : 'var(--accent-emerald)' }}>
                           {t.status === 'active' ? '⏸' : '▶'}
@@ -219,6 +292,86 @@ export default function TenantsAdminPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Modules Configuration */}
+      {selectedTenantForModules && (
+        <div style={MODAL_STYLE} onClick={e => e.target === e.currentTarget && setSelectedTenantForModules(null)}>
+          <div style={{ ...PANEL_STYLE, maxWidth: 640 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  🧩 Módulos Activos — {selectedTenantForModules.name}
+                </h2>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                  Habilita o deshabilita los módulos disponibles para este negocio
+                </p>
+              </div>
+              <button type="button" onClick={() => setSelectedTenantForModules(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+            </div>
+
+            {loadingModules ? (
+              <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando módulos...</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 10, maxHeight: '60vh', overflowY: 'auto', paddingRight: 4 }}>
+                {AVAILABLE_MODULES.map(mod => {
+                  const isEnabled = !!tenantModules[mod.id]
+                  return (
+                    <div
+                      key={mod.id}
+                      onClick={() => setTenantModules(prev => ({ ...prev, [mod.id]: !prev[mod.id] }))}
+                      className="neu-card"
+                      style={{
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        border: isEnabled ? '1.5px solid var(--accent-purple)' : '1px solid var(--border-color)',
+                        background: isEnabled ? 'rgba(139, 114, 190, 0.05)' : 'var(--bg)'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: '1.3rem' }}>{mod.icon}</span>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{mod.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{mod.description}</div>
+                        </div>
+                      </div>
+                      <div style={{
+                        width: 38,
+                        height: 22,
+                        borderRadius: 12,
+                        background: isEnabled ? 'var(--accent-purple)' : 'var(--bg-deep)',
+                        position: 'relative',
+                        transition: '0.2s',
+                        border: '1px solid var(--border-color)'
+                      }}>
+                        <div style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: '50%',
+                          background: '#fff',
+                          position: 'absolute',
+                          top: 2,
+                          left: isEnabled ? 18 : 3,
+                          transition: '0.2s'
+                        }} />
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 8 }}>
+              <button type="button" onClick={() => setSelectedTenantForModules(null)} className="btn-neu btn-ghost" style={{ padding: '10px 20px' }}>Cancelar</button>
+              <button type="button" onClick={handleSaveModules} className="btn-neu btn-primary" disabled={savingModules} style={{ padding: '10px 24px' }}>
+                {savingModules ? 'Guardando...' : 'Guardar Módulos'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

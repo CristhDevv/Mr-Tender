@@ -19,22 +19,32 @@ import {
   Settings,
   LogOut,
   Menu,
-  Plus
+  Plus,
+  Pill,
+  UtensilsCrossed
 } from 'lucide-react'
 
-const NAV_ITEMS = [
+interface NavItemDef {
+  href: string
+  Icon: any
+  label: string
+  moduleKey?: string
+}
+
+const ALL_NAV_ITEMS: NavItemDef[] = [
   { href: '/dashboard',   Icon: LayoutDashboard, label: 'Inicio' },
-  { href: '/pos',         Icon: ShoppingCart,    label: 'Punto de Venta' },
+  { href: '/pos',         Icon: ShoppingCart,    label: 'Punto de Venta', moduleKey: 'pos' },
   { href: '/products',    Icon: Package,         label: 'Productos' },
-  { href: '/inventory',   Icon: Boxes,           label: 'Inventario' },
-  { href: '/customers',   Icon: Users,           label: 'Clientes' },
-  { href: '/suppliers',   Icon: Truck,           label: 'Proveedores' },
-  { href: '/purchases',   Icon: ShoppingBag,     label: 'Compras' },
-  { href: '/cash',        Icon: DollarSign,      label: 'Caja' },
-  { href: '/reports',     Icon: BarChart3,       label: 'Reportes' },
-  { href: '/accounting',  Icon: BookOpen,        label: 'Contabilidad' },
-  { href: '/employees',   Icon: UserCheck,       label: 'Empleados' },
-  { href: '/ecommerce',   Icon: Globe,           label: 'E-commerce' },
+  { href: '/pharmacy',    Icon: Pill,            label: 'Droguería 💊',  moduleKey: 'pharmacy' },
+  { href: '/inventory',   Icon: Boxes,           label: 'Inventario',     moduleKey: 'inventory' },
+  { href: '/customers',   Icon: Users,           label: 'Clientes',       moduleKey: 'customers' },
+  { href: '/suppliers',   Icon: Truck,           label: 'Proveedores',    moduleKey: 'suppliers' },
+  { href: '/purchases',   Icon: ShoppingBag,     label: 'Compras',        moduleKey: 'purchases' },
+  { href: '/cash',        Icon: DollarSign,      label: 'Caja',           moduleKey: 'cash' },
+  { href: '/reports',     Icon: BarChart3,       label: 'Reportes',       moduleKey: 'reports' },
+  { href: '/accounting',  Icon: BookOpen,        label: 'Contabilidad',   moduleKey: 'accounting' },
+  { href: '/employees',   Icon: UserCheck,       label: 'Empleados',      moduleKey: 'employees' },
+  { href: '/ecommerce',   Icon: Globe,           label: 'E-commerce',     moduleKey: 'ecommerce' },
   { href: '/settings',    Icon: Settings,        label: 'Configuración' },
 ]
 
@@ -44,12 +54,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const supabase = createClient()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState<{ full_name?: string; email?: string } | null>(null)
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
+    pos: true, inventory: true, cash: true, customers: true,
+    suppliers: true, purchases: true, employees: true,
+    accounting: true, reports: true, ecommerce: true,
+    pharmacy: false, restaurant: false
+  })
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data.user) setUser({ full_name: data.user.user_metadata?.full_name, email: data.user.email })
-    })
+    async function loadUserAndModules() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        setUser({ full_name: user.user_metadata?.full_name, email: user.email })
+        const tid = user.user_metadata?.tenant_id
+        if (tid) {
+          const { data: tData } = await supabase
+            .from('tenant_settings')
+            .select('enabled_modules')
+            .eq('tenant_id', tid)
+            .limit(1)
+
+          if (tData?.[0]?.enabled_modules) {
+            setEnabledModules(prev => ({ ...prev, ...tData[0].enabled_modules }))
+          }
+        }
+      }
+    }
+    loadUserAndModules()
   }, [])
+
+  const navItems = ALL_NAV_ITEMS.filter(item => {
+    if (!item.moduleKey) return true
+    return enabledModules[item.moduleKey] !== false
+  })
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -78,7 +115,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Nav */}
         <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {NAV_ITEMS.map(item => {
+          {navItems.map(item => {
             const Icon = item.Icon
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
             return (
@@ -129,7 +166,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Current Page Title */}
             <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {NAV_ITEMS.find(i => i.href === pathname)?.label || 'Dashboard'}
+              {ALL_NAV_ITEMS.find(i => i.href === pathname)?.label || 'Dashboard'}
             </div>
           </div>
 
