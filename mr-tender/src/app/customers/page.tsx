@@ -193,37 +193,17 @@ export default function CustomersPage() {
 
     setSubmitting(true)
     try {
-      const prevDebt = Number(selectedCustomer.credit_used || 0)
-      const newCreditUsed = Math.max(0, prevDebt - amount)
-      
-      const { error } = await supabase
-        .from('customers')
-        .update({ credit_used: newCreditUsed })
-        .eq('id', selectedCustomer.id)
+      const { data, error } = await supabase.rpc('record_customer_abono', {
+        p_customer_id: selectedCustomer.id,
+        p_amount: amount,
+        p_notes: 'Abono manual'
+      })
 
       if (error) throw error
+      if (data && data.success === false) throw new Error(data.error)
 
-      // Check active cash session to record cash movement
-      const { data: regData } = await supabase
-        .from('cash_registers')
-        .select('current_session_id')
-        .eq('tenant_id', tenantId)
-        .limit(1)
-
-      const sessionId = regData?.[0]?.current_session_id
-      if (sessionId) {
-        const { data: { user } } = await supabase.auth.getUser()
-        await supabase.from('cash_movements').insert({
-          tenant_id: tenantId,
-          session_id: sessionId,
-          movement_type: 'income',
-          amount: amount,
-          description: `Abono a fiao: ${selectedCustomer.full_name}`,
-          reference_type: 'customer_payment',
-          reference_id: selectedCustomer.id,
-          created_by: user?.id
-        })
-      }
+      const prevDebt = Number(data.prev_debt ?? selectedCustomer.credit_used ?? 0)
+      const newCreditUsed = Number(data.new_debt ?? 0)
 
       setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, credit_used: newCreditUsed } : c))
       setShowAbonoModal(false)
@@ -245,7 +225,7 @@ Fecha: ${new Date().toLocaleString('es-CO')}
 
 ¡Muchas gracias por su puntual abono!`
 
-        if (confirm(`Abono de ${formatCurrency(amount)} registrado. ¿Deseas enviar el comprobante por WhatsApp al cliente?`)) {
+        if (confirm(`Abono de ${formatCurrency(amount)} registrado con éxito. ¿Deseas enviar el comprobante por WhatsApp al cliente?`)) {
           window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(receiptMsg)}`, '_blank')
         }
       } else {

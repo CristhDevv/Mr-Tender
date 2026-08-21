@@ -99,6 +99,7 @@ interface Product {
   category: string
   cost: number
   unit_type?: string
+  tax_rate?: number
   category_id?: string
   warehouse_id?: string
   is_pharmacy?: boolean
@@ -156,6 +157,7 @@ export default function POSClient() {
   const [showScanner, setShowScanner] = useState(false)
   const [businessName, setBusinessName] = useState('MI TIENDA')
   const [merchantPhone, setMerchantPhone] = useState('3001234567')
+  const [defaultTaxRate, setDefaultTaxRate] = useState(19)
   const [isOnline, setIsOnline] = useState(true)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
 
@@ -222,18 +224,35 @@ export default function POSClient() {
   }, [])
 
   async function syncPendingSales() {
-    const savedQueue = localStorage.getItem('mr_tender_offline_sales')
-    if (!savedQueue) return
+    const savedQueueStr = localStorage.getItem('mr_tender_offline_sales')
+    if (!savedQueueStr) return
     try {
-      const queue = JSON.parse(savedQueue)
-      if (queue.length === 0) return
+      let queue: Array<{ offline_id?: string; payload: any; created_at: string }> = JSON.parse(savedQueueStr)
+      if (!Array.isArray(queue) || queue.length === 0) return
 
+      const remaining: typeof queue = []
       for (const item of queue) {
-        await supabase.rpc('process_sale', { p_sale_data: item.payload })
+        try {
+          const { data, error } = await supabase.rpc('process_sale', { p_sale_data: item.payload })
+          if (error || (data && data.success === false)) {
+            if (data?.already_synced) {
+              continue // Dropped safely since it was already registered in DB
+            }
+            remaining.push(item)
+          }
+        } catch {
+          remaining.push(item)
+        }
       }
-      localStorage.removeItem('mr_tender_offline_sales')
-      setPendingSyncCount(0)
-      playSound('success')
+
+      if (remaining.length === 0) {
+        localStorage.removeItem('mr_tender_offline_sales')
+        setPendingSyncCount(0)
+        playSound('success')
+      } else {
+        localStorage.setItem('mr_tender_offline_sales', JSON.stringify(remaining))
+        setPendingSyncCount(remaining.length)
+      }
     } catch (e) {
       console.error('Error syncing offline sales:', e)
     }
@@ -252,13 +271,18 @@ export default function POSClient() {
         // Get tenant settings
         const { data: tSettings } = await supabase
           .from('tenant_settings')
-          .select('business_name, whatsapp, phone')
+          .select('business_name, whatsapp, phone, tax_rate, tax_name')
           .eq('tenant_id', tenant_id)
           .limit(1)
 
-        if (tSettings?.[0]?.business_name) {
-          setBusinessName(tSettings[0].business_name)
+        let currentTaxRate = 19
+        if (tSettings?.[0]) {
+          if (tSettings[0].business_name) setBusinessName(tSettings[0].business_name)
           setMerchantPhone(tSettings[0].whatsapp || tSettings[0].phone || '3001234567')
+          if (tSettings[0].tax_rate !== null && tSettings[0].tax_rate !== undefined) {
+            currentTaxRate = Number(tSettings[0].tax_rate)
+            setDefaultTaxRate(currentTaxRate)
+          }
         }
 
         // Get branch
@@ -335,7 +359,7 @@ export default function POSClient() {
           supabase
             .from('products')
             .select(`
-              id, name, sale_price, cost_price, sku, barcode, category_id,
+              id, name, sale_price, cost_price, sku, barcode, category_id, tax_rate,
               categories (name),
               inventory (quantity, warehouse_id)
             `)
@@ -343,7 +367,10 @@ export default function POSClient() {
             .eq('is_active', true),
           supabase
             .from('pharmacy_medicines')
-            .select('*')
+            .select(`
+              *,
+              pharmacy_lots (current_quantity, expiration_date, status)
+            `)
             .eq('tenant_id', tenant_id)
             .eq('is_active', true)
         ])
@@ -366,6 +393,7 @@ export default function POSClient() {
               stock,
               category: catName,
               unit_type: isWeighed ? 'lb' : 'unit',
+              tax_rate: p.tax_rate !== null && p.tax_rate !== undefined ? Number(p.tax_rate) : currentTaxRate,
               category_id: p.category_id,
               warehouse_id
             })
@@ -374,13 +402,19 @@ export default function POSClient() {
 
         if (medRes.data) {
           medRes.data.forEach((m: any) => {
+            const lots = m.pharmacy_lots || []
+            const activeLots = lots.filter((l: any) => l.status !== 'expired' && l.status !== 'quarantine')
+            const realStock = activeLots.length > 0
+              ? activeLots.reduce((acc: number, l: any) => acc + Number(l.current_quantity || 0), 0)
+              : 0
+
             loadedProducts.push({
               id: m.id,
               name: `${m.trade_name} (${m.generic_name} ${m.concentration || ''})`,
               price: Number(m.unit_price || m.box_price || 0),
               cost: Number(m.unit_price * 0.6 || 0),
               sku: m.invima_registration || '',
-              stock: 50,
+              stock: realStock,
               category: 'Farmacia 💊',
               unit_type: 'unit',
               warehouse_id,
@@ -393,7 +427,7 @@ export default function POSClient() {
               box_price: m.box_price ? Number(m.box_price) : null,
               units_per_box: Number(m.units_per_box || 1),
               units_per_blister: Number(m.units_per_blister || 1),
-              prescription_type: m.prescription_type
+              prescription_type: m.prescription_type || (m.is_controlled ? 'controlled' : m.requires_prescription ? 'rx' : 'otc')
             })
           })
         }
@@ -587,6 +621,7 @@ export default function POSClient() {
           cost_price: cost,
           min_stock: 3,
           max_stock: 50,
+          tax_rate: defaultTaxRate,
           is_active: true
         }])
         .select()
@@ -616,6 +651,7 @@ export default function POSClient() {
         stock,
         category: 'General',
         unit_type: 'unit',
+        tax_rate: defaultTaxRate,
         warehouse_id: sessionInfo.warehouse_id
       }
 
@@ -669,21 +705,14 @@ export default function POSClient() {
 
     setLoading(true)
 
-    const salePayload = {
-      tenant_id: sessionInfo.tenant_id,
-      seller_id: sessionInfo.user_id,
-      register_id: sessionInfo.register_id,
-      session_id: sessionInfo.session_id,
-      branch_id: sessionInfo.branch_id,
-      customer_id: selectedCustomer ? selectedCustomer.id : null,
-      subtotal,
-      discount_amount: discountAmt,
-      tax_amount: total * 0.19,
-      tip_amount: 0,
-      total,
-      change_amount: change,
-      points_redeemed: 0,
-      items: cart.map(item => ({
+    const itemsPayload = cart.map(item => {
+      const rate = item.tax_rate !== undefined ? Number(item.tax_rate) : defaultTaxRate
+      const lineTotal = item.lineTotal
+      const itemNetSubtotal = rate > 0 ? (lineTotal / (1 + rate / 100)) : lineTotal
+      const itemTaxAmount = lineTotal - itemNetSubtotal
+      const itemDiscountAmt = (item.quantity * item.price) * (item.discount / 100)
+
+      return {
         product_id: item.id,
         variant_id: null,
         product_name: item.name,
@@ -692,14 +721,37 @@ export default function POSClient() {
         unit_price: item.price,
         original_price: item.price,
         discount_percentage: item.discount,
-        discount_amount: item.lineTotal * (item.discount / 100),
-        tax_rate: 19.00,
-        tax_amount: item.lineTotal * 0.19,
-        subtotal: item.lineTotal / 1.19,
-        total: item.lineTotal,
+        discount_amount: itemDiscountAmt,
+        tax_rate: rate,
+        tax_amount: itemTaxAmount,
+        subtotal: itemNetSubtotal,
+        total: lineTotal,
         cost_price: item.cost,
         warehouse_id: sessionInfo.warehouse_id
-      })),
+      }
+    })
+
+    const calculatedTaxAmount = itemsPayload.reduce((sum, it) => sum + it.tax_amount, 0)
+    const calculatedSubtotal = (total - calculatedTaxAmount) + discountAmt
+
+    const offlineId = 'OFF-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9)
+
+    const salePayload = {
+      tenant_id: sessionInfo.tenant_id,
+      seller_id: sessionInfo.user_id,
+      register_id: sessionInfo.register_id,
+      session_id: sessionInfo.session_id,
+      branch_id: sessionInfo.branch_id,
+      customer_id: selectedCustomer ? selectedCustomer.id : null,
+      subtotal: calculatedSubtotal,
+      discount_amount: discountAmt,
+      tax_amount: calculatedTaxAmount,
+      tip_amount: 0,
+      total,
+      change_amount: change,
+      points_redeemed: 0,
+      offline_id: offlineId,
+      items: itemsPayload,
       payments: [
         {
           payment_method: paymentMethod,
@@ -713,13 +765,12 @@ export default function POSClient() {
 
     try {
       if (!navigator.onLine) {
-        const localNumber = 'OFF-' + Math.floor(100000 + Math.random() * 900000)
         const savedQueue = JSON.parse(localStorage.getItem('mr_tender_offline_sales') || '[]')
-        savedQueue.push({ payload: salePayload, created_at: new Date().toISOString() })
+        savedQueue.push({ offline_id: offlineId, payload: salePayload, created_at: new Date().toISOString() })
         localStorage.setItem('mr_tender_offline_sales', JSON.stringify(savedQueue))
         setPendingSyncCount(savedQueue.length)
 
-        setSaleNumber(localNumber)
+        setSaleNumber(offlineId)
         playSound('success')
         setStep('done')
         return
@@ -734,16 +785,6 @@ export default function POSClient() {
       
       if (paymentMethod === 'fiao' && selectedCustomer) {
         const newCreditUsed = Number(selectedCustomer.credit_used || 0) + total
-        await supabase
-          .from('customers')
-          .update({
-            credit_used: newCreditUsed,
-            total_purchases: Number(selectedCustomer.total_purchases || 0) + total,
-            total_orders: Number(selectedCustomer.total_orders || 0) + 1,
-            last_purchase_at: new Date().toISOString()
-          })
-          .eq('id', selectedCustomer.id)
-
         setCustomerList(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, credit_used: newCreditUsed } : c))
         setSelectedCustomer(prev => prev ? { ...prev, credit_used: newCreditUsed } : null)
       }
@@ -836,11 +877,24 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 2, borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#64748B' }}><span>IVA Incluido (19%):</span><span>{formatCurrency(total * 0.19)}</span></div>
+            {discount > 0 && (
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--accent-coral)' }}>
+                <span>Descuento ({discount}%):</span>
+                <span>-{formatCurrency(discountAmt)}</span>
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#64748B' }}>
+              <span>IVA Estimado Incluido:</span>
+              <span>{formatCurrency(cart.reduce((sum, item) => {
+                const r = item.tax_rate !== undefined ? Number(item.tax_rate) : defaultTaxRate
+                const base = r > 0 ? (item.lineTotal / (1 + r / 100)) : item.lineTotal
+                return sum + (item.lineTotal - base)
+              }, 0))}</span>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1rem', marginTop: 2 }}><span>TOTAL:</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#475569', marginTop: 1 }}>
               <span>Pago:</span>
-              <span style={{ fontWeight: 800 }}>{paymentMethod === 'cash' ? 'EFECTIVO' : paymentMethod === 'fiao' ? 'FIAO (CRÃ‰DITO)' : paymentMethod === 'transfer' ? 'NEQUI' : 'TARJETA'}</span>
+              <span style={{ fontWeight: 800 }}>{paymentMethod === 'cash' ? 'EFECTIVO' : paymentMethod === 'fiao' ? 'FIAO (CRÉDITO)' : paymentMethod === 'transfer' ? 'NEQUI / TRANSFERENCIA' : 'TARJETA'}</span>
             </div>
             {change > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--accent-green)', fontWeight: 800 }}><span>Cambio:</span><span>{formatCurrency(change)}</span></div>}
           </div>

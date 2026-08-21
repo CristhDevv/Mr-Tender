@@ -17,7 +17,8 @@ import {
   X,
   TrendingUp,
   Calendar,
-  Layers
+  Layers,
+  RotateCcw
 } from 'lucide-react'
 
 interface MonthlySalesData {
@@ -38,9 +39,12 @@ export default function ReportsPage() {
   const [products, setProducts] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
   const [cashSessions, setCashSessions] = useState<any[]>([])
-  const [purchases, setPurchases] = useState<any[]>([]);
+  const [purchases, setPurchases] = useState<any[]>([])
   const [refunds, setRefunds] = useState<any[]>([])
   const [monthlyChart, setMonthlyChart] = useState<MonthlySalesData[]>([])
+
+  // Global Date Filter State
+  const [periodFilter, setPeriodFilter] = useState<'today' | '7days' | '30days' | 'this_month' | 'this_year' | 'all'>('30days')
 
   // Active Detailed Report Modal
   const [activeReportModal, setActiveReportModal] = useState<string | null>(null)
@@ -137,6 +141,14 @@ export default function ReportsPage() {
           .eq('tenant_id', tid)
           .order('created_at', { ascending: false })
         setPurchases(poData || [])
+
+        // 7. Refunds
+        const { data: refData } = await supabase
+          .from('refunds')
+          .select('*, sales(number, customers(full_name))')
+          .eq('tenant_id', tid)
+          .order('created_at', { ascending: false })
+        setRefunds(refData || [])
 
       } catch (err) {
         console.error('Error loading report data:', err)
@@ -274,23 +286,78 @@ export default function ReportsPage() {
     document.body.removeChild(link)
   }
 
-  // EXPORT 4: Printable Executive PDF Report
+  // EXPORT 4: Cash Sessions
+  function exportCashSessionsExcel() {
+    if (cashSessions.length === 0) return alert('No hay sesiones de caja para exportar')
+    let csv = '\uFEFF'
+    csv += `HISTORIAL DE TURNOS DE CAJA - ${businessName.toUpperCase()}\n`
+    csv += `Generado: ${new Date().toLocaleString('es-CO')}\n\n`
+    csv += 'ID Sesion,Apertura,Cierre,Monto Inicial,Efectivo Esperado,Efectivo Contado,Diferencia,Estado\n'
+    filteredCashSessions.forEach(s => {
+      csv += `"${s.id}","${s.opened_at ? new Date(s.opened_at).toLocaleString('es-CO') : ''}","${s.closed_at ? new Date(s.closed_at).toLocaleString('es-CO') : 'En curso'}",${s.opening_amount || 0},${s.expected_amount || 0},${s.closing_amount || 0},${s.difference_amount || 0},"${s.status}"\n`
+    })
+    downloadCSV(csv, `MrTender_Cajas_${new Date().toISOString().split('T')[0]}.csv`)
+  }
+
+  // EXPORT 5: Purchases
+  function exportPurchasesExcel() {
+    if (purchases.length === 0) return alert('No hay compras para exportar')
+    let csv = '\uFEFF'
+    csv += `REPORTE DE COMPRAS Y PROVEEDORES - ${businessName.toUpperCase()}\n`
+    csv += `Generado: ${new Date().toLocaleString('es-CO')}\n\n`
+    csv += 'Numero OC,Proveedor,Fecha,Estado,Subtotal,Total\n'
+    filteredPurchases.forEach(p => {
+      csv += `"${p.number}","${p.suppliers?.company_name || 'General'}","${p.order_date || p.created_at}","${p.status}",${p.subtotal || p.total},${p.total}\n`
+    })
+    downloadCSV(csv, `MrTender_Compras_${new Date().toISOString().split('T')[0]}.csv`)
+  }
+
+  // EXPORT 6: Printable Executive PDF Report
   function printExecutiveReport() {
     window.print()
   }
 
+  const isDateInPeriod = (dateStr: string | null | undefined) => {
+    if (!dateStr) return true
+    if (periodFilter === 'all') return true
+    const d = new Date(dateStr)
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+
+    if (periodFilter === 'today') {
+      return d >= startOfToday
+    } else if (periodFilter === '7days') {
+      const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      return d >= sevenDaysAgo
+    } else if (periodFilter === '30days') {
+      const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      return d >= thirtyDaysAgo
+    } else if (periodFilter === 'this_month') {
+      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+    } else if (periodFilter === 'this_year') {
+      return d.getFullYear() === now.getFullYear()
+    }
+    return true
+  }
+
+  const filteredSales = sales.filter(s => isDateInPeriod(s.created_at))
+  const filteredPurchases = purchases.filter(p => isDateInPeriod(p.order_date || p.created_at))
+  const filteredRefunds = refunds.filter(r => isDateInPeriod(r.created_at))
+  const filteredCashSessions = cashSessions.filter(cs => isDateInPeriod(cs.opened_at))
+
   const REPORT_TYPES = [
-    { id: 'sales', Icon: BarChart3, title: 'Ventas por perÃ­odo', desc: 'Reporte detallado de ventas con filtros de fecha, cliente y totales.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
-    { id: 'inventory', Icon: Package, title: 'Inventario & Stock', desc: 'Estado del stock, costos, precios de venta y valorizaciÃ³n total.', color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
+    { id: 'sales', Icon: BarChart3, title: 'Ventas por período', desc: 'Reporte detallado de ventas con filtros de fecha, cliente y totales.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+    { id: 'inventory', Icon: Package, title: 'Inventario & Stock', desc: 'Estado del stock, costos, precios de venta y valorización total.', color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
     { id: 'customers', Icon: Users, title: 'Clientes & Libreta de Fiao', desc: 'Saldos pendientes por cobrar, cupos asignados y compras acumuladas.', color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
     { id: 'cash', Icon: DollarSign, title: 'Caja y arqueos', desc: 'Historial de turnos, efectivo esperado vs contado y diferencias.', color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
-    { id: 'pnl', Icon: ClipboardList, title: 'Estado de resultados (P&L)', desc: 'Ingresos por ventas, costo de mercancÃ­a y ganancia bruta estimada.', color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
-    { id: 'purchases', Icon: Truck, title: 'Proveedores y compras', desc: 'Ã“rdenes de compra, gastos por proveedor y entradas a bodega.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+    { id: 'pnl', Icon: ClipboardList, title: 'Estado de resultados (P&L)', desc: 'Ingresos por ventas, costo de mercancía y ganancia bruta estimada.', color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+    { id: 'purchases', Icon: Truck, title: 'Proveedores y compras', desc: 'Órdenes de compra, gastos por proveedor y entradas a bodega.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+    { id: 'refunds', Icon: RotateCcw, title: 'Devoluciones y notas crédito', desc: 'Historial de devoluciones, motivos y reembolsos a clientes.', color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
   ]
 
-  // Compute Financial Totals
-  const totalSalesRevenue = sales.reduce((sum, s) => sum + Number(s.total || 0), 0)
-  const totalCostOfGoods = sales.reduce((sum, s) => {
+  // Compute Financial Totals for filtered period
+  const totalSalesRevenue = filteredSales.reduce((sum, s) => sum + Number(s.total || 0), 0)
+  const totalCostOfGoods = filteredSales.reduce((sum, s) => {
     const itemsCost = s.sale_items?.reduce((iSum: number, item: any) => iSum + (Number(item.cost_price || item.unit_price * 0.75) * Number(item.quantity || 1)), 0) || 0
     return sum + itemsCost
   }, 0)
@@ -300,7 +367,7 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando analÃ­tica y reportes...</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando analítica y reportes...</div>
       </div>
     )
   }
@@ -311,8 +378,8 @@ export default function ReportsPage() {
       {/* Header & Main Export Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Reportes y AnalÃ­tica</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>{businessName} â€¢ Actualizado al {new Date().toLocaleDateString('es-CO')}</p>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Reportes y Analítica</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>{businessName} • Actualizado al {new Date().toLocaleDateString('es-CO')}</p>
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -324,6 +391,40 @@ export default function ReportsPage() {
             <Printer size={15} />
             <span>Imprimir / PDF</span>
           </button>
+        </div>
+      </div>
+
+      {/* Date Range Selector Pill Bar */}
+      <div className="neu-card" style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 700 }}>
+          <Calendar size={15} style={{ color: 'var(--accent-blue)' }} />
+          <span>Filtrar período:</span>
+        </div>
+
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+          {[
+            { id: 'today', label: 'Hoy' },
+            { id: '7days', label: '7 días' },
+            { id: '30days', label: '30 días' },
+            { id: 'this_month', label: 'Este mes' },
+            { id: 'this_year', label: 'Este año' },
+            { id: 'all', label: 'Todo el histórico' },
+          ].map(p => (
+            <button
+              key={p.id}
+              className="btn-neu"
+              onClick={() => setPeriodFilter(p.id as any)}
+              style={{
+                padding: '4px 10px',
+                fontSize: '0.72rem',
+                fontWeight: periodFilter === p.id ? 800 : 500,
+                background: periodFilter === p.id ? 'var(--accent-blue)' : 'var(--bg)',
+                color: periodFilter === p.id ? '#fff' : 'var(--text-secondary)'
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -579,6 +680,9 @@ export default function ReportsPage() {
               <button className="btn-neu" onClick={() => {
                 if (activeReportModal === 'inventory') exportInventoryExcel()
                 else if (activeReportModal === 'customers') exportCustomersExcel()
+                else if (activeReportModal === 'cash') exportCashSessionsExcel()
+                else if (activeReportModal === 'purchases') exportPurchasesExcel()
+                else if (activeReportModal === 'refunds') exportRefundsExcel()
                 else exportSalesExcel()
               }} style={{ flex: 1, padding: 10, fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <FileSpreadsheet size={15} style={{ color: 'var(--accent-green)' }} />

@@ -13,7 +13,11 @@ import {
   Search,
   Building2,
   Boxes,
-  CheckCircle2
+  CheckCircle2,
+  FileSpreadsheet,
+  Filter,
+  RefreshCw,
+  Download
 } from 'lucide-react'
 
 interface DBInventory {
@@ -49,6 +53,14 @@ export default function InventoryPage() {
   const [tenantId, setTenantId] = useState('')
   const [userId, setUserId] = useState('')
 
+  // Kardex filters & pagination
+  const [kardexSearch, setKardexSearch] = useState('')
+  const [kardexTypeFilter, setKardexTypeFilter] = useState('all')
+  const [kardexWarehouseFilter, setKardexWarehouseFilter] = useState('all')
+  const [kardexPage, setKardexPage] = useState(0)
+  const [hasMoreMovements, setHasMoreMovements] = useState(true)
+  const [loadingMoreMovs, setLoadingMoreMovs] = useState(false)
+
   // Modals state
   const [showAdjModal, setShowAdjModal] = useState(false)
   const [adjForm, setAdjForm] = useState({ warehouse_id: '', product_id: '', adjustment_type: 'decrease', reason: 'Merma / Deterioro', notes: '', quantity: '1' })
@@ -59,6 +71,46 @@ export default function InventoryPage() {
   useEffect(() => {
     loadInventory()
   }, [])
+
+  async function loadKardexMovements(page = 0, append = false, type = kardexTypeFilter, wh = kardexWarehouseFilter, tid = tenantId) {
+    if (!tid) return
+    try {
+      if (append) setLoadingMoreMovs(true)
+      const pageSize = 50
+      let query = supabase
+        .from('stock_movements')
+        .select(`id, created_at, movement_type, quantity, unit_cost, total_cost, balance_after, notes, products (id, name, sku), warehouses (id, name)`)
+        .eq('tenant_id', tid)
+        .order('created_at', { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+
+      if (type !== 'all') {
+        query = query.ilike('movement_type', `%${type}%`)
+      }
+      if (wh !== 'all') {
+        query = query.eq('warehouse_id', wh)
+      }
+
+      const { data, error } = await query
+      if (error) throw error
+
+      if (data) {
+        if (data.length < pageSize) setHasMoreMovements(false)
+        else setHasMoreMovements(true)
+
+        if (append) {
+          setMovements(prev => [...prev, ...data])
+        } else {
+          setMovements(data)
+        }
+        setKardexPage(page)
+      }
+    } catch (err) {
+      console.error('Error loading kardex movements:', err)
+    } finally {
+      if (append) setLoadingMoreMovs(false)
+    }
+  }
 
   async function loadInventory() {
     try {
@@ -71,7 +123,7 @@ export default function InventoryPage() {
       setTenantId(tenant_id)
       setUserId(user.id)
 
-      const [invRes, movRes, adjRes, trfRes, whRes, prodRes] = await Promise.all([
+      const [invRes, adjRes, trfRes, whRes, prodRes] = await Promise.all([
         supabase
           .from('inventory')
           .select(`
@@ -80,12 +132,6 @@ export default function InventoryPage() {
             warehouses (id, name)
           `)
           .eq('tenant_id', tenant_id),
-        supabase
-          .from('stock_movements')
-          .select(`id, created_at, movement_type, quantity, unit_cost, total_cost, balance_after, notes, products (name, sku), warehouses (name)`)
-          .eq('tenant_id', tenant_id)
-          .order('created_at', { ascending: false })
-          .limit(50),
         supabase
           .from('stock_adjustments')
           .select(`id, created_at, adjustment_type, reason, notes, status, warehouses (name)`)
@@ -111,7 +157,6 @@ export default function InventoryPage() {
       ])
 
       if (invRes.data) setInventory(invRes.data as any)
-      if (movRes.data) setMovements(movRes.data)
       if (adjRes.data) setAdjustments(adjRes.data)
       if (trfRes.data) setTransfers(trfRes.data)
       if (whRes.data) {
@@ -128,12 +173,60 @@ export default function InventoryPage() {
           setTrfForm(f => ({ ...f, product_id: prodRes.data[0].id }))
         }
       }
+
+      await loadKardexMovements(0, false, kardexTypeFilter, kardexWarehouseFilter, tenant_id)
     } catch (err) {
       console.error('Error loading inventory:', err)
     } finally {
       setLoading(false)
     }
   }
+
+  function exportKardexCsv() {
+    if (movements.length === 0) {
+      alert('No hay movimientos en el Kardex para exportar.')
+      return
+    }
+
+    let csvContent = '\uFEFF'
+    csvContent += `KARDEX Y MOVIMIENTOS DE INVENTARIO - MR TENDER\n`
+    csvContent += `Generado: ${new Date().toLocaleString('es-CO')}\n\n`
+    csvContent += 'Fecha,Producto,SKU,Almacen,TipoMovimiento,Cantidad,CostoUnitario,CostoTotal,SaldoFinal,Detalle\n'
+
+    filteredKardex.forEach(m => {
+      const date = new Date(m.created_at).toLocaleString('es-CO').replace(/,/g, ' ')
+      const prod = (m.products?.name || 'Producto').replace(/,/g, ' ')
+      const sku = m.products?.sku || 'N/A'
+      const wh = (m.warehouses?.name || 'Almacen').replace(/,/g, ' ')
+      const type = m.movement_type
+      const qty = m.quantity
+      const unitCost = m.unit_cost || 0
+      const totalCost = m.total_cost || 0
+      const balance = m.balance_after || 0
+      const notes = (m.notes || '-').replace(/,/g, ' ')
+
+      csvContent += `"${date}","${prod}","${sku}","${wh}","${type}",${qty},${unitCost},${totalCost},${balance},"${notes}"\n`
+    })
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `kardex_${new Date().toISOString().split('T')[0]}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  const filteredKardex = movements.filter(m => {
+    if (!kardexSearch.trim()) return true
+    const s = kardexSearch.toLowerCase()
+    const prodName = (m.products?.name || '').toLowerCase()
+    const sku = (m.products?.sku || '').toLowerCase()
+    const whName = (m.warehouses?.name || '').toLowerCase()
+    const notes = (m.notes || '').toLowerCase()
+    return prodName.includes(s) || sku.includes(s) || whName.includes(s) || notes.includes(s)
+  })
 
   const filtered = inventory.filter(i => {
     const name = i.products?.name || ''
@@ -353,44 +446,143 @@ export default function InventoryPage() {
 
       {/* TAB 2: Kardex / Movimientos */}
       {tab === 'movements' && (
-        <div className="neu-card" style={{ padding: 12 }}>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--bg-deep)', textAlign: 'left', color: 'var(--text-secondary)' }}>
-                  <th style={{ padding: '8px 6px' }}>Fecha</th>
-                  <th style={{ padding: '8px 6px' }}>Producto</th>
-                  <th style={{ padding: '8px 6px' }}>Tipo</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'right' }}>Cantidad</th>
-                  <th style={{ padding: '8px 6px', textAlign: 'right' }}>Saldo Final</th>
-                  <th style={{ padding: '8px 6px' }}>Detalle</th>
-                </tr>
-              </thead>
-              <tbody>
-                {movements.map(m => {
-                  const isPos = Number(m.quantity) > 0
-                  return (
-                    <tr key={m.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
-                      <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{new Date(m.created_at).toLocaleDateString('es-CO')}</td>
-                      <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--text-primary)' }}>{m.products?.name || 'Producto'}</td>
-                      <td style={{ padding: '8px 6px' }}>
-                        <span className={`badge ${m.movement_type.includes('sale') ? 'badge-blue' : isPos ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.68rem' }}>
-                          {m.movement_type}
-                        </span>
-                      </td>
-                      <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 800, color: isPos ? 'var(--accent-green)' : 'var(--accent-coral)' }}>
-                        {isPos ? `+${m.quantity}` : m.quantity}
-                      </td>
-                      <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 800, color: 'var(--accent-blue)' }}>{m.balance_after}</td>
-                      <td style={{ padding: '8px 6px', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{m.notes || '-'}</td>
-                    </tr>
-                  )
-                })}
-                {movements.length === 0 && (
-                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>No hay movimientos registrados</td></tr>
-                )}
-              </tbody>
-            </table>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Kardex Controls & Filters Bar */}
+          <div className="neu-card" style={{ padding: '10px 12px', display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, flex: 1, minWidth: 280 }}>
+              <div className="input-group" style={{ flex: '1 1 180px', minWidth: 160 }}>
+                <span className="input-icon"><Search size={14} style={{ color: 'var(--text-muted)' }} /></span>
+                <input
+                  className="input-neu"
+                  placeholder="Buscar en kardex (producto, SKU, notas)..."
+                  value={kardexSearch}
+                  onChange={e => setKardexSearch(e.target.value)}
+                  style={{ fontSize: '0.8rem', padding: '6px 8px 6px 28px' }}
+                />
+              </div>
+
+              <select
+                className="input-neu"
+                value={kardexTypeFilter}
+                onChange={e => {
+                  const val = e.target.value
+                  setKardexTypeFilter(val)
+                  loadKardexMovements(0, false, val, kardexWarehouseFilter)
+                }}
+                style={{ fontSize: '0.78rem', padding: '6px 10px' }}
+              >
+                <option value="all">Todos los movimientos</option>
+                <option value="sale">Ventas</option>
+                <option value="purchase">Compras / Entradas</option>
+                <option value="adjustment">Ajustes / Mermas</option>
+                <option value="transfer">Transferencias</option>
+              </select>
+
+              {warehouses.length > 1 && (
+                <select
+                  className="input-neu"
+                  value={kardexWarehouseFilter}
+                  onChange={e => {
+                    const val = e.target.value
+                    setKardexWarehouseFilter(val)
+                    loadKardexMovements(0, false, kardexTypeFilter, val)
+                  }}
+                  style={{ fontSize: '0.78rem', padding: '6px 10px' }}
+                >
+                  <option value="all">Todas las bodegas</option>
+                  {warehouses.map(w => (
+                    <option key={w.id} value={w.id}>{w.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                className="btn-neu"
+                onClick={() => loadKardexMovements(0, false, kardexTypeFilter, kardexWarehouseFilter)}
+                title="Recargar kardex"
+                style={{ padding: '6px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                <RefreshCw size={13} />
+                <span>Refrescar</span>
+              </button>
+
+              <button
+                className="btn-neu"
+                onClick={exportKardexCsv}
+                style={{ padding: '6px 12px', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, color: 'var(--accent-green)' }}
+              >
+                <FileSpreadsheet size={14} />
+                <span>Exportar CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Kardex Table */}
+          <div className="neu-card" style={{ padding: 12 }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--bg-deep)', textAlign: 'left', color: 'var(--text-secondary)' }}>
+                    <th style={{ padding: '8px 6px' }}>Fecha</th>
+                    <th style={{ padding: '8px 6px' }}>Producto</th>
+                    <th style={{ padding: '8px 6px' }}>Bodega</th>
+                    <th style={{ padding: '8px 6px' }}>Tipo</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'right' }}>Cantidad</th>
+                    <th style={{ padding: '8px 6px', textAlign: 'right' }}>Saldo Final</th>
+                    <th style={{ padding: '8px 6px' }}>Detalle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredKardex.map(m => {
+                    const isPos = Number(m.quantity) > 0
+                    return (
+                      <tr key={m.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
+                        <td style={{ padding: '8px 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          {new Date(m.created_at).toLocaleDateString('es-CO')}
+                        </td>
+                        <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                          <div>{m.products?.name || 'Producto'}</div>
+                          {m.products?.sku && <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>SKU: {m.products.sku}</div>}
+                        </td>
+                        <td style={{ padding: '8px 6px', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                          {m.warehouses?.name || 'Principal'}
+                        </td>
+                        <td style={{ padding: '8px 6px' }}>
+                          <span className={`badge ${m.movement_type.includes('sale') ? 'badge-blue' : isPos ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.68rem' }}>
+                            {m.movement_type === 'sale' ? 'Venta POS' : m.movement_type === 'purchase' ? 'Entrada Compra' : m.movement_type === 'adjustment' ? 'Ajuste Stock' : m.movement_type === 'transfer' ? 'Transferencia' : m.movement_type}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 800, color: isPos ? 'var(--accent-green)' : 'var(--accent-coral)' }}>
+                          {isPos ? `+${m.quantity}` : m.quantity}
+                        </td>
+                        <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 800, color: 'var(--accent-blue)' }}>{m.balance_after}</td>
+                        <td style={{ padding: '8px 6px', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{m.notes || '-'}</td>
+                      </tr>
+                    )
+                  })}
+                  {filteredKardex.length === 0 && (
+                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>No hay movimientos que coincidan con el filtro</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {hasMoreMovements && (
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: 12, paddingTop: 8, borderTop: '1px solid var(--bg-deep)' }}>
+                <button
+                  className="btn-neu"
+                  onClick={() => loadKardexMovements(kardexPage + 1, true, kardexTypeFilter, kardexWarehouseFilter)}
+                  disabled={loadingMoreMovs}
+                  style={{ padding: '8px 18px', fontSize: '0.78rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <RefreshCw size={13} className={loadingMoreMovs ? 'animate-spin' : ''} />
+                  <span>{loadingMoreMovs ? 'Cargando más...' : 'Cargar más movimientos (+50)'}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -452,15 +644,23 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {transfers.map(tr => (
-                <tr key={tr.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
-                  <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{new Date(tr.created_at).toLocaleDateString('es-CO')}</td>
-                  <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--accent-coral)' }}>{tr.from_warehouse?.name || 'Origen'}</td>
-                  <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--accent-green)' }}>{tr.to_warehouse?.name || 'Destino'}</td>
-                  <td style={{ padding: '8px 6px' }}><span className="badge badge-green" style={{ fontSize: '0.68rem' }}>Completada</span></td>
-                  <td style={{ padding: '8px 6px', color: 'var(--text-secondary)' }}>{tr.notes || '-'}</td>
-                </tr>
-              ))}
+              {transfers.map(tr => {
+                const isDone = tr.status === 'completed' || tr.status === 'received' || !tr.status
+                const isCancel = tr.status === 'cancelled'
+                return (
+                  <tr key={tr.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
+                    <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{new Date(tr.created_at).toLocaleDateString('es-CO')}</td>
+                    <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--accent-coral)' }}>{tr.from_warehouse?.name || 'Origen'}</td>
+                    <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--accent-green)' }}>{tr.to_warehouse?.name || 'Destino'}</td>
+                    <td style={{ padding: '8px 6px' }}>
+                      <span className={`badge ${isDone ? 'badge-green' : isCancel ? 'badge-coral' : 'badge-amber'}`} style={{ fontSize: '0.68rem' }}>
+                        {isDone ? 'Completada' : isCancel ? 'Cancelada' : tr.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '8px 6px', color: 'var(--text-secondary)' }}>{tr.notes || '-'}</td>
+                  </tr>
+                )
+              })}
               {transfers.length === 0 && (
                 <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>No hay transferencias registradas</td></tr>
               )}
