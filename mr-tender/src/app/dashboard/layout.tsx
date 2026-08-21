@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { usePermissions } from '@/lib/hooks/usePermissions'
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -21,7 +22,8 @@ import {
   Menu,
   Plus,
   Pill,
-  UtensilsCrossed
+  ShieldAlert,
+  Lock
 } from 'lucide-react'
 
 interface NavItemDef {
@@ -29,29 +31,32 @@ interface NavItemDef {
   Icon: any
   label: string
   moduleKey?: string
+  requiredPermission?: string
 }
 
 const ALL_NAV_ITEMS: NavItemDef[] = [
   { href: '/dashboard',   Icon: LayoutDashboard, label: 'Inicio' },
-  { href: '/pos',         Icon: ShoppingCart,    label: 'Punto de Venta', moduleKey: 'pos' },
-  { href: '/products',    Icon: Package,         label: 'Productos' },
-  { href: '/pharmacy',    Icon: Pill,            label: 'Droguería 💊',  moduleKey: 'pharmacy' },
-  { href: '/inventory',   Icon: Boxes,           label: 'Inventario',     moduleKey: 'inventory' },
-  { href: '/customers',   Icon: Users,           label: 'Clientes',       moduleKey: 'customers' },
-  { href: '/suppliers',   Icon: Truck,           label: 'Proveedores',    moduleKey: 'suppliers' },
-  { href: '/purchases',   Icon: ShoppingBag,     label: 'Compras',        moduleKey: 'purchases' },
-  { href: '/cash',        Icon: DollarSign,      label: 'Caja',           moduleKey: 'cash' },
-  { href: '/reports',     Icon: BarChart3,       label: 'Reportes',       moduleKey: 'reports' },
-  { href: '/accounting',  Icon: BookOpen,        label: 'Contabilidad',   moduleKey: 'accounting' },
-  { href: '/employees',   Icon: UserCheck,       label: 'Empleados',      moduleKey: 'employees' },
-  { href: '/ecommerce',   Icon: Globe,           label: 'E-commerce',     moduleKey: 'ecommerce' },
-  { href: '/settings',    Icon: Settings,        label: 'Configuración' },
+  { href: '/pos',         Icon: ShoppingCart,    label: 'Punto de Venta', moduleKey: 'pos',         requiredPermission: 'pos.view' },
+  { href: '/products',    Icon: Package,         label: 'Productos',                                requiredPermission: 'products.view' },
+  { href: '/pharmacy',    Icon: Pill,            label: 'Droguería 💊',  moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
+  { href: '/inventory',   Icon: Boxes,           label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' },
+  { href: '/customers',   Icon: Users,           label: 'Clientes',       moduleKey: 'customers',    requiredPermission: 'customers.view' },
+  { href: '/suppliers',   Icon: Truck,           label: 'Proveedores',    moduleKey: 'suppliers',    requiredPermission: 'suppliers.view' },
+  { href: '/purchases',   Icon: ShoppingBag,     label: 'Compras',        moduleKey: 'purchases',    requiredPermission: 'purchases.view' },
+  { href: '/cash',        Icon: DollarSign,      label: 'Caja',           moduleKey: 'cash',         requiredPermission: 'cash.view' },
+  { href: '/reports',     Icon: BarChart3,       label: 'Reportes',       moduleKey: 'reports',      requiredPermission: 'reports.sales' },
+  { href: '/accounting',  Icon: BookOpen,        label: 'Contabilidad',   moduleKey: 'accounting',   requiredPermission: 'accounting.view' },
+  { href: '/employees',   Icon: UserCheck,       label: 'Empleados',      moduleKey: 'employees',    requiredPermission: 'employees.view' },
+  { href: '/ecommerce',   Icon: Globe,           label: 'E-commerce',     moduleKey: 'ecommerce',    requiredPermission: 'settings.edit' },
+  { href: '/settings',    Icon: Settings,        label: 'Configuración',                            requiredPermission: 'settings.view' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
+  const { roleName, color, isAdmin, hasPermission, loading: permsLoading } = usePermissions()
+  
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [user, setUser] = useState<{ full_name?: string; email?: string } | null>(null)
   const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
@@ -83,10 +88,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     loadUserAndModules()
   }, [])
 
+  // Filter navigation items by Tenant enabled modules AND User Role permissions
   const navItems = ALL_NAV_ITEMS.filter(item => {
-    if (!item.moduleKey) return true
-    return enabledModules[item.moduleKey] !== false
+    // 1. Module disabled globally for tenant
+    if (item.moduleKey && enabledModules[item.moduleKey] === false) return false
+    // 2. Permission check
+    if (item.requiredPermission && !hasPermission(item.requiredPermission)) return false
+    return true
   })
+
+  // Check if current page is authorized for user
+  const currentNavItem = ALL_NAV_ITEMS.find(i => pathname === i.href || (i.href !== '/dashboard' && pathname.startsWith(i.href)))
+  const isPageAuthorized = !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -127,18 +140,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        {/* User */}
+        {/* User Profile & Dynamic Role Badge */}
         <div className="divider" style={{ margin: '12px 16px 0' }} />
         <div style={{ padding: '14px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
             <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', color: 'var(--accent-blue)', boxShadow: 'var(--neu-subtle)' }}>
               {getInitials(user?.full_name)}
             </div>
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 600, fontSize: '0.85rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.full_name || 'Administrador'}</div>
-              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{user?.email}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user?.full_name || 'Usuario'}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {user?.email}
+              </div>
             </div>
           </div>
+
+          {/* Dynamic Role Pill */}
+          <div style={{ marginBottom: 10 }}>
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: '0.68rem',
+              fontWeight: 800,
+              padding: '2px 8px',
+              borderRadius: 6,
+              background: `${color}18`,
+              color: color,
+              border: `1px solid ${color}35`
+            }}>
+              <span>●</span>
+              <span>{roleName}</span>
+            </span>
+          </div>
+
           <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '8px', fontSize: '0.8rem', justifyContent: 'center', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 6 }}>
             <LogOut size={16} strokeWidth={2} />
             <span>Cerrar sesión</span>
@@ -170,7 +207,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </div>
 
-          {pathname !== '/pos' && (
+          {pathname !== '/pos' && hasPermission('pos.create_sale') && (
             <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '8px 14px', fontSize: '0.8rem', flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Plus size={15} strokeWidth={2.5} />
               <span>Nueva venta</span>
@@ -178,11 +215,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           )}
         </header>
 
-        {/* Page */}
+        {/* Page or Access Denied Guard */}
         <main style={{ flex: 1, padding: '20px 24px', maxWidth: 1400, width: '100%', overflowX: 'hidden' }}>
-          {children}
+          {!permsLoading && !isPageAuthorized ? (
+            <div className="neu-card animate-scale-in" style={{ padding: 32, textAlign: 'center', maxWidth: 480, margin: '60px auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--accent-coral-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-coral)' }}>
+                <Lock size={28} />
+              </div>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Acceso Restringido</h2>
+              <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
+                Tu rol actual (<strong>{roleName}</strong>) no tiene permisos para acceder a esta sección administrativa.
+              </p>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem' }}>
+                  Ir al Punto de Venta
+                </Link>
+              </div>
+            </div>
+          ) : (
+            children
+          )}
         </main>
       </div>
     </div>
   )
 }
+
