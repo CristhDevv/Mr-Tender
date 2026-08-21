@@ -5,21 +5,19 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 import {
   Pill,
   Calendar,
-  Thermometer,
-  ShieldAlert,
   Search,
   Plus,
-  AlertTriangle,
-  CheckCircle2,
-  FileSpreadsheet,
-  Layers,
-  Sparkles,
-  Download,
+  Edit2,
+  Trash2,
   RefreshCw,
   Clock,
-  FileText,
+  Package,
+  Layers,
+  Sparkles,
   X,
-  Check
+  Check,
+  TrendingUp,
+  AlertCircle
 } from 'lucide-react'
 
 interface Medicine {
@@ -29,10 +27,11 @@ interface Medicine {
   concentration: string
   pharmaceutical_form: string
   laboratory: string
-  invima_registration: string
+  invima_registration: string | null
   prescription_type: 'otc' | 'rx' | 'controlled'
   units_per_box: number
   units_per_blister: number
+  cost_price: number
   unit_price: number
   blister_price: number | null
   box_price: number | null
@@ -55,58 +54,25 @@ interface Lot {
   }
 }
 
-interface ThermoLog {
-  id: string
-  log_date: string
-  time_slot: string
-  ambient_temperature: number
-  relative_humidity: number
-  fridge_temperature: number | null
-  recorded_by: string
-  observations: string | null
-}
-
-interface ControlledLog {
-  id: string
-  log_date: string
-  movement_type: string
-  quantity: number
-  prescription_number: string
-  doctor_name: string
-  doctor_license: string
-  patient_name: string
-  patient_id_doc: string
-  balance_after: number
-  created_at: string
-  pharmacy_medicines?: {
-    trade_name: string
-    generic_name: string
-  }
-}
-
 export default function PharmacyPage() {
   const supabase = createClient()
   const [tenantId, setTenantId] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState<'catalog' | 'lots' | 'thermo' | 'controlled'>('catalog')
+  const [activeTab, setActiveTab] = useState<'catalog' | 'lots'>('catalog')
   const [loading, setLoading] = useState(true)
 
   // Data
   const [medicines, setMedicines] = useState<Medicine[]>([])
   const [lots, setLots] = useState<Lot[]>([])
-  const [thermoLogs, setThermoLogs] = useState<ThermoLog[]>([])
-  const [controlledLogs, setControlledLogs] = useState<ControlledLog[]>([])
 
-  // Search & Filters
+  // Search & Filter
   const [search, setSearch] = useState('')
   const [selectedGenericFilter, setSelectedGenericFilter] = useState<string | null>(null)
 
-  // Modals
+  // Medicine Create / Edit Modal states
   const [showMedModal, setShowMedModal] = useState(false)
-  const [showLotModal, setShowLotModal] = useState(false)
-  const [showThermoModal, setShowThermoModal] = useState(false)
-
-  // Form states
+  const [editingMedId, setEditingMedId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+
   const [medForm, setMedForm] = useState({
     trade_name: '',
     generic_name: '',
@@ -117,25 +83,19 @@ export default function PharmacyPage() {
     prescription_type: 'otc' as 'otc' | 'rx' | 'controlled',
     units_per_box: '30',
     units_per_blister: '10',
+    cost_price: '300',
     unit_price: '500',
     blister_price: '4500',
     box_price: '12000'
   })
 
+  // Lot Create Modal states
+  const [showLotModal, setShowLotModal] = useState(false)
   const [lotForm, setLotForm] = useState({
     medicine_id: '',
     lot_number: '',
     expiration_date: '',
     initial_quantity: '50'
-  })
-
-  const [thermoForm, setThermoForm] = useState({
-    ambient_temperature: '21.5',
-    relative_humidity: '58.0',
-    fridge_temperature: '4.2',
-    time_slot: 'morning',
-    recorded_by: 'Regente Farmacéutico',
-    observations: ''
   })
 
   useEffect(() => {
@@ -152,17 +112,13 @@ export default function PharmacyPage() {
       if (!tid) return
       setTenantId(tid)
 
-      const [medsRes, lotsRes, thermoRes, ctrlRes] = await Promise.all([
+      const [medsRes, lotsRes] = await Promise.all([
         supabase.from('pharmacy_medicines').select('*').eq('tenant_id', tid).order('trade_name', { ascending: true }),
-        supabase.from('pharmacy_lots').select('*, pharmacy_medicines(trade_name, generic_name, concentration)').eq('tenant_id', tid).order('expiration_date', { ascending: true }),
-        supabase.from('pharmacy_thermo_logs').select('*').eq('tenant_id', tid).order('log_date', { ascending: false }).limit(30),
-        supabase.from('pharmacy_controlled_logs').select('*, pharmacy_medicines(trade_name, generic_name)').eq('tenant_id', tid).order('created_at', { ascending: false }).limit(30)
+        supabase.from('pharmacy_lots').select('*, pharmacy_medicines(trade_name, generic_name, concentration)').eq('tenant_id', tid).order('expiration_date', { ascending: true })
       ])
 
       setMedicines(medsRes.data || [])
       setLots(lotsRes.data as any || [])
-      setThermoLogs(thermoRes.data || [])
-      setControlledLogs(ctrlRes.data as any || [])
     } catch (err) {
       console.error('Error loading pharmacy data:', err)
     } finally {
@@ -170,55 +126,121 @@ export default function PharmacyPage() {
     }
   }
 
-  // Handle create medicine
-  async function handleCreateMedicine(e: React.FormEvent) {
+  function openCreateMedModal() {
+    setEditingMedId(null)
+    setMedForm({
+      trade_name: '',
+      generic_name: '',
+      concentration: '500mg',
+      pharmaceutical_form: 'Tabletas',
+      laboratory: 'Genfar',
+      invima_registration: '',
+      prescription_type: 'otc',
+      units_per_box: '30',
+      units_per_blister: '10',
+      cost_price: '300',
+      unit_price: '500',
+      blister_price: '4500',
+      box_price: '12000'
+    })
+    setShowMedModal(true)
+  }
+
+  function openEditMedModal(med: Medicine) {
+    setEditingMedId(med.id)
+    setMedForm({
+      trade_name: med.trade_name,
+      generic_name: med.generic_name,
+      concentration: med.concentration || '',
+      pharmaceutical_form: med.pharmaceutical_form || 'Tabletas',
+      laboratory: med.laboratory || '',
+      invima_registration: med.invima_registration || '',
+      prescription_type: med.prescription_type || 'otc',
+      units_per_box: String(med.units_per_box || 30),
+      units_per_blister: String(med.units_per_blister || 10),
+      cost_price: String(med.cost_price || 0),
+      unit_price: String(med.unit_price || 0),
+      blister_price: med.blister_price ? String(med.blister_price) : '',
+      box_price: med.box_price ? String(med.box_price) : ''
+    })
+    setShowMedModal(true)
+  }
+
+  // Save / Update Medicine
+  async function handleSaveMedicine(e: React.FormEvent) {
     e.preventDefault()
     if (!tenantId || submitting) return
+    if (!medForm.trade_name.trim() || !medForm.generic_name.trim()) {
+      alert('Por favor completa el nombre comercial y el genérico.')
+      return
+    }
+
     setSubmitting(true)
 
     try {
       const isControlled = medForm.prescription_type === 'controlled'
       const requiresRx = medForm.prescription_type === 'rx' || isControlled
 
-      const { data, error } = await supabase
-        .from('pharmacy_medicines')
-        .insert({
-          tenant_id: tenantId,
-          trade_name: medForm.trade_name.trim(),
-          generic_name: medForm.generic_name.trim(),
-          concentration: medForm.concentration.trim(),
-          pharmaceutical_form: medForm.pharmaceutical_form.trim(),
-          laboratory: medForm.laboratory.trim(),
-          invima_registration: medForm.invima_registration.trim(),
-          prescription_type: medForm.prescription_type,
-          units_per_box: parseInt(medForm.units_per_box) || 1,
-          units_per_blister: parseInt(medForm.units_per_blister) || 1,
-          unit_price: parseFloat(medForm.unit_price) || 0,
-          blister_price: parseFloat(medForm.blister_price) || null,
-          box_price: parseFloat(medForm.box_price) || null,
-          requires_prescription: requiresRx,
-          is_controlled: isControlled,
-          is_active: true
-        })
-        .select('*')
-        .single()
+      const payload = {
+        tenant_id: tenantId,
+        trade_name: medForm.trade_name.trim(),
+        generic_name: medForm.generic_name.trim(),
+        concentration: medForm.concentration.trim(),
+        pharmaceutical_form: medForm.pharmaceutical_form.trim(),
+        laboratory: medForm.laboratory.trim(),
+        invima_registration: medForm.invima_registration.trim() || null,
+        prescription_type: medForm.prescription_type,
+        units_per_box: parseInt(medForm.units_per_box) || 1,
+        units_per_blister: parseInt(medForm.units_per_blister) || 1,
+        cost_price: parseFloat(medForm.cost_price) || 0,
+        unit_price: parseFloat(medForm.unit_price) || 0,
+        blister_price: medForm.blister_price ? parseFloat(medForm.blister_price) : null,
+        box_price: medForm.box_price ? parseFloat(medForm.box_price) : null,
+        requires_prescription: requiresRx,
+        is_controlled: isControlled,
+        is_active: true
+      }
 
-      if (error) throw error
+      if (editingMedId) {
+        // Update
+        const { error } = await supabase
+          .from('pharmacy_medicines')
+          .update(payload)
+          .eq('id', editingMedId)
 
-      setMedicines(prev => [...prev, data as any])
+        if (error) throw error
+        setMedicines(prev => prev.map(m => m.id === editingMedId ? { ...m, ...payload } : m))
+      } else {
+        // Insert
+        const { data, error } = await supabase
+          .from('pharmacy_medicines')
+          .insert(payload)
+          .select('*')
+          .single()
+
+        if (error) throw error
+        setMedicines(prev => [...prev, data as any])
+      }
+
       setShowMedModal(false)
-      setMedForm({
-        trade_name: '', generic_name: '', concentration: '500mg',
-        pharmaceutical_form: 'Tabletas', laboratory: 'Genfar', invima_registration: '',
-        prescription_type: 'otc', units_per_box: '30', units_per_blister: '10',
-        unit_price: '500', blister_price: '4500', box_price: '12000'
-      })
-      alert('Medicamento registrado con éxito')
     } catch (err: any) {
       console.error(err)
       alert(err.message || 'Error al guardar medicamento')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // Delete Medicine
+  async function handleDeleteMedicine(medId: string, name: string) {
+    if (!confirm(`¿Estás seguro de eliminar "${name}" del catálogo?`)) return
+    try {
+      const { error } = await supabase.from('pharmacy_medicines').delete().eq('id', medId)
+      if (error) throw error
+      setMedicines(prev => prev.filter(m => m.id !== medId))
+      setLots(prev => prev.filter(l => l.medicine_id !== medId))
+    } catch (err: any) {
+      alert('Error al eliminar: ' + err.message)
     }
   }
 
@@ -249,7 +271,6 @@ export default function PharmacyPage() {
       setLots(prev => [...prev, data as any].sort((a, b) => new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime()))
       setShowLotModal(false)
       setLotForm({ medicine_id: '', lot_number: '', expiration_date: '', initial_quantity: '50' })
-      alert('Lote farmacéutico registrado')
     } catch (err: any) {
       console.error(err)
       alert(err.message || 'Error al registrar lote')
@@ -258,39 +279,14 @@ export default function PharmacyPage() {
     }
   }
 
-  // Handle thermo log
-  async function handleCreateThermo(e: React.FormEvent) {
-    e.preventDefault()
-    if (!tenantId || submitting) return
-    setSubmitting(true)
-
+  async function handleDeleteLot(lotId: string, lotNumber: string) {
+    if (!confirm(`¿Eliminar el lote ${lotNumber}?`)) return
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const { data, error } = await supabase
-        .from('pharmacy_thermo_logs')
-        .insert({
-          tenant_id: tenantId,
-          log_date: today,
-          time_slot: thermoForm.time_slot,
-          ambient_temperature: parseFloat(thermoForm.ambient_temperature),
-          relative_humidity: parseFloat(thermoForm.relative_humidity),
-          fridge_temperature: thermoForm.fridge_temperature ? parseFloat(thermoForm.fridge_temperature) : null,
-          recorded_by: thermoForm.recorded_by.trim(),
-          observations: thermoForm.observations.trim() || null
-        })
-        .select('*')
-        .single()
-
+      const { error } = await supabase.from('pharmacy_lots').delete().eq('id', lotId)
       if (error) throw error
-
-      setThermoLogs(prev => [data, ...prev])
-      setShowThermoModal(false)
-      alert('Registro de temperatura y humedad guardado')
+      setLots(prev => prev.filter(l => l.id !== lotId))
     } catch (err: any) {
-      console.error(err)
-      alert(err.message || 'Error al guardar temperatura')
-    } finally {
-      setSubmitting(false)
+      alert('Error al eliminar lote: ' + err.message)
     }
   }
 
@@ -312,6 +308,7 @@ export default function PharmacyPage() {
           prescription_type: 'otc',
           units_per_box: 100,
           units_per_blister: 10,
+          cost_price: 350,
           unit_price: 600,
           blister_price: 5500,
           box_price: 50000,
@@ -329,6 +326,7 @@ export default function PharmacyPage() {
           prescription_type: 'otc',
           units_per_box: 100,
           units_per_blister: 10,
+          cost_price: 180,
           unit_price: 300,
           blister_price: 2800,
           box_price: 25000,
@@ -346,6 +344,7 @@ export default function PharmacyPage() {
           prescription_type: 'rx',
           units_per_box: 50,
           units_per_blister: 10,
+          cost_price: 750,
           unit_price: 1200,
           blister_price: 11000,
           box_price: 52000,
@@ -363,6 +362,7 @@ export default function PharmacyPage() {
           prescription_type: 'controlled',
           units_per_box: 30,
           units_per_blister: 10,
+          cost_price: 1500,
           unit_price: 2500,
           blister_price: 22000,
           box_price: 60000,
@@ -378,7 +378,6 @@ export default function PharmacyPage() {
 
       if (medErr) throw medErr
 
-      // Add lots
       if (insertedMeds && insertedMeds.length > 0) {
         const dolex = insertedMeds.find(m => m.trade_name.includes('Dolex'))
         const acetGenfar = insertedMeds.find(m => m.trade_name.includes('Genfar'))
@@ -418,10 +417,9 @@ export default function PharmacyPage() {
       }
 
       await loadPharmacyData()
-      alert('Catálogo farmacéutico cargado con éxito')
     } catch (err: any) {
       console.error(err)
-      alert('Error cargando demo: ' + err.message)
+      alert('Error cargando catálogo: ' + err.message)
     } finally {
       setSubmitting(false)
     }
@@ -441,25 +439,6 @@ export default function PharmacyPage() {
     return matchesSearch
   })
 
-  // Export Thermo to CSV
-  function exportThermoCSV() {
-    if (thermoLogs.length === 0) return alert('No hay registros para exportar')
-    let csv = '\uFEFF'
-    csv += 'PLANILLA OFICIAL DE CONTROL DE TEMPERATURA Y HUMEDAD RELATIVA\n'
-    csv += `Generado: ${new Date().toLocaleString('es-CO')}\n\n`
-    csv += 'Fecha,Jornada,Temp. Ambiente (C),Humedad Relativa (%),Temp. Nevera (C),Responsable,Observaciones\n'
-    thermoLogs.forEach(l => {
-      csv += `"${l.log_date}","${l.time_slot === 'morning' ? 'Mañana' : 'Tarde'}","${l.ambient_temperature}","${l.relative_humidity}","${l.fridge_temperature || 'N/A'}","${l.recorded_by}","${l.observations || ''}"\n`
-    })
-
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `Termohigrometria_Farmacia_${new Date().toISOString().split('T')[0]}.csv`
-    link.click()
-  }
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
       
@@ -474,7 +453,7 @@ export default function PharmacyPage() {
               Droguería y Farmacia
             </h1>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: 2, margin: 0 }}>
-              Control sanitario INVIMA, trazabilidad de lotes FEFO y registro de termohigrometría
+              Catálogo de medicamentos, costos, precios fraccionados y rotación de lotes FEFO
             </p>
           </div>
         </div>
@@ -483,63 +462,52 @@ export default function PharmacyPage() {
           {medicines.length === 0 && (
             <button className="btn-neu" onClick={handleSeedDemoData} disabled={submitting} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-purple)' }}>
               <Sparkles size={15} />
-              <span>Cargar Catálogo Ejemplo</span>
+              <span>Cargar Catálogo Inicial</span>
             </button>
           )}
 
           {activeTab === 'catalog' && (
-            <button className="btn-neu btn-primary" onClick={() => setShowMedModal(true)} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button className="btn-neu btn-primary" onClick={openCreateMedModal} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Plus size={15} strokeWidth={2.5} />
               <span>Nuevo Medicamento</span>
             </button>
           )}
+
           {activeTab === 'lots' && (
             <button className="btn-neu btn-primary" onClick={() => setShowLotModal(true)} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
               <Plus size={15} strokeWidth={2.5} />
               <span>Registrar Lote</span>
             </button>
           )}
-          {activeTab === 'thermo' && (
-            <>
-              <button className="btn-neu btn-ghost" onClick={exportThermoCSV} style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Download size={14} />
-                <span>Exportar CSV</span>
-              </button>
-              <button className="btn-neu btn-primary" onClick={() => setShowThermoModal(true)} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Plus size={15} strokeWidth={2.5} />
-                <span>Toma de Temperatura</span>
-              </button>
-            </>
-          )}
         </div>
       </div>
 
-      {/* Tabs Navigation Bar */}
+      {/* Tabs Navigation Bar (Only 2 Essential Tabs) */}
       <div className="neu-flat" style={{ padding: 4, borderRadius: 10, display: 'inline-flex', gap: 4, overflowX: 'auto', maxWidth: '100%' }}>
-        {[
-          { id: 'catalog', label: 'Medicamentos y Genéricos', Icon: Pill, count: medicines.length },
-          { id: 'lots', label: 'Lotes y Vencimientos (FEFO)', Icon: Calendar, count: lots.length },
-          { id: 'thermo', label: 'Termohigrometría', Icon: Thermometer, count: thermoLogs.length },
-          { id: 'controlled', label: 'Control Especial (FNE)', Icon: ShieldAlert, count: controlledLogs.length },
-        ].map(tab => {
-          const Icon = tab.Icon
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`btn-neu ${activeTab === tab.id ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ padding: '7px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
-            >
-              <Icon size={14} />
-              <span>{tab.label} ({tab.count})</span>
-            </button>
-          )
-        })}
+        <button
+          onClick={() => setActiveTab('catalog')}
+          className={`btn-neu ${activeTab === 'catalog' ? 'btn-primary' : 'btn-ghost'}`}
+          style={{ padding: '7px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <Pill size={14} />
+          <span>Medicamentos y Genéricos ({medicines.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('lots')}
+          className={`btn-neu ${activeTab === 'lots' ? 'btn-primary' : 'btn-ghost'}`}
+          style={{ padding: '7px 14px', fontSize: '0.8rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <Calendar size={14} />
+          <span>Lotes y Vencimientos FEFO ({lots.length})</span>
+        </button>
       </div>
 
       {/* ── TAB 1: MEDICINES CATALOG ── */}
       {activeTab === 'catalog' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          
+          {/* Search bar & Active filter */}
           <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ flex: 1, minWidth: 260, position: 'relative' }}>
               <input
@@ -559,6 +527,7 @@ export default function PharmacyPage() {
             )}
           </div>
 
+          {/* Medicines Interactive Table */}
           <div className="neu-card" style={{ padding: 0, overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
@@ -566,66 +535,124 @@ export default function PharmacyPage() {
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Medicamento</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Principio Activo & Concentración</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Laboratorio / INVIMA</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Tipo Prescripción</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Precios (Pastilla / Blíster / Caja)</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Prescripción</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Costo Compra</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Precios Venta (Pastilla / Blíster / Caja)</th>
                   <th style={{ padding: '12px 16px', textAlign: 'right' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
-                {filteredMeds.map(m => (
-                  <tr key={m.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{m.trade_name}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{m.pharmaceutical_form}</div>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: 600, color: 'var(--accent-purple)' }}>{m.generic_name}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{m.concentration}</div>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ color: 'var(--text-primary)' }}>{m.laboratory || 'Genérico'}</div>
-                      <div style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{m.invima_registration || 'INVIMA N/A'}</div>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      {m.prescription_type === 'controlled' ? (
-                        <span className="badge badge-coral" style={{ fontSize: '0.68rem' }}>
-                          Control Especial
-                        </span>
-                      ) : m.prescription_type === 'rx' ? (
-                        <span className="badge badge-amber" style={{ fontSize: '0.68rem' }}>
-                          Bajo Fórmula (RX)
-                        </span>
-                      ) : (
-                        <span className="badge badge-green" style={{ fontSize: '0.68rem' }}>
-                          Venta Libre (OTC)
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        Unidad: {formatCurrency(m.unit_price)}
-                      </div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                        {m.blister_price ? `Blíster: ${formatCurrency(m.blister_price)} | ` : ''}
-                        {m.box_price ? `Caja: ${formatCurrency(m.box_price)}` : ''}
-                      </div>
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => setSelectedGenericFilter(m.generic_name)}
-                        className="btn-neu btn-ghost"
-                        style={{ padding: '5px 9px', fontSize: '0.75rem', color: 'var(--accent-blue)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                        title="Ver todos los genéricos de esta molécula"
+                {filteredMeds.map(m => {
+                  const cost = Number(m.cost_price || 0)
+                  const unitPrice = Number(m.unit_price || 0)
+                  const margin = unitPrice > 0 ? (((unitPrice - cost) / unitPrice) * 100) : 0
+
+                  return (
+                    <tr
+                      key={m.id}
+                      style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.15s ease' }}
+                    >
+                      {/* Name & Form */}
+                      <td
+                        onClick={() => openEditMedModal(m)}
+                        style={{ padding: '12px 16px', cursor: 'pointer' }}
+                        title="Haz clic para editar este medicamento"
                       >
-                        <RefreshCw size={12} />
-                        <span>Ver Genéricos</span>
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                        <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{m.trade_name}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{m.pharmaceutical_form}</div>
+                      </td>
+
+                      {/* Generic Molecule */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: 600, color: 'var(--accent-purple)' }}>{m.generic_name}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>{m.concentration}</div>
+                      </td>
+
+                      {/* Laboratory & INVIMA */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ color: 'var(--text-primary)' }}>{m.laboratory || 'Genérico'}</div>
+                        <div style={{ fontSize: '0.72rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>
+                          {m.invima_registration ? m.invima_registration : <span style={{ fontStyle: 'italic', opacity: 0.6 }}>Sin INVIMA</span>}
+                        </div>
+                      </td>
+
+                      {/* Prescription */}
+                      <td style={{ padding: '12px 16px' }}>
+                        {m.prescription_type === 'controlled' ? (
+                          <span className="badge badge-coral" style={{ fontSize: '0.68rem' }}>
+                            Control Especial
+                          </span>
+                        ) : m.prescription_type === 'rx' ? (
+                          <span className="badge badge-amber" style={{ fontSize: '0.68rem' }}>
+                            Bajo Fórmula (RX)
+                          </span>
+                        ) : (
+                          <span className="badge badge-green" style={{ fontSize: '0.68rem' }}>
+                            Venta Libre (OTC)
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Cost Price & Margin */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                          {formatCurrency(cost)}
+                        </div>
+                        {cost > 0 && unitPrice > 0 && (
+                          <div style={{ fontSize: '0.68rem', color: margin >= 30 ? 'var(--accent-green)' : 'var(--accent-amber)', fontWeight: 700 }}>
+                            Margen: {margin.toFixed(0)}%
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Sale Prices */}
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--accent-blue)' }}>
+                          Unidad: {formatCurrency(m.unit_price)}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          {m.blister_price ? `Blíster: ${formatCurrency(m.blister_price)} | ` : ''}
+                          {m.box_price ? `Caja: ${formatCurrency(m.box_price)}` : ''}
+                        </div>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <button
+                            onClick={() => setSelectedGenericFilter(m.generic_name)}
+                            className="btn-neu btn-ghost"
+                            style={{ padding: '5px 8px', fontSize: '0.72rem', color: 'var(--accent-purple)' }}
+                            title="Filtrar genéricos de esta molécula"
+                          >
+                            <RefreshCw size={13} />
+                          </button>
+
+                          <button
+                            onClick={() => openEditMedModal(m)}
+                            className="btn-neu btn-ghost"
+                            style={{ padding: '5px 8px', fontSize: '0.72rem', color: 'var(--accent-blue)' }}
+                            title="Editar medicamento"
+                          >
+                            <Edit2 size={13} />
+                          </button>
+
+                          <button
+                            onClick={() => handleDeleteMedicine(m.id, m.trade_name)}
+                            className="btn-neu btn-ghost"
+                            style={{ padding: '5px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}
+                            title="Eliminar medicamento"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
                 {filteredMeds.length === 0 && (
                   <tr>
-                    <td colSpan={6} style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
                       No se encontraron medicamentos registrados.
                     </td>
                   </tr>
@@ -658,6 +685,7 @@ export default function PharmacyPage() {
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Fecha Vencimiento</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Stock Disponible</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left' }}>Estado Sanitario</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -682,11 +710,21 @@ export default function PharmacyPage() {
                         Vigente
                       </span>
                     </td>
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <button
+                        onClick={() => handleDeleteLot(l.id, l.lot_number)}
+                        className="btn-neu btn-ghost"
+                        style={{ padding: '5px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}
+                        title="Eliminar lote"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {lots.length === 0 && (
                   <tr>
-                    <td colSpan={5} style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td colSpan={6} style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted)' }}>
                       No hay lotes registrados actualmente.
                     </td>
                   </tr>
@@ -697,163 +735,186 @@ export default function PharmacyPage() {
         </div>
       )}
 
-      {/* ── TAB 3: THERMOHYGROMETRY ── */}
-      {activeTab === 'thermo' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="neu-card" style={{ padding: 0, overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Fecha</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Jornada</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Temp. Ambiente</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Humedad Relativa</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Nevera (2°C - 8°C)</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Responsable</th>
-                </tr>
-              </thead>
-              <tbody>
-                {thermoLogs.map(t => (
-                  <tr key={t.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 700 }}>{formatDate(t.log_date)}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span className="badge badge-blue" style={{ fontSize: '0.68rem' }}>
-                        {t.time_slot === 'morning' ? 'Mañana' : 'Tarde'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>{t.ambient_temperature}°C</td>
-                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>{t.relative_humidity}%</td>
-                    <td style={{ padding: '12px 16px' }}>{t.fridge_temperature ? `${t.fridge_temperature}°C` : 'N/A'}</td>
-                    <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>{t.recorded_by}</td>
-                  </tr>
-                ))}
-                {thermoLogs.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No hay registros de temperatura. Registra la primera toma con el botón "+ Toma de Temperatura".
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── TAB 4: CONTROLLED MEDICINES LOG ── */}
-      {activeTab === 'controlled' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <div className="neu-card" style={{ padding: 0, overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
-              <thead>
-                <tr style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Fecha</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Medicamento</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Movimiento</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Recetario Oficial</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left' }}>Médico / Paciente</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right' }}>Saldo Final</th>
-                </tr>
-              </thead>
-              <tbody>
-                {controlledLogs.map(c => (
-                  <tr key={c.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                    <td style={{ padding: '12px 16px', fontWeight: 600 }}>{formatDate(c.log_date)}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontWeight: 800 }}>{c.pharmacy_medicines?.trade_name}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--accent-coral)' }}>{c.pharmacy_medicines?.generic_name}</div>
-                    </td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <span className={`badge ${c.movement_type === 'dispensed' ? 'badge-coral' : 'badge-green'}`} style={{ fontSize: '0.68rem' }}>
-                        {c.movement_type === 'dispensed' ? `Dispensado (-${c.quantity})` : `Entrada (+${c.quantity})`}
-                      </span>
-                    </td>
-                    <td style={{ padding: '12px 16px', fontFamily: 'monospace', fontSize: '0.75rem' }}>{c.prescription_number}</td>
-                    <td style={{ padding: '12px 16px' }}>
-                      <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>Dr. {c.doctor_name}</div>
-                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Pac: {c.patient_name}</div>
-                    </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 800, color: 'var(--text-primary)' }}>
-                      {c.balance_after} und
-                    </td>
-                  </tr>
-                ))}
-                {controlledLogs.length === 0 && (
-                  <tr>
-                    <td colSpan={6} style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted)' }}>
-                      No hay registros en el libro de control especial del FNE.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL: NUEVO MEDICAMENTO ── */}
+      {/* ── MODAL: REGISTRAR / EDITAR MEDICAMENTO ── */}
       {showMedModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', padding: 22 }}>
+            
+            {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Pill size={18} color="var(--accent-blue)" />
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Registrar Medicamento</h3>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                  {editingMedId ? `Editar: ${medForm.trade_name}` : 'Registrar Medicamento'}
+                </h3>
               </div>
               <button className="btn-neu btn-ghost" onClick={() => setShowMedModal(false)} style={{ padding: '4px 8px' }}>
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateMedicine} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <form onSubmit={handleSaveMedicine} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              
+              {/* Product Info Fields */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10 }}>
                 <div>
                   <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Nombre Comercial *</label>
-                  <input type="text" className="input-neu" placeholder="Dolex Forte" value={medForm.trade_name} onChange={e => setMedForm({ ...medForm, trade_name: e.target.value })} required style={{ width: '100%', fontSize: '0.82rem' }} />
+                  <input
+                    type="text"
+                    className="input-neu"
+                    placeholder="Ej. Dolex Forte"
+                    value={medForm.trade_name}
+                    onChange={e => setMedForm({ ...medForm, trade_name: e.target.value })}
+                    required
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
                 </div>
+
                 <div>
                   <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Principio Activo (Genérico) *</label>
-                  <input type="text" className="input-neu" placeholder="Acetaminofén + Cafeína" value={medForm.generic_name} onChange={e => setMedForm({ ...medForm, generic_name: e.target.value })} required style={{ width: '100%', fontSize: '0.82rem' }} />
+                  <input
+                    type="text"
+                    className="input-neu"
+                    placeholder="Ej. Acetaminofén + Cafeína"
+                    value={medForm.generic_name}
+                    onChange={e => setMedForm({ ...medForm, generic_name: e.target.value })}
+                    required
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
                 </div>
+
                 <div>
                   <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Concentración *</label>
-                  <input type="text" className="input-neu" placeholder="500mg / 65mg" value={medForm.concentration} onChange={e => setMedForm({ ...medForm, concentration: e.target.value })} required style={{ width: '100%', fontSize: '0.82rem' }} />
+                  <input
+                    type="text"
+                    className="input-neu"
+                    placeholder="Ej. 500mg / 65mg"
+                    value={medForm.concentration}
+                    onChange={e => setMedForm({ ...medForm, concentration: e.target.value })}
+                    required
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
                 </div>
+
                 <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Forma Farmacéutica *</label>
-                  <input type="text" className="input-neu" placeholder="Tabletas, Jarabe, etc." value={medForm.pharmaceutical_form} onChange={e => setMedForm({ ...medForm, pharmaceutical_form: e.target.value })} required style={{ width: '100%', fontSize: '0.82rem' }} />
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Forma Farmacéutica</label>
+                  <input
+                    type="text"
+                    className="input-neu"
+                    placeholder="Tabletas, Jarabe, etc."
+                    value={medForm.pharmaceutical_form}
+                    onChange={e => setMedForm({ ...medForm, pharmaceutical_form: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
                 </div>
+
                 <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Laboratorio *</label>
-                  <input type="text" className="input-neu" placeholder="GSK / Genfar / MK" value={medForm.laboratory} onChange={e => setMedForm({ ...medForm, laboratory: e.target.value })} required style={{ width: '100%', fontSize: '0.82rem' }} />
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Laboratorio</label>
+                  <input
+                    type="text"
+                    className="input-neu"
+                    placeholder="GSK / Genfar / MK"
+                    value={medForm.laboratory}
+                    onChange={e => setMedForm({ ...medForm, laboratory: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
                 </div>
+
                 <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Registro Sanitario INVIMA *</label>
-                  <input type="text" className="input-neu" placeholder="INVIMA 2020M-0001234" value={medForm.invima_registration} onChange={e => setMedForm({ ...medForm, invima_registration: e.target.value })} required style={{ width: '100%', fontSize: '0.82rem' }} />
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    Registro Sanitario INVIMA <span style={{ fontWeight: 400, opacity: 0.8 }}>(Opcional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    className="input-neu"
+                    placeholder="Opcional - Ej: INVIMA 2020M-0001234"
+                    value={medForm.invima_registration}
+                    onChange={e => setMedForm({ ...medForm, invima_registration: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Tipo de Venta / Prescripción</label>
+                  <select
+                    className="input-neu"
+                    value={medForm.prescription_type}
+                    onChange={e => setMedForm({ ...medForm, prescription_type: e.target.value as any })}
+                    style={{ width: '100%', fontSize: '0.82rem', background: 'var(--bg-deep)', cursor: 'pointer' }}
+                  >
+                    <option value="otc">Venta Libre (OTC)</option>
+                    <option value="rx">Bajo Fórmula Médica (RX)</option>
+                    <option value="controlled">Medicamento de Control</option>
+                  </select>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10, borderTop: '1px solid var(--border-color)', paddingTop: 10 }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Pastilla ($)</label>
-                  <input type="number" className="input-neu" value={medForm.unit_price} onChange={e => setMedForm({ ...medForm, unit_price: e.target.value })} required style={{ width: '100%', fontSize: '0.82rem' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Blíster ($)</label>
-                  <input type="number" className="input-neu" value={medForm.blister_price} onChange={e => setMedForm({ ...medForm, blister_price: e.target.value })} style={{ width: '100%', fontSize: '0.82rem' }} />
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Caja ($)</label>
-                  <input type="number" className="input-neu" value={medForm.box_price} onChange={e => setMedForm({ ...medForm, box_price: e.target.value })} style={{ width: '100%', fontSize: '0.82rem' }} />
+              {/* Pricing & Fractionation Section */}
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: 10 }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)', display: 'block', marginBottom: 8 }}>
+                  Costos y Precios de Venta Fraccionada
+                </span>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Costo Compra ($)</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      value={medForm.cost_price}
+                      onChange={e => setMedForm({ ...medForm, cost_price: e.target.value })}
+                      placeholder="350"
+                      style={{ width: '100%', fontSize: '0.82rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Pastilla ($) *</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      value={medForm.unit_price}
+                      onChange={e => setMedForm({ ...medForm, unit_price: e.target.value })}
+                      required
+                      placeholder="600"
+                      style={{ width: '100%', fontSize: '0.82rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Blíster ($)</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      value={medForm.blister_price}
+                      onChange={e => setMedForm({ ...medForm, blister_price: e.target.value })}
+                      placeholder="5500"
+                      style={{ width: '100%', fontSize: '0.82rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Caja ($)</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      value={medForm.box_price}
+                      onChange={e => setMedForm({ ...medForm, box_price: e.target.value })}
+                      placeholder="50000"
+                      style={{ width: '100%', fontSize: '0.82rem' }}
+                    />
+                  </div>
                 </div>
               </div>
 
+              {/* Modal Actions */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
                 <button type="button" className="btn-neu btn-ghost" onClick={() => setShowMedModal(false)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
                   Cancelar
                 </button>
-                <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.8rem' }}>
-                  {submitting ? 'Guardando...' : 'Guardar Medicamento'}
+                <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Check size={15} strokeWidth={2.5} />
+                  <span>{submitting ? 'Guardando...' : editingMedId ? 'Actualizar Medicamento' : 'Guardar Medicamento'}</span>
                 </button>
               </div>
             </form>
@@ -883,7 +944,7 @@ export default function PharmacyPage() {
                   value={lotForm.medicine_id}
                   onChange={e => setLotForm({ ...lotForm, medicine_id: e.target.value })}
                   required
-                  style={{ width: '100%', fontSize: '0.82rem', background: 'var(--bg-deep)' }}
+                  style={{ width: '100%', fontSize: '0.82rem', background: 'var(--bg-deep)', cursor: 'pointer' }}
                 >
                   <option value="">Selecciona un medicamento...</option>
                   {medicines.map(m => (
@@ -937,99 +998,6 @@ export default function PharmacyPage() {
                 </button>
                 <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.8rem' }}>
                   {submitting ? 'Guardando...' : 'Guardar Lote'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ── MODAL: TOMA DE TEMPERATURA ── */}
-      {showThermoModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, padding: 22 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Thermometer size={18} color="var(--accent-blue)" />
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Registro de Termohigrometría</h3>
-              </div>
-              <button className="btn-neu btn-ghost" onClick={() => setShowThermoModal(false)} style={{ padding: '4px 8px' }}>
-                <X size={16} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateThermo} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Jornada *</label>
-                <select
-                  className="input-neu"
-                  value={thermoForm.time_slot}
-                  onChange={e => setThermoForm({ ...thermoForm, time_slot: e.target.value })}
-                  style={{ width: '100%', fontSize: '0.82rem', background: 'var(--bg-deep)' }}
-                >
-                  <option value="morning">Mañana (08:00 AM)</option>
-                  <option value="afternoon">Tarde (04:00 PM)</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Temp. Ambiente (°C) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="input-neu"
-                    value={thermoForm.ambient_temperature}
-                    onChange={e => setThermoForm({ ...thermoForm, ambient_temperature: e.target.value })}
-                    required
-                    style={{ width: '100%', fontSize: '0.82rem' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Humedad Relativa (%) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="input-neu"
-                    value={thermoForm.relative_humidity}
-                    onChange={e => setThermoForm({ ...thermoForm, relative_humidity: e.target.value })}
-                    required
-                    style={{ width: '100%', fontSize: '0.82rem' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Temp. Nevera (°C) (Opcional)</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  className="input-neu"
-                  value={thermoForm.fridge_temperature}
-                  onChange={e => setThermoForm({ ...thermoForm, fridge_temperature: e.target.value })}
-                  style={{ width: '100%', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Responsable *</label>
-                <input
-                  type="text"
-                  className="input-neu"
-                  value={thermoForm.recorded_by}
-                  onChange={e => setThermoForm({ ...thermoForm, recorded_by: e.target.value })}
-                  required
-                  style={{ width: '100%', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
-                <button type="button" className="btn-neu btn-ghost" onClick={() => setShowThermoModal(false)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
-                  Cancelar
-                </button>
-                <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.8rem' }}>
-                  {submitting ? 'Guardando...' : 'Guardar Registro'}
                 </button>
               </div>
             </form>

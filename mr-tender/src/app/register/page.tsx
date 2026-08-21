@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const BUSINESS_TYPES = [
-  { value: 'retail', label: '🏪 Tienda / Retail' },
-  { value: 'restaurant', label: '🍔 Restaurante / Cafetería' },
-  { value: 'services', label: '🛠 Servicios' },
-  { value: 'wholesale', label: '📦 Mayorista / Distribuidor' },
-  { value: 'pharmacy', label: '💊 Farmacia' },
-  { value: 'clothing', label: '👗 Ropa y Moda' },
-  { value: 'electronics', label: '📱 Electrónica' },
-  { value: 'other', label: '🏢 Otro' },
+  { value: 'retail', label: 'Tienda / Minimercado / Supermercado' },
+  { value: 'pharmacy', label: 'Droguería y Farmacia' },
+  { value: 'restaurant', label: 'Restaurante / Cafetería' },
+  { value: 'services', label: 'Servicios' },
+  { value: 'wholesale', label: 'Mayorista / Distribuidor' },
+  { value: 'clothing', label: 'Ropa y Moda' },
+  { value: 'electronics', label: 'Electrónica y Tecnología' },
+  { value: 'other', label: 'Otro Comercio' },
 ]
 
 const PLANS = [

@@ -30,9 +30,10 @@ import {
   PauseCircle,
   PlayCircle,
   PlusCircle,
-  RotateCcw,
   Mic,
-  Sparkles
+  Sparkles,
+  Pill,
+  CircleDot
 } from 'lucide-react'
 
 // Web Audio sound generator for tactile feedback
@@ -486,7 +487,7 @@ export default function POSClient() {
               cost: Number(m.unit_price * 0.6 || 0),
               sku: m.invima_registration || '',
               stock: realStock,
-              category: 'Farmacia 💊',
+              category: 'Farmacia',
               unit_type: 'unit',
               warehouse_id,
               is_pharmacy: true,
@@ -1568,10 +1569,11 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
           <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 420, padding: 22 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div>
-                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
-                  💊 {selectedFractionProduct.name.split('(')[0].trim()}
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <Pill size={17} color="var(--accent-blue)" />
+                  <span>{selectedFractionProduct.name.split('(')[0].trim()}</span>
                 </h3>
-                <div style={{ fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: 600 }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: 600, marginTop: 2 }}>
                   {selectedFractionProduct.generic_name} {selectedFractionProduct.concentration} • {selectedFractionProduct.laboratory || 'Genérico'}
                 </div>
               </div>
@@ -1596,8 +1598,8 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                 className="btn-neu"
                 style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '1.2rem' }}>🔘</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <CircleDot size={18} color="var(--accent-blue)" />
                   <div style={{ textAlign: 'left' }}>
                     <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Pastilla / Unidad Suelta</div>
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Venta fraccionada</div>
@@ -1622,8 +1624,8 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                   className="btn-neu"
                   style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: '1.2rem' }}>💊</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Pill size={18} color="var(--accent-emerald)" />
                     <div style={{ textAlign: 'left' }}>
                       <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Blíster (x{selectedFractionProduct.units_per_blister || 10} uds)</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tira completa</div>
@@ -1641,7 +1643,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                   onClick={() => {
                     addToCart({
                       ...selectedFractionProduct,
-                      name: `${selectedFractionProduct.name.split('(')[0].trim()} (Caja x${selectedFractionProduct.units_per_box || 30})`,
+                      name: `${selectedFractionProduct.name.split('(')[0].trim()} (Caja x${selectedFractionProduct.units_per_box || 100})`,
                       price: selectedFractionProduct.box_price!
                     })
                     setSelectedFractionProduct(null)
@@ -1649,11 +1651,11 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                   className="btn-neu"
                   style={{ padding: '12px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg)' }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: '1.2rem' }}>📦</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <Package size={18} color="var(--accent-purple)" />
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Caja Completa (x{selectedFractionProduct.units_per_box || 30} uds)</div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Empaque original</div>
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Caja Completa (x{selectedFractionProduct.units_per_box || 100} uds)</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Empaque original cerrado</div>
                     </div>
                   </div>
                   <span style={{ fontWeight: 800, color: 'var(--accent-purple)', fontSize: '0.95rem' }}>
