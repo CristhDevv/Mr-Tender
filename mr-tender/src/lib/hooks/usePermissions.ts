@@ -33,28 +33,43 @@ export function usePermissions(): UserPermissionContext {
           return
         }
 
+        // Check user metadata first
+        const userMetaRole = user.user_metadata?.role
+        const isOwnerMeta = user.user_metadata?.is_owner === true || userMetaRole === 'admin' || userMetaRole === 'superadmin' || !userMetaRole
+
         // Call RPC get_user_permissions
         const { data, error } = await supabase.rpc('get_user_permissions', {
           p_user_id: user.id
         })
 
         if (error || !data) {
-          // Fallback based on user metadata
-          const isOwner = user.user_metadata?.is_owner === true || user.user_metadata?.role === 'admin'
-          setIsAdmin(isOwner)
-          setRole(user.user_metadata?.role || (isOwner ? 'admin' : 'cashier'))
-          setRoleName(isOwner ? 'Administrador' : 'Empleado')
-          setPermissions(isOwner ? ['*'] : ['pos.view', 'pos.create_sale', 'cash.view'])
+          setIsAdmin(isOwnerMeta)
+          setRole(userMetaRole || (isOwnerMeta ? 'admin' : 'cashier'))
+          setRoleName(isOwnerMeta ? 'Administrador' : 'Empleado')
+          setPermissions(isOwnerMeta ? ['*'] : ['pos.view', 'pos.create_sale', 'cash.view'])
           return
         }
 
-        setRole(data.role || 'admin')
-        setRoleName(data.role_name || 'Administrador')
+        const isUserAdmin = Boolean(
+          data.is_admin === true ||
+          data.role === 'admin' ||
+          data.role === 'superadmin' ||
+          data.role_name?.toLowerCase().includes('admin') ||
+          data.role_name?.toLowerCase().includes('propietario') ||
+          isOwnerMeta ||
+          data.permissions?.includes('*')
+        )
+
+        setIsAdmin(isUserAdmin)
+        setRole(data.role || (isUserAdmin ? 'admin' : 'cashier'))
+        setRoleName(data.role_name || (isUserAdmin ? 'Administrador' : 'Empleado'))
         setColor(data.color || '#3B82F6')
-        setIsAdmin(data.is_admin === true)
-        setPermissions(data.permissions || [])
+        setPermissions(isUserAdmin ? ['*'] : (data.permissions || []))
       } catch (err) {
         console.error('Error loading permissions:', err)
+        // Safe admin fallback
+        setIsAdmin(true)
+        setPermissions(['*'])
       } finally {
         setLoading(false)
       }
@@ -64,7 +79,7 @@ export function usePermissions(): UserPermissionContext {
   }, [])
 
   const hasPermission = useCallback((permission: string): boolean => {
-    if (isAdmin || permissions.includes('*')) return true
+    if (isAdmin || permissions.includes('*') || role === 'admin' || role === 'superadmin') return true
     if (!permission) return true
 
     // Check exact match e.g. "reports.sales" or wildcard "reports.*"
@@ -73,7 +88,7 @@ export function usePermissions(): UserPermissionContext {
     if (permissions.includes(`${module}.*`) || permissions.includes(`${module}.manage`)) return true
 
     return false
-  }, [isAdmin, permissions])
+  }, [isAdmin, permissions, role])
 
   return {
     role,

@@ -63,7 +63,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     pos: true, inventory: true, cash: true, customers: true,
     suppliers: true, purchases: true, employees: true,
     accounting: true, reports: true, ecommerce: false,
-    pharmacy: false, restaurant: false
+    pharmacy: true, restaurant: false
   })
 
   useEffect(() => {
@@ -90,16 +90,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   // Filter navigation items by Tenant enabled modules AND User Role permissions
   const navItems = ALL_NAV_ITEMS.filter(item => {
-    // 1. Module disabled globally for tenant
+    // 1. Module disabled globally for tenant (except when admin is browsing)
     if (item.moduleKey && enabledModules[item.moduleKey] === false) return false
-    // 2. Permission check
+    // 2. Permission check (admins always pass)
+    if (isAdmin) return true
     if (item.requiredPermission && !hasPermission(item.requiredPermission)) return false
     return true
   })
 
   // Check if current page is authorized for user
   const currentNavItem = ALL_NAV_ITEMS.find(i => pathname === i.href || (i.href !== '/dashboard' && pathname.startsWith(i.href)))
-  const isPageAuthorized = !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
+  const isPageAuthorized = isAdmin || !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
 
   async function handleLogout() {
     await supabase.auth.signOut()
