@@ -5,10 +5,12 @@ import LoginScreen from './src/screens/LoginScreen'
 import DashboardScreen from './src/screens/DashboardScreen'
 import POSScreen from './src/screens/POSScreen'
 import AttendanceScreen from './src/screens/AttendanceScreen'
+import CashSessionScreen from './src/screens/CashSessionScreen'
+import SalesHistoryScreen from './src/screens/SalesHistoryScreen'
 
 export default function App() {
   const { user, restoreSession } = useAuthStore()
-  const [screen, setScreen] = useState<'dashboard' | 'pos' | 'attendance'>('dashboard')
+  const [screen, setScreen] = useState<'dashboard' | 'pos' | 'attendance' | 'cash' | 'sales'>('dashboard')
 
   useEffect(() => {
     restoreSession()
@@ -19,6 +21,8 @@ export default function App() {
     navigate: (screenName: string) => {
       if (screenName === 'POS') setScreen('pos')
       else if (screenName === 'Attendance') setScreen('attendance')
+      else if (screenName === 'Cash') setScreen('cash')
+      else if (screenName === 'Sales') setScreen('sales')
       else setScreen('dashboard')
     },
     goBack: () => setScreen('dashboard')
@@ -44,7 +48,7 @@ export default function App() {
             <Text style={styles.backBtnText}>← Volver</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
-            {screen === 'pos' ? '🛒 Nueva Venta' : '⏰ Asistencia'}
+            {screen === 'pos' ? '🛒 Nueva Venta' : screen === 'attendance' ? '⏰ Asistencia' : screen === 'cash' ? '💵 Caja y Turnos' : '🧾 Historial de Ventas'}
           </Text>
           <View style={{ width: 60 }} />
         </View>
@@ -54,6 +58,8 @@ export default function App() {
         {screen === 'dashboard' && <DashboardScreen navigation={navigation} />}
         {screen === 'pos' && <POSScreen navigation={navigation} />}
         {screen === 'attendance' && <AttendanceScreen />}
+        {screen === 'cash' && <CashSessionScreen navigation={navigation} />}
+        {screen === 'sales' && <SalesHistoryScreen />}
       </View>
     </SafeAreaView>
   )

@@ -38,7 +38,8 @@ export default function ReportsPage() {
   const [products, setProducts] = useState<any[]>([])
   const [customers, setCustomers] = useState<any[]>([])
   const [cashSessions, setCashSessions] = useState<any[]>([])
-  const [purchases, setPurchases] = useState<any[]>([])
+  const [purchases, setPurchases] = useState<any[]>([]);
+  const [refunds, setRefunds] = useState<any[]>([])
   const [monthlyChart, setMonthlyChart] = useState<MonthlySalesData[]>([])
 
   // Active Detailed Report Modal
@@ -147,7 +148,30 @@ export default function ReportsPage() {
     loadAllReportData()
   }, [])
 
-  // EXPORT 1: Sales Excel / CSV
+  function downloadCSV(csvContent: string, filename: string) {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', filename)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
+  // EXPORT: Refunds Excel / CSV
+  function exportRefundsExcel() {
+    if (refunds.length === 0) return alert('No hay devoluciones para exportar')
+    let csv = '\uFEFF'
+    csv += `REPORTE DE DEVOLUCIONES - ${businessName.toUpperCase()}\n`
+    csv += `Generado: ${new Date().toLocaleString('es-CO')}\n\n`
+    csv += 'Folio Devolucion,Venta Original,Fecha,Cliente,Motivo,Tipo,Metodo Reembolso,Total Devuelto\n'
+    refunds.forEach(r => {
+      csv += `"${r.number}","${r.sales?.number || ''}","${formatDate(r.created_at)}","${r.sales?.customers?.full_name || 'Cliente general'}","${r.reason || ''}","${r.refund_type}","${r.payment_method}","${r.total_refunded}"\n`
+    })
+    downloadCSV(csv, `MrTender_Devoluciones_${new Date().toISOString().split('T')[0]}.csv`)
+  }
+
   function exportSalesExcel() {
     if (sales.length === 0) {
       alert('No hay ventas registradas para exportar.')
@@ -256,12 +280,12 @@ export default function ReportsPage() {
   }
 
   const REPORT_TYPES = [
-    { id: 'sales', Icon: BarChart3, title: 'Ventas por período', desc: 'Reporte detallado de ventas con filtros de fecha, cliente y totales.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
-    { id: 'inventory', Icon: Package, title: 'Inventario & Stock', desc: 'Estado del stock, costos, precios de venta y valorización total.', color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
+    { id: 'sales', Icon: BarChart3, title: 'Ventas por perÃ­odo', desc: 'Reporte detallado de ventas con filtros de fecha, cliente y totales.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+    { id: 'inventory', Icon: Package, title: 'Inventario & Stock', desc: 'Estado del stock, costos, precios de venta y valorizaciÃ³n total.', color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
     { id: 'customers', Icon: Users, title: 'Clientes & Libreta de Fiao', desc: 'Saldos pendientes por cobrar, cupos asignados y compras acumuladas.', color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
     { id: 'cash', Icon: DollarSign, title: 'Caja y arqueos', desc: 'Historial de turnos, efectivo esperado vs contado y diferencias.', color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
-    { id: 'pnl', Icon: ClipboardList, title: 'Estado de resultados (P&L)', desc: 'Ingresos por ventas, costo de mercancía y ganancia bruta estimada.', color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
-    { id: 'purchases', Icon: Truck, title: 'Proveedores y compras', desc: 'Órdenes de compra, gastos por proveedor y entradas a bodega.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+    { id: 'pnl', Icon: ClipboardList, title: 'Estado de resultados (P&L)', desc: 'Ingresos por ventas, costo de mercancÃ­a y ganancia bruta estimada.', color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+    { id: 'purchases', Icon: Truck, title: 'Proveedores y compras', desc: 'Ã“rdenes de compra, gastos por proveedor y entradas a bodega.', color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
   ]
 
   // Compute Financial Totals
@@ -276,7 +300,7 @@ export default function ReportsPage() {
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando analítica y reportes...</div>
+        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando analÃ­tica y reportes...</div>
       </div>
     )
   }
@@ -287,8 +311,8 @@ export default function ReportsPage() {
       {/* Header & Main Export Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Reportes y Analítica</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>{businessName} • Actualizado al {new Date().toLocaleDateString('es-CO')}</p>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Reportes y AnalÃ­tica</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>{businessName} â€¢ Actualizado al {new Date().toLocaleDateString('es-CO')}</p>
         </div>
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -365,7 +389,7 @@ export default function ReportsPage() {
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 2, fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
                   <span>{r.title}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>Ver →</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>Ver â†’</span>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>{r.desc}</div>
               </div>
@@ -374,7 +398,7 @@ export default function ReportsPage() {
         })}
       </div>
 
-      {/* ── MODAL: DETAILED REPORT EXPLORER & EXPORTER ── */}
+      {/* â”€â”€ MODAL: DETAILED REPORT EXPLORER & EXPORTER â”€â”€ */}
       {activeReportModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 640, maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 20 }}>
@@ -385,9 +409,9 @@ export default function ReportsPage() {
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   {REPORT_TYPES.find(r => r.id === activeReportModal)?.title}
                 </h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>{businessName} • Datos al día</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>{businessName} â€¢ Datos al dÃ­a</p>
               </div>
-              <button className="btn-neu btn-ghost" onClick={() => setActiveReportModal(null)} style={{ padding: '2px 6px' }}>✕</button>
+              <button className="btn-neu btn-ghost" onClick={() => setActiveReportModal(null)} style={{ padding: '2px 6px' }}>âœ•</button>
             </div>
 
             {/* Modal Content Switch */}
@@ -401,7 +425,7 @@ export default function ReportsPage() {
                       <div>
                         <strong>{s.number}</strong>
                         <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{formatDate(s.created_at)}</span>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Cliente: {s.customers?.full_name || 'Público General'}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Cliente: {s.customers?.full_name || 'PÃºblico General'}</div>
                       </div>
                       <div style={{ textAlign: 'right', fontWeight: 800, color: 'var(--accent-blue)' }}>
                         {formatCurrency(s.total)}
@@ -440,10 +464,10 @@ export default function ReportsPage() {
                     <div key={c.id} className="neu-flat" style={{ padding: '8px 10px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
                       <div>
                         <strong>{c.full_name}</strong>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tel: {c.phone || 'N/A'} • Cupo: {formatCurrency(c.credit_limit)}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tel: {c.phone || 'N/A'} â€¢ Cupo: {formatCurrency(c.credit_limit)}</div>
                       </div>
                       <div style={{ textAlign: 'right', fontWeight: 800, color: c.credit_used > 0 ? 'var(--accent-coral)' : 'var(--accent-green)' }}>
-                        {c.credit_used > 0 ? `Debe: ${formatCurrency(c.credit_used)}` : 'Al día'}
+                        {c.credit_used > 0 ? `Debe: ${formatCurrency(c.credit_used)}` : 'Al dÃ­a'}
                       </div>
                     </div>
                   ))}
@@ -480,7 +504,7 @@ export default function ReportsPage() {
                     <strong>{formatCurrency(totalSalesRevenue)}</strong>
                   </div>
                   <div className="neu-flat" style={{ padding: 12, borderRadius: 8, display: 'flex', justifyContent: 'space-between', color: 'var(--accent-coral)' }}>
-                    <span>(-) Costo Estimado de Mercancía</span>
+                    <span>(-) Costo Estimado de MercancÃ­a</span>
                     <strong>-{formatCurrency(totalCostOfGoods)}</strong>
                   </div>
                   <div className="divider" style={{ margin: '4px 0' }} />
@@ -492,6 +516,42 @@ export default function ReportsPage() {
               )}
 
               {/* 6. COMPRAS Y PROVEEDORES */}
+                            {activeReportModal === 'refunds' && (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '2px solid var(--bg-deep)', textAlign: 'left', color: 'var(--text-secondary)' }}>
+                      <th style={{ padding: '8px 6px' }}>Folio</th>
+                      <th style={{ padding: '8px 6px' }}>Venta Ref</th>
+                      <th style={{ padding: '8px 6px' }}>Fecha</th>
+                      <th style={{ padding: '8px 6px' }}>Cliente</th>
+                      <th style={{ padding: '8px 6px' }}>Motivo</th>
+                      <th style={{ padding: '8px 6px' }}>Método</th>
+                      <th style={{ padding: '8px 6px', textAlign: 'right' }}>Total Devuelto</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {refunds.map(r => (
+                      <tr key={r.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
+                        <td style={{ padding: '8px 6px', fontWeight: 800, color: 'var(--accent-coral)' }}>{r.number}</td>
+                        <td style={{ padding: '8px 6px', fontWeight: 700 }}>{r.sales?.number || '-'}</td>
+                        <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{formatDate(r.created_at)}</td>
+                        <td style={{ padding: '8px 6px' }}>{r.sales?.customers?.full_name || 'Cliente general'}</td>
+                        <td style={{ padding: '8px 6px', color: 'var(--text-secondary)' }}>{r.reason}</td>
+                        <td style={{ padding: '8px 6px' }}>
+                          <span className="badge badge-gray" style={{ fontSize: '0.68rem' }}>
+                            {r.payment_method === 'cash' ? 'Efectivo' : r.payment_method === 'fiao' ? 'Crédito/Fiao' : r.payment_method === 'transfer' ? 'Transferencia' : 'Nota Crédito'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 900, color: 'var(--accent-coral)' }}>{formatCurrency(Number(r.total_refunded))}</td>
+                      </tr>
+                    ))}
+                    {refunds.length === 0 && (
+                      <tr><td colSpan={7} style={{ textAlign: 'center', padding: 20, color: 'var(--text-muted)' }}>No hay devoluciones registradas</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              )}
+
               {activeReportModal === 'purchases' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {purchases.map(po => (
@@ -538,3 +598,4 @@ export default function ReportsPage() {
     </div>
   )
 }
+

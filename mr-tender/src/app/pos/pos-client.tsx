@@ -1,8 +1,9 @@
-'use client'
+﻿'use client'
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import CameraScanner from '@/components/CameraScanner'
+import RefundModal from '@/components/RefundModal'
 import { findMasterProduct } from '@/lib/catalog/colombia-products'
 import {
   Search,
@@ -27,7 +28,8 @@ import {
   Wifi,
   PauseCircle,
   PlayCircle,
-  PlusCircle
+  PlusCircle,
+  RotateCcw
 } from 'lucide-react'
 
 // Web Audio sound generator for tactile feedback
@@ -157,6 +159,7 @@ export default function POSClient() {
 
   // Express product creation modal from POS
   const [showExpressModal, setShowExpressModal] = useState(false)
+  const [showRefundModal, setShowRefundModal] = useState(false)
   const [expressForm, setExpressForm] = useState({ name: '', sku: '', price: '', cost: '', stock: '10' })
   const [creatingExpress, setCreatingExpress] = useState(false)
 
@@ -577,6 +580,13 @@ export default function POSClient() {
     if (!sessionInfo) return
     setError('')
 
+    // Block sale if cash register (caja) is closed
+    if (!sessionInfo.session_id) {
+      setError('La caja esta cerrada. Abre un turno de caja en la seccion Caja y Turnos antes de realizar ventas.')
+      playSound('error')
+      return
+    }
+
     if (paymentMethod === 'fiao') {
       if (!selectedCustomer) {
         setError('Debes seleccionar un cliente para fiar la compra')
@@ -596,7 +606,7 @@ export default function POSClient() {
 
     if (paymentMethod === 'transfer') {
       if (!transferRef.trim()) {
-        setError('Ingresa el número de comprobante Nequi/Daviplata')
+        setError('Ingresa el nÃºmero de comprobante Nequi/Daviplata')
         playSound('error')
         return
       }
@@ -700,7 +710,7 @@ export default function POSClient() {
 
   function sendTicketWhatsApp() {
     let rawPhone = selectedCustomer?.phone?.replace(/\D/g, '') || ''
-    const itemsText = cart.map(i => `• ${i.quantity}x ${i.name} (${formatCurrency(i.lineTotal)})`).join('\n')
+    const itemsText = cart.map(i => `â€¢ ${i.quantity}x ${i.name} (${formatCurrency(i.lineTotal)})`).join('\n')
     const message = `*FACTURA POS / TICKET DE COMPRA*
 *${businessName}*
 Folio: ${saleNumber}
@@ -709,10 +719,10 @@ Fecha: ${new Date().toLocaleString('es-CO')}
 ${itemsText}
 
 TOTAL: ${formatCurrency(total)}
-Pago: ${paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'fiao' ? 'Fiao (Crédito)' : 'Nequi / Daviplata'}
+Pago: ${paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'fiao' ? 'Fiao (CrÃ©dito)' : 'Nequi / Daviplata'}
 ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
-¡Muchas gracias por tu compra!`
+Â¡Muchas gracias por tu compra!`
 
     if (rawPhone) {
       if (!rawPhone.startsWith('57') && rawPhone.length === 10) rawPhone = '57' + rawPhone
@@ -744,7 +754,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             <div style={{ fontSize: '0.68rem', color: '#475569' }}>NIT: 901.234.567-1 - Reg. DIAN</div>
             <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Res. DIAN 18760000001 (SETP-1 al SETP-5000)</div>
             <div style={{ fontSize: '0.65rem', color: '#64748B', marginTop: 2 }}>{new Date().toLocaleString('es-CO')}</div>
-            <div style={{ fontWeight: 800, fontSize: '0.85rem', marginTop: 4, color: '#1E293B' }}>Factura POS Nº: {saleNumber}</div>
+            <div style={{ fontWeight: 800, fontSize: '0.85rem', marginTop: 4, color: '#1E293B' }}>Factura POS NÂº: {saleNumber}</div>
           </div>
 
           {selectedCustomer && (
@@ -775,7 +785,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1rem', marginTop: 2 }}><span>TOTAL:</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#475569', marginTop: 1 }}>
               <span>Pago:</span>
-              <span style={{ fontWeight: 800 }}>{paymentMethod === 'cash' ? 'EFECTIVO' : paymentMethod === 'fiao' ? 'FIAO (CRÉDITO)' : paymentMethod === 'transfer' ? 'NEQUI' : 'TARJETA'}</span>
+              <span style={{ fontWeight: 800 }}>{paymentMethod === 'cash' ? 'EFECTIVO' : paymentMethod === 'fiao' ? 'FIAO (CRÃ‰DITO)' : paymentMethod === 'transfer' ? 'NEQUI' : 'TARJETA'}</span>
             </div>
             {change > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--accent-green)', fontWeight: 800 }}><span>Cambio:</span><span>{formatCurrency(change)}</span></div>}
           </div>
@@ -786,7 +796,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
               CUFE: c89f2a01490b8e7c102a99182bc837d7a1290317
             </div>
             <div style={{ fontSize: '0.7rem', fontWeight: 700, marginTop: 2, color: '#475569' }}>
-              ¡Gracias por su compra en {businessName}!
+              Â¡Gracias por su compra en {businessName}!
             </div>
           </div>
         </div>
@@ -815,7 +825,17 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
   return (
     <div style={{ width: '100%', height: 'calc(100vh - 100px)', overflow: 'hidden' }}>
 
-      {/* ── STEP 1: CART & PRODUCT SEARCH ── */}
+      {/* Caja Cerrada Banner */}
+      {sessionInfo && !sessionInfo.session_id && (
+        <div style={{ background: '#FEE2E2', borderBottom: '2px solid #FECACA', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <span style={{ fontSize: '1.1rem' }}>&#128274;</span>
+          <span style={{ fontWeight: 700, color: '#DC2626', fontSize: '0.88rem' }}>
+            Caja cerrada &mdash; Debes abrir un turno en <strong>Caja y Turnos</strong> antes de realizar ventas.
+          </span>
+        </div>
+      )}
+
+      {/* â”€â”€ STEP 1: CART & PRODUCT SEARCH â”€â”€ */}
       {step === 'cart' && (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 14, height: '100%', overflow: 'hidden' }}>
 
@@ -826,15 +846,15 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
               <div className="input-group" style={{ flex: 1 }}>
                 <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
-                <input className="input-neu" placeholder="Buscar producto o código..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
+                <input className="input-neu" placeholder="Buscar producto o cÃ³digo..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
               </div>
               
-              <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} title="Escanear código de barras" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} title="Escanear cÃ³digo de barras" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Camera size={15} strokeWidth={2} />
                 <span>Escanear</span>
               </button>
 
-              <button className="btn-neu" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} title="Crear producto rápido" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button className="btn-neu" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} title="Crear producto rÃ¡pido" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <PlusCircle size={15} style={{ color: 'var(--accent-blue)' }} />
                 <span>Crear</span>
               </button>
@@ -932,7 +952,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
               {cart.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '50px 16px', color: 'var(--text-muted)' }}>
                   <ShoppingCart size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
-                  <div style={{ fontSize: '0.82rem' }}>Escanea o busca productos para añadirlos</div>
+                  <div style={{ fontSize: '0.82rem' }}>Escanea o busca productos para aÃ±adirlos</div>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
@@ -949,7 +969,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
                       {/* Quantity Controls */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>−</button>
+                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>âˆ’</button>
                         <span style={{ minWidth: 26, textAlign: 'center', fontWeight: 800, fontSize: '0.8rem' }}>
                           {item.quantity}{item.unit_type !== 'unit' ? item.unit_type : ''}
                         </span>
@@ -996,7 +1016,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                   <span>Total</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span>
                 </div>
               </div>
-              <button className="btn-neu btn-primary" disabled={cart.length === 0} onClick={() => { setReceivedAmount(String(total)); setIsFirstNumpadKey(true); setStep('payment'); playSound('tap'); }} style={{ width: '100%', padding: '12px', fontSize: '0.9rem', justifyContent: 'center' }}>
+              <button className="btn-neu btn-primary" disabled={cart.length === 0 || !sessionInfo?.session_id} onClick={() => { setReceivedAmount(String(total)); setIsFirstNumpadKey(true); setStep('payment'); playSound('tap'); }} style={{ width: '100%', padding: '12px', fontSize: '0.9rem', justifyContent: 'center' }}>
                 Cobrar {formatCurrency(total)}
               </button>
             </div>
@@ -1004,7 +1024,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
         </div>
       )}
 
-      {/* ── STEP 2: INSTANT FULL-SCREEN TOUCH NUMPAD CHECKOUT (ZERO SCROLL) ── */}
+      {/* â”€â”€ STEP 2: INSTANT FULL-SCREEN TOUCH NUMPAD CHECKOUT (ZERO SCROLL) â”€â”€ */}
       {step === 'payment' && (
         <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', padding: '14px 16px', boxSizing: 'border-box' }}>
           
@@ -1020,7 +1040,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             </div>
           </div>
 
-          {/* Quick Selectors Row (Cliente + Método) */}
+          {/* Quick Selectors Row (Cliente + MÃ©todo) */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8, marginBottom: 8, flexShrink: 0 }}>
             <div>
               <label style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Cliente</label>
@@ -1036,16 +1056,16 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
               </select>
             </div>
             <div>
-              <label style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Método</label>
+              <label style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>MÃ©todo</label>
               <select className="input-neu" value={paymentMethod} onChange={e => {
                 setPaymentMethod(e.target.value)
                 setError('')
               }} style={{ fontSize: '0.78rem', fontWeight: 700, width: '100%', padding: '6px 8px' }}>
-                <option value="cash">💵 Efectivo</option>
-                <option value="transfer">📱 Nequi</option>
-                <option value="fiao">📝 Fiar</option>
-                <option value="card_debit">💳 Débito</option>
-                <option value="card_credit">💳 Crédito</option>
+                <option value="cash">ðŸ’µ Efectivo</option>
+                <option value="transfer">ðŸ“± Nequi</option>
+                <option value="fiao">ðŸ“ Fiar</option>
+                <option value="card_debit">ðŸ’³ DÃ©bito</option>
+                <option value="card_credit">ðŸ’³ CrÃ©dito</option>
               </select>
             </div>
           </div>
@@ -1118,7 +1138,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                   <span style={{ fontSize: '0.65rem', color: '#64748B', fontWeight: 700 }}>Pagar a {merchantPhone}</span>
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Nº de Comprobante / Aprobación *</label>
+                  <label style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>NÂº de Comprobante / AprobaciÃ³n *</label>
                   <input className="input-neu" placeholder="Ej: 987654" value={transferRef} onChange={e => { setTransferRef(e.target.value); setError(''); }} autoFocus required style={{ fontWeight: 700, padding: '8px 10px', fontSize: '0.85rem', width: '100%' }} />
                 </div>
               </div>
@@ -1147,8 +1167,8 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
             {(paymentMethod === 'card_debit' || paymentMethod === 'card_credit') && (
               <div style={{ background: 'var(--bg-deep)', padding: '16px', borderRadius: 'var(--radius-md)', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
                 <CreditCard size={32} style={{ color: 'var(--accent-blue)' }} />
-                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Datáfono / Datafono POS</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Pasa la tarjeta en el datáfono por <strong>{formatCurrency(total)}</strong></div>
+                <div style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)' }}>DatÃ¡fono / Datafono POS</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>Pasa la tarjeta en el datÃ¡fono por <strong>{formatCurrency(total)}</strong></div>
               </div>
             )}
 
@@ -1161,7 +1181,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
           {/* Confirm Button Always Pinned at Bottom */}
           <div style={{ marginTop: 'auto', paddingTop: 6, flexShrink: 0 }}>
-            <button className="btn-neu btn-success" onClick={processSale} disabled={loading || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
+            <button className="btn-neu btn-success" onClick={processSale} disabled={loading || !sessionInfo?.session_id || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
               style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 800, justifyContent: 'center' }}>
               {loading ? 'Procesando...' : paymentMethod === 'fiao' ? `Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `Confirmar Nequi (${formatCurrency(total)})` : 'Confirmar pago'}
             </button>
@@ -1170,7 +1190,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
         </div>
       )}
 
-      {/* ── MODAL: HELD CARTS (Pausar Venta) ── */}
+      {/* â”€â”€ MODAL: HELD CARTS (Pausar Venta) â”€â”€ */}
       {showHeldModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 380, padding: 20 }}>
@@ -1179,7 +1199,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                 <PauseCircle size={18} style={{ color: 'var(--accent-amber)' }} />
                 <span>Carritos en Espera ({heldCarts.length})</span>
               </div>
-              <button className="btn-neu btn-ghost" onClick={() => setShowHeldModal(false)} style={{ padding: '2px 6px' }}>✕</button>
+              <button className="btn-neu btn-ghost" onClick={() => setShowHeldModal(false)} style={{ padding: '2px 6px' }}>âœ•</button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 300, overflowY: 'auto' }}>
@@ -1187,7 +1207,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
                 <div key={held.id} className="neu-flat" style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)', display: 'block' }}>{held.label}</strong>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{held.time} • {held.cart.length} productos</span>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>{held.time} â€¢ {held.cart.length} productos</span>
                     <div style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--accent-blue)', marginTop: 2 }}>{formatCurrency(held.total)}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -1205,7 +1225,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
         </div>
       )}
 
-      {/* ── MODAL: EXPRESS PRODUCT CREATION ── */}
+      {/* â”€â”€ MODAL: EXPRESS PRODUCT CREATION â”€â”€ */}
       {showExpressModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <form onSubmit={handleCreateExpressProduct} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 380, padding: 20 }}>
@@ -1233,7 +1253,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
               <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 8 }}>
                 <div>
-                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Código / EAN</label>
+                  <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>CÃ³digo / EAN</label>
                   <input className="input-neu" placeholder="770..." value={expressForm.sku} onChange={e => setExpressForm({ ...expressForm, sku: e.target.value })} style={{ fontSize: '0.82rem' }} />
                 </div>
                 <div>
@@ -1253,7 +1273,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
         </div>
       )}
 
-      {/* ── MODAL: WEIGHED PRODUCT PICKER ── */}
+      {/* â”€â”€ MODAL: WEIGHED PRODUCT PICKER â”€â”€ */}
       {weighingProduct && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
@@ -1319,3 +1339,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
     </div>
   )
 }
+
+
+

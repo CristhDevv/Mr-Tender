@@ -193,7 +193,9 @@ export default function CustomersPage() {
 
     setSubmitting(true)
     try {
-      const newCreditUsed = Math.max(0, selectedCustomer.credit_used - amount)
+      const prevDebt = Number(selectedCustomer.credit_used || 0)
+      const newCreditUsed = Math.max(0, prevDebt - amount)
+      
       const { error } = await supabase
         .from('customers')
         .update({ credit_used: newCreditUsed })
@@ -201,10 +203,54 @@ export default function CustomersPage() {
 
       if (error) throw error
 
+      // Check active cash session to record cash movement
+      const { data: regData } = await supabase
+        .from('cash_registers')
+        .select('current_session_id')
+        .eq('tenant_id', tenantId)
+        .limit(1)
+
+      const sessionId = regData?.[0]?.current_session_id
+      if (sessionId) {
+        const { data: { user } } = await supabase.auth.getUser()
+        await supabase.from('cash_movements').insert({
+          tenant_id: tenantId,
+          session_id: sessionId,
+          movement_type: 'income',
+          amount: amount,
+          description: `Abono a fiao: ${selectedCustomer.full_name}`,
+          reference_type: 'customer_payment',
+          reference_id: selectedCustomer.id,
+          created_by: user?.id
+        })
+      }
+
       setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, credit_used: newCreditUsed } : c))
       setShowAbonoModal(false)
       setAbonoAmount('')
-      alert(`Abono registrado exitosamente. Deuda restante: ${formatCurrency(newCreditUsed)}`)
+
+      // Offer to send WhatsApp payment confirmation
+      let rawPhone = (selectedCustomer.phone || '').replace(/\D/g, '')
+      if (rawPhone) {
+        if (!rawPhone.startsWith('57') && rawPhone.length === 10) rawPhone = '57' + rawPhone
+        const receiptMsg = `*RECIBO DE ABONO / PAGO A CRÉDITO*
+*${businessName}*
+Cliente: ${selectedCustomer.full_name}
+Fecha: ${new Date().toLocaleString('es-CO')}
+
+*Monto abonado:* ${formatCurrency(amount)}
+*Saldo anterior:* ${formatCurrency(prevDebt)}
+*Saldo pendiente actual:* ${formatCurrency(newCreditUsed)}
+*Cupo disponible:* ${formatCurrency(Number(selectedCustomer.credit_limit || 0) - newCreditUsed)}
+
+¡Muchas gracias por su puntual abono!`
+
+        if (confirm(`Abono de ${formatCurrency(amount)} registrado. ¿Deseas enviar el comprobante por WhatsApp al cliente?`)) {
+          window.open(`https://wa.me/${rawPhone}?text=${encodeURIComponent(receiptMsg)}`, '_blank')
+        }
+      } else {
+        alert(`Abono registrado exitosamente. Deuda restante: ${formatCurrency(newCreditUsed)}`)
+      }
     } catch (err: any) {
       console.error('Error recording abono:', err)
       alert(err.message || 'No se pudo registrar el abono')

@@ -41,8 +41,10 @@ export default function DashboardPage() {
     salesToday: 0,
     ordersToday: 0,
     avgTicket: 0,
-    newCustomersToday: 0
+    grossMargin: 0,
+    pendingCredit: 0
   })
+  const [cajaStatus, setCajaStatus] = useState<boolean>(false)
   const [weeklySales, setWeeklySales] = useState<{ day: string; ventas: number }[]>([])
   const [lowStockList, setLowStockList] = useState<{ name: string; stock: number; min: number }[]>([])
   const [recentSalesList, setRecentSalesList] = useState<{ id: string; customer: string; total: string; method: string; time: string }[]>([])
@@ -55,101 +57,136 @@ export default function DashboardPage() {
         if (!user) return
 
         const tenant_id = user.user_metadata?.tenant_id
+        if (!tenant_id) return
         setTenantName(user.user_metadata?.full_name || 'Mi Negocio')
 
         const todayStr = new Date().toISOString().split('T')[0]
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-        // 1. Fetch sales today
-        const { data: salesTodayData } = await supabase
-          .from('sales')
-          .select('total, created_at, sale_payments(payment_method), customers(full_name)')
-          .eq('tenant_id', tenant_id)
-          .gte('created_at', todayStr + 'T00:00:00')
-          .lte('created_at', todayStr + 'T23:59:59')
+        // 1. Fetch sales today with items for margin calculation
+        const [salesTodayRes, allSalesRes, custRes, regRes, invRes, topItemsRes] = await Promise.all([
+          supabase
+            .from('sales')
+            .select(`
+              total, created_at,
+              sale_payments (payment_method),
+              customers (full_name),
+              sale_items (quantity, cost_price, total)
+            `)
+            .eq('tenant_id', tenant_id)
+            .gte('created_at', todayStr + 'T00:00:00')
+            .lte('created_at', todayStr + 'T23:59:59'),
+          supabase
+            .from('sales')
+            .select('total, created_at')
+            .eq('tenant_id', tenant_id)
+            .gte('created_at', sevenDaysAgo)
+            .order('created_at', { ascending: true }),
+          supabase
+            .from('customers')
+            .select('credit_used')
+            .eq('tenant_id', tenant_id),
+          supabase
+            .from('cash_registers')
+            .select('current_session_id')
+            .eq('tenant_id', tenant_id)
+            .limit(1),
+          supabase
+            .from('inventory')
+            .select('quantity, products (name, min_stock)')
+            .eq('tenant_id', tenant_id),
+          supabase
+            .from('sale_items')
+            .select('product_name, quantity, total')
+            .limit(100)
+        ])
 
-        let totalSales = 0
-        let totalOrders = 0
-        if (salesTodayData) {
-          totalSales = salesTodayData.reduce((s, item) => s + Number(item.total), 0)
-          totalOrders = salesTodayData.length
-        }
-
-        // 2. Fetch new customers today
-        const { count: customersCount } = await supabase
-          .from('customers')
-          .select('*', { count: 'exact', head: true })
-          .eq('tenant_id', tenant_id)
-          .gte('created_at', todayStr + 'T00:00:00')
+        // Sales today KPIs
+        const salesTodayData = salesTodayRes.data || []
+        const totalSales = salesTodayData.reduce((s, item) => s + Number(item.total || 0), 0)
+        const totalOrders = salesTodayData.length
+        
+        let totalCost = 0
+        salesTodayData.forEach((s: any) => {
+          (s.sale_items || []).forEach((item: any) => {
+            totalCost += (Number(item.cost_price || 0) * Number(item.quantity || 1))
+          })
+        })
+        const grossMargin = totalSales > 0 ? ((totalSales - totalCost) / totalSales) * 100 : 0
+        const totalPendingCredit = (custRes.data || []).reduce((s, c) => s + Number(c.credit_used || 0), 0)
 
         setStats({
           salesToday: totalSales,
           ordersToday: totalOrders,
           avgTicket: totalOrders > 0 ? totalSales / totalOrders : 0,
-          newCustomersToday: customersCount || 0
+          grossMargin,
+          pendingCredit: totalPendingCredit
         })
 
-        // 3. Fetch weekly sales
-        const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Hoy']
-        const baseWeekly = days.map((day, idx) => ({
-          day,
-          ventas: idx === 6 ? totalSales : (Math.floor(Math.random() * 8000) + 4000)
-        }))
-        setWeeklySales(baseWeekly)
+        // Cash status
+        setCajaStatus(!!(regRes.data?.[0]?.current_session_id))
 
-        // 4. Fetch low stock alerts
-        const { data: inventoryData } = await supabase
-          .from('inventory')
-          .select('quantity, products(name, min_stock)')
-          .eq('tenant_id', tenant_id)
+        // 7-day Real Trend
+        const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
+        const past7DaysMap: Record<string, { label: string; ventas: number }> = {}
+        for (let i = 6; i >= 0; i--) {
+          const d = new Date()
+          d.setDate(d.getDate() - i)
+          const key = d.toISOString().split('T')[0]
+          past7DaysMap[key] = { label: i === 0 ? 'Hoy' : dayNames[d.getDay()], ventas: 0 }
+        }
 
-        if (inventoryData) {
-          const formattedLow = inventoryData
-            .filter((i: any) => i.quantity <= (i.products?.min_stock || 0) && i.quantity > 0)
+        (allSalesRes.data || []).forEach((s: any) => {
+          const sKey = s.created_at.split('T')[0]
+          if (past7DaysMap[sKey]) {
+            past7DaysMap[sKey].ventas += Number(s.total || 0)
+          }
+        })
+
+        setWeeklySales(Object.values(past7DaysMap).map(v => ({ day: v.label, ventas: v.ventas })))
+
+        // Low stock list
+        if (invRes.data) {
+          const formattedLow = invRes.data
+            .filter((i: any) => Number(i.quantity) <= (i.products?.min_stock || 5) && Number(i.quantity) > 0)
             .map((i: any) => ({
               name: i.products?.name || 'Producto',
               stock: Number(i.quantity),
               min: Number(i.products?.min_stock || 5)
             }))
-            .slice(0, 3)
+            .slice(0, 4)
           setLowStockList(formattedLow)
         }
 
-        // 5. Fetch recent sales
-        const { data: recSales } = await supabase
-          .from('sales')
-          .select('id, number, total, created_at, customers(full_name), sale_payments(payment_method)')
-          .eq('tenant_id', tenant_id)
-          .order('created_at', { ascending: false })
-          .limit(4)
+        // Recent sales list
+        const recList = salesTodayData.slice(0, 5).map((s: any) => {
+          const timeDiff = Math.floor((new Date().getTime() - new Date(s.created_at).getTime()) / 60000)
+          const timeStr = timeDiff <= 0 ? 'hace instantes' : `hace ${timeDiff} min`
+          return {
+            id: s.number || 'V-Ref',
+            customer: s.customers?.full_name || 'Público General',
+            total: formatCurrency(Number(s.total)),
+            method: s.sale_payments?.[0]?.payment_method || 'Efectivo',
+            time: timeStr
+          }
+        })
+        setRecentSalesList(recList)
 
-        if (recSales) {
-          const list = recSales.map((s: any) => {
-            const timeDiff = Math.floor((new Date().getTime() - new Date(s.created_at).getTime()) / 60000)
-            const timeStr = timeDiff <= 0 ? 'hace unos instantes' : `hace ${timeDiff} min`
-            return {
-              id: s.number || s.id.slice(0, 8),
-              customer: s.customers?.full_name || 'Público General',
-              total: formatCurrency(Number(s.total)),
-              method: s.sale_payments?.[0]?.payment_method || 'Efectivo',
-              time: timeStr
-            }
-          })
-          setRecentSalesList(list)
-        }
+        // Real Top Selling Products
+        const prodCountMap: Record<string, number> = {}
+        ;(topItemsRes.data || []).forEach((ti: any) => {
+          if (ti.product_name) {
+            prodCountMap[ti.product_name] = (prodCountMap[ti.product_name] || 0) + Number(ti.quantity || 1)
+          }
+        })
+        const sortedTop = Object.entries(prodCountMap)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 5)
+          .map(([name, value]) => ({ name, value }))
 
-        // 6. Fetch top products
-        const { data: topProdData } = await supabase
-          .from('products')
-          .select('name')
-          .eq('tenant_id', tenant_id)
-          .limit(5)
-
-        if (topProdData) {
-          setTopProducts(topProdData.map((p, idx) => ({
-            name: p.name,
-            value: [340, 218, 196, 147, 132][idx % 5]
-          })))
-        }
+        setTopProducts(sortedTop.length > 0 ? sortedTop : [
+          { name: 'Sin ventas aún', value: 1 }
+        ])
 
       } catch (err) {
         console.error('Error loading dashboard:', err)
@@ -163,8 +200,8 @@ export default function DashboardPage() {
   const kpis = [
     { label: 'Ventas hoy', value: formatCurrency(stats.salesToday), Icon: DollarSign, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
     { label: 'Pedidos hoy', value: formatNumber(stats.ordersToday), Icon: ShoppingCart, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
-    { label: 'Ticket promedio', value: formatCurrency(stats.avgTicket), Icon: BarChart3, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
-    { label: 'Clientes nuevos', value: formatNumber(stats.newCustomersToday), Icon: Users, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
+    { label: 'Margen bruto est.', value: `${stats.grossMargin.toFixed(1)}%`, Icon: BarChart3, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
+    { label: 'Fiados por cobrar', value: formatCurrency(stats.pendingCredit), Icon: Users, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
   ]
 
   if (loading) {
@@ -185,12 +222,12 @@ export default function DashboardPage() {
             ¡Buen día!
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>
-            Resumen de hoy para <strong>{tenantName}</strong>
+            Panel gerencial para <strong>{tenantName}</strong>
           </p>
         </div>
-        <div className="badge badge-green" style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'var(--accent-green)' }} />
-          <span>Caja abierta</span>
+        <div className={`badge ${cajaStatus ? 'badge-green' : 'badge-coral'}`} style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: cajaStatus ? 'var(--accent-green)' : 'var(--accent-coral)' }} />
+          <span>{cajaStatus ? 'Caja abierta' : 'Caja cerrada'}</span>
         </div>
       </div>
 

@@ -40,35 +40,100 @@ export default function InventoryPage() {
   const [tab, setTab] = useState<TabKey>('stock')
   const [search, setSearch] = useState('')
   const [inventory, setInventory] = useState<DBInventory[]>([])
+  const [movements, setMovements] = useState<any[]>([])
+  const [adjustments, setAdjustments] = useState<any[]>([])
+  const [transfers, setTransfers] = useState<any[]>([])
+  const [warehouses, setWarehouses] = useState<any[]>([])
+  const [productsList, setProductsList] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [tenantId, setTenantId] = useState('')
+  const [userId, setUserId] = useState('')
+
+  // Modals state
+  const [showAdjModal, setShowAdjModal] = useState(false)
+  const [adjForm, setAdjForm] = useState({ warehouse_id: '', product_id: '', adjustment_type: 'decrease', reason: 'Merma / Deterioro', notes: '', quantity: '1' })
+  const [showTrfModal, setShowTrfModal] = useState(false)
+  const [trfForm, setTrfForm] = useState({ from_warehouse_id: '', to_warehouse_id: '', product_id: '', quantity: '1', notes: '' })
+  const [submittingAction, setSubmittingAction] = useState(false)
 
   useEffect(() => {
-    async function loadInventory() {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+    loadInventory()
+  }, [])
 
-        const tenant_id = user.user_metadata?.tenant_id
+  async function loadInventory() {
+    try {
+      setLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
 
-        const { data, error } = await supabase
+      const tenant_id = user.user_metadata?.tenant_id
+      if (!tenant_id) return
+      setTenantId(tenant_id)
+      setUserId(user.id)
+
+      const [invRes, movRes, adjRes, trfRes, whRes, prodRes] = await Promise.all([
+        supabase
           .from('inventory')
           .select(`
             id, quantity, avg_cost,
-            products (name, sku, product_type, min_stock, max_stock, categories (name)),
-            warehouses (name)
+            products (id, name, sku, product_type, min_stock, max_stock, cost_price, categories (name)),
+            warehouses (id, name)
           `)
+          .eq('tenant_id', tenant_id),
+        supabase
+          .from('stock_movements')
+          .select(`id, created_at, movement_type, quantity, unit_cost, total_cost, balance_after, notes, products (name, sku), warehouses (name)`)
           .eq('tenant_id', tenant_id)
+          .order('created_at', { ascending: false })
+          .limit(50),
+        supabase
+          .from('stock_adjustments')
+          .select(`id, created_at, adjustment_type, reason, notes, status, warehouses (name)`)
+          .eq('tenant_id', tenant_id)
+          .order('created_at', { ascending: false })
+          .limit(30),
+        supabase
+          .from('warehouse_transfers')
+          .select(`id, created_at, status, notes, from_warehouse:warehouses!from_warehouse_id(name), to_warehouse:warehouses!to_warehouse_id(name)`)
+          .eq('tenant_id', tenant_id)
+          .order('created_at', { ascending: false })
+          .limit(30),
+        supabase
+          .from('warehouses')
+          .select('id, name')
+          .eq('tenant_id', tenant_id)
+          .eq('is_active', true),
+        supabase
+          .from('products')
+          .select('id, name, sku, cost_price')
+          .eq('tenant_id', tenant_id)
+          .eq('is_active', true)
+      ])
 
-        if (error) throw error
-        if (data) setInventory(data as any)
-      } catch (err) {
-        console.error('Error loading inventory:', err)
-      } finally {
-        setLoading(false)
+      if (invRes.data) setInventory(invRes.data as any)
+      if (movRes.data) setMovements(movRes.data)
+      if (adjRes.data) setAdjustments(adjRes.data)
+      if (trfRes.data) setTransfers(trfRes.data)
+      if (whRes.data) {
+        setWarehouses(whRes.data)
+        if (whRes.data.length > 0) {
+          setAdjForm(f => ({ ...f, warehouse_id: whRes.data[0].id }))
+          setTrfForm(f => ({ ...f, from_warehouse_id: whRes.data[0].id, to_warehouse_id: whRes.data[1]?.id || whRes.data[0].id }))
+        }
       }
+      if (prodRes.data) {
+        setProductsList(prodRes.data)
+        if (prodRes.data.length > 0) {
+          setAdjForm(f => ({ ...f, product_id: prodRes.data[0].id }))
+          setTrfForm(f => ({ ...f, product_id: prodRes.data[0].id }))
+        }
+      }
+    } catch (err) {
+      console.error('Error loading inventory:', err)
+    } finally {
+      setLoading(false)
     }
-    loadInventory()
-  }, [])
+  }
 
   const filtered = inventory.filter(i => {
     const name = i.products?.name || ''
@@ -91,6 +156,69 @@ export default function InventoryPage() {
     { key: 'transfers', label: 'Transferencias', Icon: ArrowLeftRight },
   ]
 
+  async function handleCreateAdjustment(e: React.FormEvent) {
+    e.preventDefault()
+    if (!adjForm.warehouse_id || !adjForm.product_id || !adjForm.quantity) return
+    setSubmittingAction(true)
+    try {
+      const prod = productsList.find(p => p.id === adjForm.product_id)
+      const payload = {
+        tenant_id: tenantId,
+        user_id: userId,
+        warehouse_id: adjForm.warehouse_id,
+        product_id: adjForm.product_id,
+        adjustment_type: adjForm.adjustment_type,
+        reason: adjForm.reason,
+        notes: adjForm.notes,
+        quantity: parseFloat(adjForm.quantity) || 1,
+        unit_cost: prod?.cost_price || 0
+      }
+      const { data, error } = await supabase.rpc('record_stock_adjustment', { p_data: payload })
+      if (error) throw error
+      if (data && data.success === false) throw new Error(data.error)
+      setShowAdjModal(false)
+      loadInventory()
+      alert('Ajuste de inventario aplicado con éxito')
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar el ajuste')
+    } finally {
+      setSubmittingAction(false)
+    }
+  }
+
+  async function handleCreateTransfer(e: React.FormEvent) {
+    e.preventDefault()
+    if (!trfForm.from_warehouse_id || !trfForm.to_warehouse_id || !trfForm.product_id || !trfForm.quantity) return
+    if (trfForm.from_warehouse_id === trfForm.to_warehouse_id) {
+      alert('El almacén de origen y destino deben ser diferentes')
+      return
+    }
+    setSubmittingAction(true)
+    try {
+      const prod = productsList.find(p => p.id === trfForm.product_id)
+      const payload = {
+        tenant_id: tenantId,
+        user_id: userId,
+        from_warehouse_id: trfForm.from_warehouse_id,
+        to_warehouse_id: trfForm.to_warehouse_id,
+        product_id: trfForm.product_id,
+        quantity: parseFloat(trfForm.quantity) || 1,
+        unit_cost: prod?.cost_price || 0,
+        notes: trfForm.notes
+      }
+      const { data, error } = await supabase.rpc('record_warehouse_transfer', { p_data: payload })
+      if (error) throw error
+      if (data && data.success === false) throw new Error(data.error)
+      setShowTrfModal(false)
+      loadInventory()
+      alert('Transferencia entre almacenes completada')
+    } catch (err: any) {
+      alert(err.message || 'Error al procesar la transferencia')
+    } finally {
+      setSubmittingAction(false)
+    }
+  }
+
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
@@ -102,35 +230,30 @@ export default function InventoryPage() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
       
-      {/* Header & Responsive Actions Grid */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Header & Actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Inventario</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>Control de stock multi-almacén</p>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Inventario & Kardex</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: 0 }}>Control de stock, mermas, transferencias y trazabilidad</p>
         </div>
 
-        {/* Action Buttons Row (Responsive Grid on Mobile) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
-          <button className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <Wrench size={15} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
-            <span>Ajuste</span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn-neu" onClick={() => setShowAdjModal(true)} style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-coral)' }}>
+            <Wrench size={15} strokeWidth={2} />
+            <span>Ajuste / Merma</span>
           </button>
-          <button className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <ArrowLeftRight size={15} strokeWidth={2} style={{ color: 'var(--accent-purple)' }} />
-            <span>Transferencia</span>
-          </button>
-          <button className="btn-neu btn-primary" style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-            <ClipboardCheck size={15} strokeWidth={2.2} />
-            <span>Conteo físico</span>
+          <button className="btn-neu btn-primary" onClick={() => setShowTrfModal(true)} style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <ArrowLeftRight size={15} strokeWidth={2} />
+            <span>Transferir</span>
           </button>
         </div>
       </div>
 
-      {/* Monochromatic KPIs Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+      {/* KPI Cards Row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
         {[
-          { label: 'Valor inventario', value: formatCurrency(totalValue), Icon: DollarSign, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
-          { label: 'En stock', value: inventory.filter(i => i.quantity > 0).length, Icon: Package, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
+          { label: 'Valor total', value: formatCurrency(totalValue), Icon: DollarSign, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
+          { label: 'En stock', value: `${inventory.length} prods`, Icon: Package, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
           { label: 'Stock bajo', value: lowStock, Icon: AlertTriangle, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
           { label: 'Sin stock', value: outOfStock, Icon: XCircle, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
         ].map(s => {
@@ -141,7 +264,7 @@ export default function InventoryPage() {
                 <StatIcon size={16} strokeWidth={2} style={{ color: s.color }} />
               </div>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.label}</div>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
                 <div style={{ fontSize: '1.15rem', fontWeight: 800, color: s.color }}>{s.value}</div>
               </div>
             </div>
@@ -149,14 +272,14 @@ export default function InventoryPage() {
         })}
       </div>
 
-      {/* Responsive Segmented Tabs (Wrap without horizontal scroll) */}
+      {/* Segmented Tabs */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px', background: 'var(--bg-deep)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--neu-pressed)' }}>
         {TABS.map(t => {
           const TabIcon = t.Icon
           const isActive = tab === t.key
           return (
             <button key={t.key} className="btn-neu" onClick={() => setTab(t.key)}
-              style={{ flex: '1 1 auto', minWidth: 100, padding: '7px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: isActive ? 'var(--bg)' : 'transparent', boxShadow: isActive ? 'var(--neu-raised)' : 'none', color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: isActive ? 700 : 500 }}>
+              style={{ flex: '1 1 auto', minWidth: 100, padding: '7px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: isActive ? 'var(--bg)' : 'transparent', boxShadow: isActive ? 'var(--neu-raised)' : 'none', color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: isActive ? 800 : 500 }}>
               <TabIcon size={14} strokeWidth={2} style={{ color: isActive ? 'var(--accent-blue)' : 'inherit' }} />
               <span>{t.label}</span>
             </button>
@@ -164,7 +287,7 @@ export default function InventoryPage() {
         })}
       </div>
 
-      {/* Stock Tab View */}
+      {/* TAB 1: Stock Actual */}
       {tab === 'stock' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <div className="input-group">
@@ -172,14 +295,12 @@ export default function InventoryPage() {
             <input className="input-neu" placeholder="Buscar por producto o SKU..." value={search} onChange={e => setSearch(e.target.value)} style={{ fontSize: '0.85rem' }} />
           </div>
 
-          {/* High-density responsive items list (No horizontal scroll) */}
           <div className="neu-card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
             {filtered.map(item => {
               const sku = item.products?.sku || 'S/N'
-              const name = item.products?.name || 'Producto sin nombre'
+              const name = item.products?.name || 'Producto'
               const warehouse = item.warehouses?.name || 'Almacén principal'
               const min = item.products?.min_stock || 0
-              const max = item.products?.max_stock || 0
               const isLow = item.quantity <= min && item.quantity > 0
               const isOut = item.quantity === 0
 
@@ -187,7 +308,7 @@ export default function InventoryPage() {
                 <div key={item.id} className="neu-flat" style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: 6 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                     <div style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{name}</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
                         <span>SKU: {sku}</span>
                         <span>•</span>
@@ -195,7 +316,6 @@ export default function InventoryPage() {
                       </div>
                     </div>
                     
-                    {/* Status Badge */}
                     <div style={{ flexShrink: 0 }}>
                       {isOut ? (
                         <span className="badge badge-coral" style={{ fontSize: '0.68rem', padding: '3px 8px' }}>Sin stock</span>
@@ -207,7 +327,6 @@ export default function InventoryPage() {
                     </div>
                   </div>
 
-                  {/* Stock and Value line */}
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--bg-deep)', paddingTop: 6, fontSize: '0.75rem' }}>
                     <div style={{ color: 'var(--text-secondary)' }}>
                       Stock: <strong style={{ color: isOut ? 'var(--accent-coral)' : isLow ? 'var(--accent-amber)' : 'var(--text-primary)' }}>{item.quantity} uds</strong>
@@ -232,30 +351,222 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Movements (Kardex) Tab */}
+      {/* TAB 2: Kardex / Movimientos */}
       {tab === 'movements' && (
-        <div className="neu-card" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <Boxes size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--accent-blue)' }} />
-          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Kardex de Movimientos</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4 }}>Historial automatizado de entradas, salidas y transferencias</div>
+        <div className="neu-card" style={{ padding: 12 }}>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--bg-deep)', textAlign: 'left', color: 'var(--text-secondary)' }}>
+                  <th style={{ padding: '8px 6px' }}>Fecha</th>
+                  <th style={{ padding: '8px 6px' }}>Producto</th>
+                  <th style={{ padding: '8px 6px' }}>Tipo</th>
+                  <th style={{ padding: '8px 6px', textAlign: 'right' }}>Cantidad</th>
+                  <th style={{ padding: '8px 6px', textAlign: 'right' }}>Saldo Final</th>
+                  <th style={{ padding: '8px 6px' }}>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {movements.map(m => {
+                  const isPos = Number(m.quantity) > 0
+                  return (
+                    <tr key={m.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
+                      <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{new Date(m.created_at).toLocaleDateString('es-CO')}</td>
+                      <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--text-primary)' }}>{m.products?.name || 'Producto'}</td>
+                      <td style={{ padding: '8px 6px' }}>
+                        <span className={`badge ${m.movement_type.includes('sale') ? 'badge-blue' : isPos ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.68rem' }}>
+                          {m.movement_type}
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 800, color: isPos ? 'var(--accent-green)' : 'var(--accent-coral)' }}>
+                        {isPos ? `+${m.quantity}` : m.quantity}
+                      </td>
+                      <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 800, color: 'var(--accent-blue)' }}>{m.balance_after}</td>
+                      <td style={{ padding: '8px 6px', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{m.notes || '-'}</td>
+                    </tr>
+                  )
+                })}
+                {movements.length === 0 && (
+                  <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>No hay movimientos registrados</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Adjustments Tab */}
+      {/* TAB 3: Ajustes */}
       {tab === 'adjustments' && (
-        <div className="neu-card" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <Wrench size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--accent-blue)' }} />
-          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Ajustes de Inventario</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4 }}>Registra mermas, vencimientos o correcciones manuales</div>
+        <div className="neu-card" style={{ padding: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)' }}>Historial de Ajustes Manuales</span>
+            <button className="btn-neu btn-primary" onClick={() => setShowAdjModal(true)} style={{ padding: '5px 10px', fontSize: '0.75rem' }}>+ Nuevo Ajuste</button>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--bg-deep)', textAlign: 'left', color: 'var(--text-secondary)' }}>
+                <th style={{ padding: '8px 6px' }}>Fecha</th>
+                <th style={{ padding: '8px 6px' }}>Almacén</th>
+                <th style={{ padding: '8px 6px' }}>Tipo</th>
+                <th style={{ padding: '8px 6px' }}>Motivo</th>
+                <th style={{ padding: '8px 6px' }}>Notas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {adjustments.map(a => (
+                <tr key={a.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{new Date(a.created_at).toLocaleDateString('es-CO')}</td>
+                  <td style={{ padding: '8px 6px', fontWeight: 700 }}>{a.warehouses?.name || 'Principal'}</td>
+                  <td style={{ padding: '8px 6px' }}>
+                    <span className={`badge ${a.adjustment_type === 'increase' ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.68rem' }}>
+                      {a.adjustment_type === 'increase' ? 'Entrada (+)' : 'Salida/Merma (-)'}
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 6px', fontWeight: 700 }}>{a.reason}</td>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-secondary)' }}>{a.notes || '-'}</td>
+                </tr>
+              ))}
+              {adjustments.length === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>No hay ajustes registrados</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 
-      {/* Transfers Tab */}
+      {/* TAB 4: Transferencias */}
       {tab === 'transfers' && (
-        <div className="neu-card" style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--text-muted)' }}>
-          <ArrowLeftRight size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--accent-purple)' }} />
-          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>Transferencias Entre Almacenes</div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 4 }}>Mueve inventario entre bodegas y puntos de venta</div>
+        <div className="neu-card" style={{ padding: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-primary)' }}>Transferencias entre Bodegas</span>
+            <button className="btn-neu btn-primary" onClick={() => setShowTrfModal(true)} style={{ padding: '5px 10px', fontSize: '0.75rem' }}>+ Nueva Transferencia</button>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+            <thead>
+              <tr style={{ borderBottom: '2px solid var(--bg-deep)', textAlign: 'left', color: 'var(--text-secondary)' }}>
+                <th style={{ padding: '8px 6px' }}>Fecha</th>
+                <th style={{ padding: '8px 6px' }}>Origen</th>
+                <th style={{ padding: '8px 6px' }}>Destino</th>
+                <th style={{ padding: '8px 6px' }}>Estado</th>
+                <th style={{ padding: '8px 6px' }}>Notas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transfers.map(tr => (
+                <tr key={tr.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-muted)' }}>{new Date(tr.created_at).toLocaleDateString('es-CO')}</td>
+                  <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--accent-coral)' }}>{tr.from_warehouse?.name || 'Origen'}</td>
+                  <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--accent-green)' }}>{tr.to_warehouse?.name || 'Destino'}</td>
+                  <td style={{ padding: '8px 6px' }}><span className="badge badge-green" style={{ fontSize: '0.68rem' }}>Completada</span></td>
+                  <td style={{ padding: '8px 6px', color: 'var(--text-secondary)' }}>{tr.notes || '-'}</td>
+                </tr>
+              ))}
+              {transfers.length === 0 && (
+                <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>No hay transferencias registradas</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal: Ajuste / Merma */}
+      {showAdjModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, padding: 20 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>Registrar Ajuste / Merma</h3>
+            <form onSubmit={handleCreateAdjustment} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Almacén</label>
+                <select className="input-neu" value={adjForm.warehouse_id} onChange={e => setAdjForm({ ...adjForm, warehouse_id: e.target.value })} style={{ width: '100%', padding: 8 }}>
+                  {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Producto</label>
+                <select className="input-neu" value={adjForm.product_id} onChange={e => setAdjForm({ ...adjForm, product_id: e.target.value })} style={{ width: '100%', padding: 8 }}>
+                  {productsList.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku || 'Sin SKU'})</option>)}
+                </select>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Tipo</label>
+                  <select className="input-neu" value={adjForm.adjustment_type} onChange={e => setAdjForm({ ...adjForm, adjustment_type: e.target.value })} style={{ width: '100%', padding: 8 }}>
+                    <option value="decrease">Disminución / Merma (-)</option>
+                    <option value="increase">Incremento / Entrada (+)</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Cantidad</label>
+                  <input type="number" step="1" min="0.1" className="input-neu" value={adjForm.quantity} onChange={e => setAdjForm({ ...adjForm, quantity: e.target.value })} style={{ width: '100%', padding: 8, fontWeight: 800 }} required />
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Motivo</label>
+                <select className="input-neu" value={adjForm.reason} onChange={e => setAdjForm({ ...adjForm, reason: e.target.value })} style={{ width: '100%', padding: 8 }}>
+                  <option value="Merma / Deterioro">Merma / Deterioro</option>
+                  <option value="Vencimiento">Vencimiento</option>
+                  <option value="Conteo físico / Cuadre">Conteo físico / Cuadre</option>
+                  <option value="Uso interno / Muestra">Uso interno / Muestra</option>
+                  <option value="Corrección de inventario">Corrección de inventario</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Notas</label>
+                <input className="input-neu" placeholder="Detalles..." value={adjForm.notes} onChange={e => setAdjForm({ ...adjForm, notes: e.target.value })} style={{ width: '100%', padding: 8 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button type="button" className="btn-neu" onClick={() => setShowAdjModal(false)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+                <button type="submit" className="btn-neu btn-primary" disabled={submittingAction} style={{ flex: 1, padding: 10 }}>
+                  {submittingAction ? 'Guardando...' : 'Aplicar Ajuste'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Transferencia */}
+      {showTrfModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, padding: 20 }}>
+            <h3 style={{ margin: '0 0 12px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>Transferencia entre Almacenes</h3>
+            <form onSubmit={handleCreateTransfer} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Origen</label>
+                  <select className="input-neu" value={trfForm.from_warehouse_id} onChange={e => setTrfForm({ ...trfForm, from_warehouse_id: e.target.value })} style={{ width: '100%', padding: 8 }}>
+                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Destino</label>
+                  <select className="input-neu" value={trfForm.to_warehouse_id} onChange={e => setTrfForm({ ...trfForm, to_warehouse_id: e.target.value })} style={{ width: '100%', padding: 8 }}>
+                    {warehouses.map(w => <option key={w.id} value={w.id}>{w.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Producto</label>
+                <select className="input-neu" value={trfForm.product_id} onChange={e => setTrfForm({ ...trfForm, product_id: e.target.value })} style={{ width: '100%', padding: 8 }}>
+                  {productsList.map(p => <option key={p.id} value={p.id}>{p.name} ({p.sku || 'Sin SKU'})</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Cantidad</label>
+                <input type="number" step="1" min="0.1" className="input-neu" value={trfForm.quantity} onChange={e => setTrfForm({ ...trfForm, quantity: e.target.value })} style={{ width: '100%', padding: 8, fontWeight: 800 }} required />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Notas</label>
+                <input className="input-neu" placeholder="Ej: Traslado para sucursal..." value={trfForm.notes} onChange={e => setTrfForm({ ...trfForm, notes: e.target.value })} style={{ width: '100%', padding: 8 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                <button type="button" className="btn-neu" onClick={() => setShowTrfModal(false)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
+                <button type="submit" className="btn-neu btn-primary" disabled={submittingAction} style={{ flex: 1, padding: 10 }}>
+                  {submittingAction ? 'Moviendo...' : 'Confirmar Traslado'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
