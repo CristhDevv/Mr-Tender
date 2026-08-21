@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePermissions } from '@/lib/hooks/usePermissions'
+import CopilotWidget from '@/components/CopilotWidget'
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -236,6 +237,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           )}
         </main>
       </div>
+
+      {/* Omnipresent AI Assistant Widget */}
+      <CopilotWidget />
     </div>
   )
 }

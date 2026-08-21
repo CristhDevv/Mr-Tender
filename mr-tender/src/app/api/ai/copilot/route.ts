@@ -1,0 +1,536 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
+
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
+
+// Gemini Function Calling Tool Declarations
+const COPILOT_TOOLS = [
+  {
+    functionDeclarations: [
+      {
+        name: 'get_sales_overview',
+        description: 'Consulta métricas y resumen de ventas del negocio para el día de hoy, esta semana o este mes.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            period: {
+              type: 'STRING',
+              enum: ['today', 'week', 'month'],
+              description: 'Periodo a consultar: today (hoy), week (últimos 7 días), month (este mes).'
+            }
+          },
+          required: ['period']
+        }
+      },
+      {
+        name: 'query_inventory',
+        description: 'Busca existencias de productos en bodega, alertas de bajo stock o productos/medicamentos próximos a vencer.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            query: { type: 'STRING', description: 'Nombre o código del producto a buscar (opcional).' },
+            low_stock_only: { type: 'BOOLEAN', description: 'Si es true, lista solo productos con stock bajo o agotado.' },
+            expiring_soon_only: { type: 'BOOLEAN', description: 'Si es true, busca medicamentos o lotes próximos a vencer.' }
+          }
+        }
+      },
+      {
+        name: 'query_customers_debt',
+        description: 'Consulta la cartera de clientes, cuentas por cobrar (fiaos), deudas pendientes y límites de crédito.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            customer_name: { type: 'STRING', description: 'Nombre del cliente a consultar (opcional).' },
+            only_debtors: { type: 'BOOLEAN', description: 'Si es true, lista solo clientes con saldo pendiente de pago.' }
+          }
+        }
+      },
+      {
+        name: 'create_product',
+        description: 'Crea un nuevo producto en el catálogo e inventario del negocio.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            name: { type: 'STRING', description: 'Nombre del producto.' },
+            price: { type: 'NUMBER', description: 'Precio de venta al público en COP.' },
+            cost: { type: 'NUMBER', description: 'Costo de compra del producto en COP.' },
+            stock: { type: 'NUMBER', description: 'Cantidad inicial de unidades en inventario.' },
+            sku: { type: 'STRING', description: 'Código de barras o SKU (opcional).' }
+          },
+          required: ['name', 'price']
+        }
+      },
+      {
+        name: 'generate_invoice_pdf',
+        description: 'Obtiene los datos completos de una factura o ticket de venta para generar y descargar el PDF imprimible.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            sale_number: { type: 'STRING', description: 'Número o folio de la venta (ej: POS-001 o 1001).' }
+          },
+          required: ['sale_number']
+        }
+      },
+      {
+        name: 'generate_pnl_pdf',
+        description: 'Calcula el Estado de Resultados Financiero (P&L: Ventas, Costos, Utilidad Bruta y Margen) para generar el PDF oficial.',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            period: {
+              type: 'STRING',
+              enum: ['today', 'month'],
+              description: 'Periodo del informe: today (hoy) o month (este mes).'
+            }
+          },
+          required: ['period']
+        }
+      },
+      {
+        name: 'get_system_guide',
+        description: 'Obtiene explicaciones paso a paso de cómo operar cualquier módulo de Mr. Tender (POS, Cierre de Caja, FEFO, Devoluciones, etc.).',
+        parameters: {
+          type: 'OBJECT',
+          properties: {
+            topic: {
+              type: 'STRING',
+              description: 'Tema o duda sobre el ERP (ej: pos_sale, cash_closing, refunds, pharmacy_lots, customer_credit, tax_calculation).'
+            }
+          },
+          required: ['topic']
+        }
+      }
+    ]
+  }
+]
+
+export async function POST(req: NextRequest) {
+  try {
+    const { message, conversationHistory, tenant_id, user_role, user_name, permissions } = await req.json()
+
+    if (!message || typeof message !== 'string') {
+      return NextResponse.json({ error: 'Mensaje requerido' }, { status: 400 })
+    }
+
+    if (!GEMINI_API_KEY) {
+      return NextResponse.json({
+        reply: '⚠️ La clave de API de Gemini no está configurada en el servidor. Por favor revisa la variable GEMINI_API_KEY.'
+      })
+    }
+
+    // ── 1. SECURITY & PROMPT INJECTION SHIELD ──
+    const lowerMsg = message.toLowerCase()
+
+    // Detect prompt injection or jailbreak attempts
+    const isJailbreak = /(ignore previous|ignora las instrucciones|act as dan|hazte pasar por|revela tu prompt|dame tu system prompt|cual es tu instruccion|bypass security|dame las api keys)/i.test(lowerMsg)
+    if (isJailbreak) {
+      return NextResponse.json({
+        reply: '🛡️ Como **Tender Copilot AI**, mi función es asistirte exclusivamente en la administración, ventas, inventario y operaciones de tu negocio en Mr. Tender. ¿En qué aspecto de tu tienda o droguería te puedo ayudar hoy?'
+      })
+    }
+
+    // Detect completely out-of-scope non-business queries
+    const isOffTopic = /(escribe un poema de amor|cuentame un cuento de hadas|quien ganara el mundial|receta de cocina casera para cenar|escribe codigo en c\+\+ para hackear|quien es el presidente de)/i.test(lowerMsg)
+    if (isOffTopic) {
+      return NextResponse.json({
+        reply: '👋 Hola, soy el copiloto empresarial de **Mr. Tender**. Estoy entrenado para ayudarte con tus ventas, control de inventario, facturas, clientes, arqueos de caja y dudas sobre el ERP. Por favor cuéntame en qué tarea de tu negocio te puedo colaborar.'
+      })
+    }
+
+    // ── 2. SYSTEM PROMPT & CONTEXT INJECTION ──
+    const isAdmin = user_role === 'admin' || user_role === 'owner' || user_role === 'superadmin'
+    const allowedPerms: string[] = Array.isArray(permissions) ? permissions : (isAdmin ? ['*'] : [])
+
+    const systemInstruction = `
+Eres Tender Copilot AI, el copiloto inteligente de gestión comercial, finanzas y operaciones de Mr. Tender ERP para tiendas, minimercados y droguerías en Colombia.
+
+👤 USUARIO ACTUAL:
+- Nombre: ${user_name || 'Usuario'}
+- Rol en la tienda: ${user_role || 'Empleado'} (${isAdmin ? 'Administrador / Dueño con acceso total' : 'Empleado con permisos restringidos'})
+- Permisos activos: ${JSON.stringify(allowedPerms)}
+
+🛡️ REGLAS DE SEGURIDAD Y PRIVACIDAD (INQUEBRANTABLES):
+1. Si el usuario es 'Cajero' o 'Empleado' y solicita información de utilidades financieras, márgenes de ganancia, costos de compra o salarios de compañeros (permisos 'reports.financial' o 'products.view_costs'), DEBES DENEGAR CORTÉSMENTE la respuesta indicando que su rol no tiene los permisos necesarios.
+2. Si el usuario es Administrador y pide explicar conceptos difíciles de contabilidad colombiana, impuestos (DIAN, IVA, Retefuente, régimen simple), método FEFO o cuadres de caja, explícaselo con extrema claridad, profesionalismo y ejemplos prácticos con moneda COP ($).
+3. Utiliza formato Markdown elegante (tablas, negritas, viñetas cortas y emojis comerciales).
+4. Cuando uses herramientas (tools), entrega respuestas directas y sintetizadas con cifras claras.
+`
+
+    // Build chat contents for Gemini API
+    const contents: any[] = []
+
+    // Previous turns if provided
+    if (Array.isArray(conversationHistory)) {
+      conversationHistory.slice(-6).forEach((h: any) => {
+        if (h.role && h.content) {
+          contents.push({
+            role: h.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: h.content }]
+          })
+        }
+      })
+    }
+
+    // Current user message
+    contents.push({
+      role: 'user',
+      parts: [{ text: message }]
+    })
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+
+    // Call Gemini API (First Turn)
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
+
+    const firstResponse = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents,
+        systemInstruction: { parts: [{ text: systemInstruction }] },
+        tools: COPILOT_TOOLS
+      })
+    })
+
+    if (!firstResponse.ok) {
+      const errText = await firstResponse.text()
+      console.error('Gemini API Error:', errText)
+      return NextResponse.json({
+        reply: 'Hubo un error al procesar tu solicitud con el modelo de IA. Intenta de nuevo en unos momentos.'
+      })
+    }
+
+    const firstData = await firstResponse.json()
+    const candidate = firstData.candidates?.[0]
+    const modelParts = candidate?.content?.parts || []
+
+    // Check if model called a function
+    const functionCallPart = modelParts.find((p: any) => p.functionCall)
+
+    if (!functionCallPart) {
+      // Direct text response
+      const text = modelParts.map((p: any) => p.text || '').join('\n')
+      return NextResponse.json({ reply: text })
+    }
+
+    // ── 3. EXECUTE FUNCTION CALLS SECURELY ──
+    const funcName = functionCallPart.functionCall.name
+    const funcArgs = functionCallPart.functionCall.args || {}
+
+    let toolResult: any = null
+    let generatedPdfData: any = null
+
+    if (funcName === 'get_sales_overview') {
+      if (!isAdmin && !allowedPerms.includes('reports.sales') && !allowedPerms.includes('*')) {
+        toolResult = { error: 'Acceso denegado. No tienes permisos para ver reportes de ventas.' }
+      } else {
+        const todayStr = new Date().toISOString().split('T')[0]
+        let startDate = todayStr + 'T00:00:00'
+        if (funcArgs.period === 'week') {
+          startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        } else if (funcArgs.period === 'month') {
+          startDate = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+        }
+
+        const { data: sales, error } = await supabase
+          .from('sales')
+          .select('id, number, total, payment_method, created_at, sale_payments(payment_method, amount)')
+          .eq('tenant_id', tenant_id)
+          .gte('created_at', startDate)
+
+        if (error) {
+          toolResult = { error: error.message }
+        } else {
+          const totalSales = sales?.reduce((sum, s) => sum + Number(s.total || 0), 0) || 0
+          const cashTotal = sales?.filter(s => s.payment_method === 'cash').reduce((sum, s) => sum + Number(s.total || 0), 0) || 0
+          const transferTotal = sales?.filter(s => s.payment_method === 'transfer').reduce((sum, s) => sum + Number(s.total || 0), 0) || 0
+          const fiaoTotal = sales?.filter(s => s.payment_method === 'fiao').reduce((sum, s) => sum + Number(s.total || 0), 0) || 0
+
+          toolResult = {
+            count: sales?.length || 0,
+            totalGross: totalSales,
+            cash: cashTotal,
+            transfer_nequi: transferTotal,
+            fiao_credit: fiaoTotal,
+            period: funcArgs.period
+          }
+        }
+      }
+    } else if (funcName === 'query_inventory') {
+      let queryBuilder = supabase
+        .from('products')
+        .select('id, name, sku, sale_price, cost_price, inventory(quantity, warehouse_id)')
+        .eq('tenant_id', tenant_id)
+        .limit(20)
+
+      if (funcArgs.query) {
+        queryBuilder = queryBuilder.ilike('name', `%${funcArgs.query}%`)
+      }
+
+      const { data: prods, error } = await queryBuilder
+
+      if (error) {
+        toolResult = { error: error.message }
+      } else {
+        const mapped = prods?.map(p => {
+          const stock = p.inventory?.reduce((sum: number, curr: any) => sum + Number(curr.quantity || 0), 0) || 0
+          return {
+            name: p.name,
+            sku: p.sku || 'N/A',
+            price: p.sale_price,
+            cost: isAdmin ? p.cost_price : undefined,
+            stock
+          }
+        })
+
+        let filtered = mapped || []
+        if (funcArgs.low_stock_only) {
+          filtered = filtered.filter(p => p.stock <= 5)
+        }
+
+        toolResult = { products: filtered.slice(0, 10), totalFound: filtered.length }
+      }
+    } else if (funcName === 'query_customers_debt') {
+      let queryBuilder = supabase
+        .from('customers')
+        .select('id, full_name, phone, credit_limit, credit_used')
+        .eq('tenant_id', tenant_id)
+        .order('credit_used', { ascending: false })
+        .limit(15)
+
+      if (funcArgs.customer_name) {
+        queryBuilder = queryBuilder.ilike('full_name', `%${funcArgs.customer_name}%`)
+      }
+
+      const { data: custs, error } = await queryBuilder
+
+      if (error) {
+        toolResult = { error: error.message }
+      } else {
+        let list = custs || []
+        if (funcArgs.only_debtors) {
+          list = list.filter(c => Number(c.credit_used || 0) > 0)
+        }
+        toolResult = {
+          customers: list.map(c => ({
+            name: c.full_name,
+            phone: c.phone || 'N/A',
+            creditLimit: c.credit_limit,
+            amountOwed: c.credit_used,
+            availableCredit: Math.max(0, Number(c.credit_limit || 0) - Number(c.credit_used || 0))
+          }))
+        }
+      }
+    } else if (funcName === 'create_product') {
+      if (!isAdmin && !allowedPerms.includes('products.create') && !allowedPerms.includes('*')) {
+        toolResult = { error: 'Acceso denegado. No tienes permisos para crear productos.' }
+      } else {
+        const sku = funcArgs.sku || ('SKU-' + Math.floor(1000 + Math.random() * 9000))
+        const { data: newProd, error: prodErr } = await supabase
+          .from('products')
+          .insert([{
+            tenant_id,
+            name: funcArgs.name,
+            sale_price: funcArgs.price,
+            cost_price: funcArgs.cost || (funcArgs.price * 0.7),
+            sku,
+            unit_type: 'unit',
+            is_active: true
+          }])
+          .select()
+
+        if (prodErr) {
+          toolResult = { error: prodErr.message }
+        } else {
+          // Add initial inventory
+          const prodId = newProd[0].id
+          const { data: wh } = await supabase.from('warehouses').select('id').eq('tenant_id', tenant_id).limit(1)
+          if (wh?.[0]?.id) {
+            await supabase.from('inventory').insert([{
+              tenant_id,
+              product_id: prodId,
+              warehouse_id: wh[0].id,
+              quantity: funcArgs.stock || 10
+            }])
+          }
+
+          toolResult = {
+            success: true,
+            product: {
+              id: prodId,
+              name: funcArgs.name,
+              price: funcArgs.price,
+              sku,
+              stock: funcArgs.stock || 10
+            }
+          }
+        }
+      }
+    } else if (funcName === 'generate_invoice_pdf') {
+      const { data: saleData } = await supabase
+        .from('sales')
+        .select(`
+          id, number, total, subtotal, tax_amount, payment_method, created_at,
+          customers (full_name, phone),
+          sale_items (product_name, quantity, unit_price, total),
+          tenant_settings (business_name, phone)
+        `)
+        .eq('tenant_id', tenant_id)
+        .or(`number.eq.${funcArgs.sale_number},id.eq.${funcArgs.sale_number}`)
+        .limit(1)
+
+      if (!saleData || saleData.length === 0) {
+        toolResult = { error: `No se encontró ninguna factura con folio ${funcArgs.sale_number}` }
+      } else {
+        const s = saleData[0] as any
+        const tenantSetting = Array.isArray(s.tenant_settings) ? s.tenant_settings[0] : s.tenant_settings
+        const customer = Array.isArray(s.customers) ? s.customers[0] : s.customers
+
+        generatedPdfData = {
+          type: 'invoice',
+          data: {
+            businessName: tenantSetting?.business_name || 'MI TIENDA',
+            merchantPhone: tenantSetting?.phone || '',
+            saleNumber: s.number,
+            date: new Date(s.created_at).toLocaleString('es-CO'),
+            customerName: customer?.full_name || 'Público General',
+            items: s.sale_items?.map((it: any) => ({
+              name: it.product_name,
+              quantity: it.quantity,
+              unitPrice: it.unit_price,
+              total: it.total
+            })) || [],
+            subtotal: s.subtotal || s.total,
+            taxAmount: s.tax_amount || 0,
+            total: s.total,
+            paymentMethod: s.payment_method === 'fiao' ? 'Fiao (Crédito)' : s.payment_method === 'cash' ? 'Efectivo' : 'Nequi / Transferencia'
+          }
+        }
+
+        toolResult = {
+          success: true,
+          saleNumber: s.number,
+          total: s.total,
+          itemCount: s.sale_items?.length || 0,
+          customer: customer?.full_name || 'Público General'
+        }
+      }
+    } else if (funcName === 'generate_pnl_pdf') {
+      if (!isAdmin && !allowedPerms.includes('reports.financial') && !allowedPerms.includes('*')) {
+        toolResult = { error: 'Acceso denegado. No tienes permisos para exportar el Estado de Resultados.' }
+      } else {
+        const todayStr = new Date().toISOString().split('T')[0]
+        const startDate = funcArgs.period === 'today'
+          ? todayStr + 'T00:00:00'
+          : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()
+
+        const { data: sales } = await supabase
+          .from('sales')
+          .select('total, discount_amount, sale_items (cost_price, quantity, total)')
+          .eq('tenant_id', tenant_id)
+          .gte('created_at', startDate)
+
+        const { data: tSettings } = await supabase.from('tenant_settings').select('business_name').eq('tenant_id', tenant_id).limit(1)
+
+        let grossSales = 0
+        let discounts = 0
+        let costOfGoods = 0
+
+        sales?.forEach(s => {
+          grossSales += Number(s.total || 0)
+          discounts += Number(s.discount_amount || 0)
+          s.sale_items?.forEach((it: any) => {
+            costOfGoods += (Number(it.cost_price || 0) * Number(it.quantity || 1))
+          })
+        })
+
+        const netSales = grossSales - discounts
+        const grossProfit = netSales - costOfGoods
+        const marginPercent = netSales > 0 ? (grossProfit / netSales) * 100 : 0
+        const salesCount = sales?.length || 0
+
+        generatedPdfData = {
+          type: 'pnl',
+          data: {
+            businessName: tSettings?.[0]?.business_name || 'MR TENDER',
+            periodName: funcArgs.period === 'today' ? 'Hoy' : 'Este Mes',
+            date: new Date().toLocaleDateString('es-CO'),
+            grossSales,
+            discounts,
+            netSales,
+            costOfGoods,
+            grossProfit,
+            marginPercent,
+            salesCount,
+            avgTicket: salesCount > 0 ? netSales / salesCount : 0
+          }
+        }
+
+        toolResult = {
+          success: true,
+          netSales,
+          grossProfit,
+          marginPercent: marginPercent.toFixed(1) + '%'
+        }
+      }
+    } else if (funcName === 'get_system_guide') {
+      const GUIDES: Record<string, string> = {
+        pos_sale: 'Para vender en el POS: 1) Busca productos por nombre, código o usa el micrófono "Voz AI". 2) Ajusta cantidades. 3) Clic en Cobrar. 4) Selecciona Efectivo, Nequi o Fiao y finaliza.',
+        cash_closing: 'Para cerrar caja: 1) Ve al menú Caja. 2) Clic en "Cerrar Turno". 3) Cuenta el dinero físico del cajón y escribe el monto. El sistema calculará automáticamente si hay sobrante o faltante.',
+        refunds: 'Para procesar una devolución: 1) En el POS o Caja, abre el menú Devoluciones. 2) Ingresa el número de folio de la venta. 3) Selecciona los ítems a reintegrar y confirma.',
+        pharmacy_fefo: 'El sistema de droguería utiliza el método FEFO (First Expired, First Out), asignando automáticamente en cada venta el lote con la fecha de vencimiento más próxima para evitar pérdidas.'
+      }
+
+      toolResult = { guide: GUIDES[funcArgs.topic] || 'Consulta la guía general del ERP o navega por los menús del panel.' }
+    }
+
+    // ── 4. SECOND TURN: SEND TOOL RESULT BACK TO GEMINI ──
+    const secondContents = [
+      ...contents,
+      {
+        role: 'model',
+        parts: [{ functionCall: functionCallPart.functionCall }]
+      },
+      {
+        role: 'user',
+        parts: [
+          {
+            functionResponse: {
+              name: funcName,
+              response: { content: toolResult }
+            }
+          }
+        ]
+      }
+    ]
+
+    const secondResponse = await fetch(geminiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: secondContents,
+        systemInstruction: { parts: [{ text: systemInstruction }] }
+      })
+    })
+
+    if (!secondResponse.ok) {
+      return NextResponse.json({
+        reply: 'Procesé tu consulta, pero hubo un detalle al formatear la respuesta final.',
+        generatedPdf: generatedPdfData
+      })
+    }
+
+    const secondData = await secondResponse.json()
+    const finalReply = secondData.candidates?.[0]?.content?.parts?.map((p: any) => p.text || '').join('\n') || 'Listo.'
+
+    return NextResponse.json({
+      reply: finalReply,
+      generatedPdf: generatedPdfData
+    })
+  } catch (err: any) {
+    console.error('Copilot API error:', err)
+    return NextResponse.json({ error: err.message }, { status: 500 })
+  }
+}
