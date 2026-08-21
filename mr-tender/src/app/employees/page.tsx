@@ -17,11 +17,12 @@ import {
   Check,
   X,
   Lock,
-  ChevronRight,
-  ChevronDown,
-  Info,
-  Layers,
-  Sparkles
+  Key,
+  Eye,
+  EyeOff,
+  Copy,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react'
 
 interface Role {
@@ -50,6 +51,7 @@ interface Employee {
   position: string
   base_salary: number
   is_active: boolean
+  user_id?: string | null
   role_id?: string
   roles?: {
     id: string
@@ -89,6 +91,7 @@ export default function EmployeesAndRolesPage() {
   const [activeTab, setActiveTab] = useState<'employees' | 'roles'>('employees')
   
   // Data states
+  const [adminUserId, setAdminUserId] = useState<string | null>(null)
   const [tenantId, setTenantId] = useState<string | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [roles, setRoles] = useState<Role[]>([])
@@ -102,7 +105,23 @@ export default function EmployeesAndRolesPage() {
   const [position, setPosition] = useState('')
   const [salary, setSalary] = useState('')
   const [selectedRoleId, setSelectedRoleId] = useState<string>('')
+  const [enableCredentials, setEnableCredentials] = useState(true)
+  const [employeePassword, setEmployeePassword] = useState('Caja' + Math.floor(1000 + Math.random() * 9000) + '!')
+  const [showPassword, setShowPassword] = useState(false)
   const [creatingEmployee, setCreatingEmployee] = useState(false)
+
+  // Success summary modal
+  const [createdSummary, setCreatedSummary] = useState<{
+    fullName: string
+    email: string
+    password: string
+    roleName: string
+  } | null>(null)
+
+  // Reset password modal states
+  const [resetModalEmp, setResetModalEmp] = useState<Employee | null>(null)
+  const [newResetPassword, setNewResetPassword] = useState('')
+  const [savingReset, setSavingReset] = useState(false)
 
   // Role editor modal states
   const [showRoleModal, setShowRoleModal] = useState(false)
@@ -121,6 +140,7 @@ export default function EmployeesAndRolesPage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
+        setAdminUserId(user.id)
         const tid = user.user_metadata?.tenant_id
         if (tid) {
           setTenantId(tid)
@@ -204,43 +224,118 @@ export default function EmployeesAndRolesPage() {
     return map
   }, [permissions])
 
+  function generatePassword() {
+    const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'
+    let pass = 'Caja'
+    for (let i = 0; i < 4; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    pass += '!'
+    setEmployeePassword(pass)
+  }
+
   // Create Employee Handler
   async function handleCreateEmployee(e: React.FormEvent) {
     e.preventDefault()
-    if (!fullName || !tenantId) return
+    if (!fullName.trim() || !tenantId || !adminUserId) return
 
     try {
       setCreatingEmployee(true)
-      const empNo = 'EMP-' + Math.floor(100 + Math.random() * 900)
 
-      const { data, error } = await supabase
-        .from('employees')
-        .insert([{
-          tenant_id: tenantId,
-          employee_number: empNo,
-          full_name: fullName.trim(),
+      const targetRole = roles.find(r => r.id === selectedRoleId)
+      const roleNameStr = targetRole?.name || 'Cajero'
+
+      if (enableCredentials) {
+        if (!email.trim() || !employeePassword.trim()) {
+          alert('Por favor ingresa el correo/usuario y la contraseña de acceso.')
+          return
+        }
+
+        // Call RPC create_tenant_employee_account (Auto-confirmed)
+        const { data: res, error: rpcErr } = await supabase.rpc('create_tenant_employee_account', {
+          p_admin_id: adminUserId,
+          p_tenant_id: tenantId,
+          p_email: email.trim(),
+          p_password: employeePassword.trim(),
+          p_full_name: fullName.trim(),
+          p_role_id: selectedRoleId || null,
+          p_position: position.trim() || 'Vendedor / Cajero',
+          p_phone: phone.trim(),
+          p_salary: parseFloat(salary) || 0
+        })
+
+        if (rpcErr || (res && res.success === false)) {
+          throw new Error(res?.message || rpcErr?.message || 'Error al crear la cuenta del empleado')
+        }
+
+        // Show credentials summary modal
+        setCreatedSummary({
+          fullName: fullName.trim(),
           email: email.trim(),
-          phone: phone.trim(),
-          position: position.trim() || 'Vendedor / Cajero',
-          base_salary: parseFloat(salary) || 0,
-          role_id: selectedRoleId || null,
-          is_active: true
-        }])
-        .select('*, roles:role_id(id, name, color)')
+          password: employeePassword.trim(),
+          roleName: roleNameStr
+        })
+      } else {
+        // Plain employee without auth account
+        const empNo = 'EMP-' + Math.floor(100 + Math.random() * 900)
+        const { error: insErr } = await supabase
+          .from('employees')
+          .insert([{
+            tenant_id: tenantId,
+            employee_number: empNo,
+            full_name: fullName.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            position: position.trim() || 'Vendedor / Cajero',
+            base_salary: parseFloat(salary) || 0,
+            role_id: selectedRoleId || null,
+            is_active: true
+          }])
 
-      if (error) throw error
-      if (data) setEmployees(prev => [data[0], ...prev])
+        if (insErr) throw insErr
+      }
 
+      await fetchEmployees(tenantId)
+
+      // Reset form
       setFullName('')
       setEmail('')
       setPhone('')
       setPosition('')
       setSalary('')
+      generatePassword()
     } catch (err: any) {
       console.error('Error creating employee:', err)
-      alert('Error al registrar empleado: ' + (err.message || ''))
+      alert('Error: ' + (err.message || 'No se pudo crear al empleado'))
     } finally {
       setCreatingEmployee(false)
+    }
+  }
+
+  // Reset Password Handler
+  async function handleSaveResetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!resetModalEmp || !newResetPassword.trim() || !adminUserId) return
+
+    try {
+      setSavingReset(true)
+      const { data: res, error: rpcErr } = await supabase.rpc('reset_tenant_employee_password', {
+        p_admin_id: adminUserId,
+        p_employee_id: resetModalEmp.id,
+        p_new_password: newResetPassword.trim()
+      })
+
+      if (rpcErr || (res && res.success === false)) {
+        throw new Error(res?.message || rpcErr?.message || 'No se pudo restablecer la contraseña')
+      }
+
+      alert(`✅ Contraseña actualizada con éxito para ${resetModalEmp.full_name}`)
+      setResetModalEmp(null)
+      setNewResetPassword('')
+    } catch (err: any) {
+      alert('Error: ' + (err.message || ''))
+    } finally {
+      setSavingReset(false)
     }
   }
 
@@ -342,10 +437,8 @@ export default function EmployeesAndRolesPage() {
 
       if (currentRoleId) {
         // Synchronize role_permissions
-        // 1. Delete previous permissions
         await supabase.from('role_permissions').delete().eq('role_id', currentRoleId)
 
-        // 2. Insert selected permissions
         const permsToInsert = Array.from(selectedPermissions).map(permId => ({
           role_id: currentRoleId,
           permission_id: permId
@@ -395,7 +488,7 @@ export default function EmployeesAndRolesPage() {
             Personal y Control de Acceso
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 3, margin: 0 }}>
-            Administra tus empleados, salarios y configura roles y permisos a la medida.
+            Crea empleados con usuario y contraseña instantáneos para operar tu negocio.
           </p>
         </div>
 
@@ -426,24 +519,36 @@ export default function EmployeesAndRolesPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           
           {/* Register Employee Form */}
-          <form onSubmit={handleCreateEmployee} className="neu-card" style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h3 style={{ fontWeight: 800, fontSize: '0.9rem', color: 'var(--text-primary)', margin: 0 }}>
-              Registrar Nuevo Empleado
-            </h3>
+          <form onSubmit={handleCreateEmployee} className="neu-card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+              <h3 style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', margin: 0 }}>
+                Registrar Nuevo Empleado & Crear Credenciales
+              </h3>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700, color: 'var(--accent-blue)' }}>
+                <input
+                  type="checkbox"
+                  checked={enableCredentials}
+                  onChange={e => setEnableCredentials(e.target.checked)}
+                  style={{ accentColor: 'var(--accent-blue)', cursor: 'pointer' }}
+                />
+                <span>Crear usuario y contraseña de inicio de sesión</span>
+              </label>
+            </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 12 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Nombre Completo *</label>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Nombre Completo *</label>
                 <input type="text" className="input-neu" placeholder="Roberto Mendoza" value={fullName} onChange={e => setFullName(e.target.value)} required style={{ width: '100%', fontSize: '0.82rem' }} />
               </div>
               
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Puesto / Cargo</label>
-                <input type="text" className="input-neu" placeholder="Cajero / Vendedor" value={position} onChange={e => setPosition(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Puesto / Cargo</label>
+                <input type="text" className="input-neu" placeholder="Cajero Mostrador" value={position} onChange={e => setPosition(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Rol de Acceso al Sistema *</label>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Rol de Acceso *</label>
                 <select
                   className="input-neu"
                   value={selectedRoleId}
@@ -459,24 +564,66 @@ export default function EmployeesAndRolesPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Salario Base Mensual</label>
-                <input type="number" className="input-neu" placeholder="1500000" value={salary} onChange={e => setSalary(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>
+                  {enableCredentials ? 'Correo / Usuario de Acceso *' : 'Correo Electrónico'}
+                </label>
+                <input
+                  type="email"
+                  className="input-neu"
+                  placeholder="cajero1@mitienda.com"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required={enableCredentials}
+                  style={{ width: '100%', fontSize: '0.82rem' }}
+                />
               </div>
 
+              {enableCredentials && (
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>Contraseña *</label>
+                    <button
+                      type="button"
+                      onClick={generatePassword}
+                      style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
+                    >
+                      🎲 Generar otra
+                    </button>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      className="input-neu"
+                      value={employeePassword}
+                      onChange={e => setEmployeePassword(e.target.value)}
+                      required
+                      style={{ width: '100%', fontSize: '0.82rem', paddingRight: 32 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+                    >
+                      {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Teléfono</label>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Teléfono</label>
                 <input type="text" className="input-neu" placeholder="3001234567" value={phone} onChange={e => setPhone(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 4 }}>Correo Electrónico</label>
-                <input type="email" className="input-neu" placeholder="roberto@negocio.com" value={email} onChange={e => setEmail(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Salario Base Mensual</label>
+                <input type="number" className="input-neu" placeholder="1500000" value={salary} onChange={e => setSalary(e.target.value)} style={{ width: '100%', fontSize: '0.82rem' }} />
               </div>
             </div>
 
-            <button type="submit" className="btn-neu btn-primary" disabled={creatingEmployee} style={{ alignSelf: 'flex-start', padding: '8px 18px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <button type="submit" className="btn-neu btn-primary" disabled={creatingEmployee} style={{ alignSelf: 'flex-start', padding: '9px 20px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
               <Plus size={15} strokeWidth={2.5} />
-              <span>{creatingEmployee ? 'Registrando...' : 'Registrar Empleado'}</span>
+              <span>{creatingEmployee ? 'Creando Usuario y Empleado...' : 'Crear Empleado y Credenciales'}</span>
             </button>
           </form>
 
@@ -488,19 +635,21 @@ export default function EmployeesAndRolesPage() {
               <UserCheck size={36} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
               <h2 style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', marginBottom: 4 }}>No tienes empleados registrados</h2>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
-                Registra a tus vendedores y cajeros para asignarles sus permisos de operación.
+                Registra a tus vendedores y cajeros para asignarles credenciales de acceso directo.
               </p>
             </div>
           ) : (
             <div className="neu-card" style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
               {employees.map(emp => {
                 const assignedRole = roles.find(r => r.id === emp.role_id) || emp.roles
+                const hasLogin = Boolean(emp.user_id)
+
                 return (
-                  <div key={emp.id} className="neu-flat" style={{ padding: '10px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                    <div style={{ minWidth: 200, flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <User size={14} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
-                        <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{emp.full_name}</span>
+                  <div key={emp.id} className="neu-flat" style={{ padding: '12px 14px', borderRadius: 'var(--radius-sm)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                    <div style={{ minWidth: 220, flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <User size={15} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+                        <span style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)' }}>{emp.full_name}</span>
                         
                         {/* Role Badge */}
                         {assignedRole && (
@@ -520,23 +669,50 @@ export default function EmployeesAndRolesPage() {
                             <span>{assignedRole.name}</span>
                           </span>
                         )}
+
+                        {/* Login Access Pill */}
+                        {hasLogin ? (
+                          <span className="badge badge-green" style={{ fontSize: '0.62rem', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                            <Key size={10} />
+                            <span>Acceso Habilitado</span>
+                          </span>
+                        ) : (
+                          <span className="badge badge-amber" style={{ fontSize: '0.62rem' }}>
+                            Sin acceso al sistema
+                          </span>
+                        )}
                       </div>
                       
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                        <span>{emp.position}</span>
-                        {emp.email && <span>• {emp.email}</span>}
-                        {emp.phone && <span>• Tel: {emp.phone}</span>}
-                        {emp.base_salary > 0 && <span>• Salario: {formatCurrency(emp.base_salary)}</span>}
+                      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                        <span><strong>Cargo:</strong> {emp.position}</span>
+                        {emp.email && <span>• <strong>Usuario:</strong> {emp.email}</span>}
+                        {emp.phone && <span>• <strong>Tel:</strong> {emp.phone}</span>}
+                        {emp.base_salary > 0 && <span>• <strong>Salario:</strong> {formatCurrency(emp.base_salary)}</span>}
                       </div>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                      {hasLogin && (
+                        <button
+                          className="btn-neu"
+                          onClick={() => {
+                            setResetModalEmp(emp)
+                            setNewResetPassword('Caja' + Math.floor(1000 + Math.random() * 9000) + '!')
+                          }}
+                          style={{ padding: '5px 10px', fontSize: '0.72rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                          title="Cambiar contraseña de acceso"
+                        >
+                          <Key size={12} />
+                          <span>Cambiar Clave</span>
+                        </button>
+                      )}
+
                       <span className={`badge ${emp.is_active ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.65rem' }}>
                         {emp.is_active ? 'Activo' : 'Inactivo'}
                       </span>
                       
                       <button className="btn-neu btn-ghost" onClick={() => toggleEmployeeStatus(emp.id, emp.is_active)} style={{ padding: '4px 8px', fontSize: '0.72rem' }}>
-                        {emp.is_active ? 'Desactivar' : 'Activar'}
+                        {emp.is_active ? 'Bloquear' : 'Desbloquear'}
                       </button>
                     </div>
                   </div>
@@ -627,6 +803,121 @@ export default function EmployeesAndRolesPage() {
                 </div>
               )
             })}
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: CREDENTIALS SUMMARY (POST CREATION) ── */}
+      {createdSummary && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, padding: 24, textAlign: 'center' }}>
+            <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'var(--accent-green-lt)', color: 'var(--accent-green)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 12px' }}>
+              <Check size={26} strokeWidth={2.5} />
+            </div>
+
+            <h3 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              ¡Empleado y Credenciales Creados!
+            </h3>
+            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 4, marginBottom: 16 }}>
+              El empleado ya puede iniciar sesión en la tienda sin necesidad de validar correos.
+            </p>
+
+            {/* Credentials Card */}
+            <div className="neu-flat" style={{ padding: 14, borderRadius: 8, textAlign: 'left', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Nombre:</span>
+                <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>{createdSummary.fullName}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Rol Asignado:</span>
+                <span className="badge badge-blue" style={{ fontSize: '0.72rem' }}>{createdSummary.roleName}</span>
+              </div>
+              <div className="divider" style={{ margin: '4px 0' }} />
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Correo / Usuario de Acceso:</span>
+                <strong style={{ fontSize: '0.85rem', color: 'var(--accent-blue)' }}>{createdSummary.email}</strong>
+              </div>
+              <div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Contraseña:</span>
+                <strong style={{ fontSize: '0.9rem', color: 'var(--accent-coral)', letterSpacing: '0.05em' }}>{createdSummary.password}</strong>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                className="btn-neu"
+                onClick={() => {
+                  navigator.clipboard.writeText(`Acceso Mr Tender:\nUsuario: ${createdSummary.email}\nContraseña: ${createdSummary.password}\nLink: https://mr-tender.vercel.app/login`)
+                  alert('¡Credenciales copiadas al portapapeles!')
+                }}
+                style={{ flex: 1, padding: '9px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <Copy size={14} />
+                <span>Copiar Datos</span>
+              </button>
+
+              <button
+                className="btn-neu btn-primary"
+                onClick={() => setCreatedSummary(null)}
+                style={{ flex: 1, padding: '9px', fontSize: '0.8rem' }}
+              >
+                Entendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: RESET EMPLOYEE PASSWORD ── */}
+      {resetModalEmp && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 130, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 420, padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                Cambiar Contraseña de Acceso
+              </h3>
+              <button className="btn-neu btn-ghost" onClick={() => setResetModalEmp(null)} style={{ padding: '2px 6px' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, marginBottom: 14 }}>
+              Asigna una nueva clave para <strong>{resetModalEmp.full_name}</strong> ({resetModalEmp.email}).
+            </p>
+
+            <form onSubmit={handleSaveResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Nueva Contraseña *</label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={newResetPassword}
+                  onChange={e => setNewResetPassword(e.target.value)}
+                  required
+                  placeholder="NuevaClave2026!"
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 4 }}>
+                <button
+                  type="button"
+                  className="btn-neu btn-ghost"
+                  onClick={() => setResetModalEmp(null)}
+                  style={{ padding: '7px 14px', fontSize: '0.8rem' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingReset}
+                  className="btn-neu btn-primary"
+                  style={{ padding: '7px 16px', fontSize: '0.8rem' }}
+                >
+                  {savingReset ? 'Actualizando...' : 'Guardar Nueva Clave'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
@@ -736,7 +1027,6 @@ export default function EmployeesAndRolesPage() {
                 {Object.entries(permissionsByModule).map(([module, modulePerms]) => {
                   const info = MODULE_LABELS[module] || { label: module.toUpperCase(), icon: '📁' }
                   const allInModuleSelected = modulePerms.every(p => selectedPermissions.has(p.id))
-                  const someInModuleSelected = modulePerms.some(p => selectedPermissions.has(p.id))
 
                   return (
                     <div key={module} className="neu-flat" style={{ padding: '10px 14px', borderRadius: 8 }}>

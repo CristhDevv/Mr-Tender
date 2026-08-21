@@ -19,7 +19,31 @@ export default function LoginPage() {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) { setError(error.message); setLoading(false); return }
     const isSuperadmin = data.user?.user_metadata?.role === 'superadmin'
-    router.push(isSuperadmin ? '/superadmin' : '/dashboard')
+    if (isSuperadmin) {
+      router.push('/superadmin')
+      return
+    }
+
+    // Check user permissions for smart direct landing
+    try {
+      const { data: permData } = await supabase.rpc('get_user_permissions', {
+        p_user_id: data.user.id
+      })
+      if (permData && permData.is_admin === false) {
+        const perms = permData.permissions || []
+        // If cashier only (has pos.view and not financial reports or dashboard)
+        if (perms.includes('pos.view') && !perms.includes('reports.financial') && !perms.includes('*')) {
+          router.push('/pos')
+          return
+        }
+        if (perms.includes('inventory.view') && !perms.includes('pos.view') && !perms.includes('*')) {
+          router.push('/inventory')
+          return
+        }
+      }
+    } catch {}
+
+    router.push('/dashboard')
   }
 
   return (
