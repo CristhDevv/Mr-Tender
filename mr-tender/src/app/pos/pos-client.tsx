@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import CameraScanner from '@/components/CameraScanner'
+import AudioPosHUD from '@/components/AudioPosHUD'
 import RefundModal from '@/components/RefundModal'
 import { findMasterProduct } from '@/lib/catalog/colombia-products'
 import {
@@ -29,7 +30,9 @@ import {
   PauseCircle,
   PlayCircle,
   PlusCircle,
-  RotateCcw
+  RotateCcw,
+  Mic,
+  Sparkles
 } from 'lucide-react'
 
 // Web Audio sound generator for tactile feedback
@@ -155,6 +158,7 @@ export default function POSClient() {
   const [saleNumber, setSaleNumber] = useState('')
   const [error, setError] = useState('')
   const [showScanner, setShowScanner] = useState(false)
+  const [showVoiceHUD, setShowVoiceHUD] = useState(false)
   const [businessName, setBusinessName] = useState('MI TIENDA')
   const [merchantPhone, setMerchantPhone] = useState('3001234567')
   const [defaultTaxRate, setDefaultTaxRate] = useState(19)
@@ -180,6 +184,73 @@ export default function POSClient() {
   // Customers state
   const [customerList, setCustomerList] = useState<Customer[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+
+  // Global Keyboard Shortcuts (Key V or Ctrl+Space for Voice POS)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (
+        (e.key === 'v' || e.key === 'V') &&
+        !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)
+      ) {
+        e.preventDefault()
+        setShowVoiceHUD(prev => !prev)
+      }
+    }
+    window.addEventListener('keydown', handleGlobalKeyDown)
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+  }, [])
+
+  // Audio-POS Voice Handlers
+  const handleVoiceAddItems = useCallback((items: Array<{ product: any; quantity: number }>) => {
+    items.forEach(({ product, quantity }) => {
+      setCart(prevCart => {
+        const existingIdx = prevCart.findIndex(i => i.id === product.id)
+        if (existingIdx >= 0) {
+          const updated = [...prevCart]
+          const newQty = updated[existingIdx].quantity + quantity
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            quantity: newQty,
+            lineTotal: (newQty * updated[existingIdx].price) - updated[existingIdx].discount
+          }
+          return updated
+        } else {
+          return [
+            ...prevCart,
+            {
+              ...product,
+              quantity,
+              discount: 0,
+              lineTotal: quantity * Number(product.price || 0)
+            }
+          ]
+        }
+      })
+    })
+    playSound('beep')
+  }, [])
+
+  const handleVoiceSelectCustomer = useCallback((customer: Customer) => {
+    setSelectedCustomer(customer)
+    playSound('tap')
+  }, [])
+
+  const handleVoiceSetPaymentMethod = useCallback((method: string) => {
+    setPaymentMethod(method)
+    playSound('tap')
+  }, [])
+
+  const handleVoiceSetReceivedAmount = useCallback((amount: number) => {
+    setReceivedAmount(amount.toString())
+    playSound('tap')
+  }, [])
+
+  const handleVoiceClearCart = useCallback(() => {
+    setCart([])
+    setSelectedCustomer(null)
+    setDiscount(0)
+    playSound('tap')
+  }, [])
 
   // State loaded from DB
   const [products, setProducts] = useState<Product[]>([])
@@ -951,19 +1022,39 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
           {/* LEFT: Products Search Panel */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, height: '100%', overflow: 'hidden' }}>
             
-            {/* Search, Scanner, Express & Held Carts Badge */}
+            {/* Search, Scanner, Voice POS, Express & Held Carts Badge */}
             <div style={{ display: 'flex', gap: 6, flexShrink: 0, alignItems: 'center' }}>
               <div className="input-group" style={{ flex: 1 }}>
                 <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
-                <input className="input-neu" placeholder="Buscar producto o cÃ³digo..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
+                <input className="input-neu" placeholder="Buscar producto o código..." value={search} onChange={e => setSearch(e.target.value)} autoFocus style={{ fontSize: '0.85rem' }} />
               </div>
               
-              <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} title="Escanear cÃ³digo de barras" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button
+                className="btn-neu"
+                onClick={() => setShowVoiceHUD(prev => !prev)}
+                title="Audio-POS por Voz Natural (Presiona V)"
+                style={{
+                  padding: '8px 12px',
+                  fontSize: '0.82rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  fontWeight: 800,
+                  background: showVoiceHUD ? 'linear-gradient(135deg, #EF4444, #DC2626)' : 'linear-gradient(135deg, #3B82F6, #8B5CF6)',
+                  color: '#fff',
+                  boxShadow: showVoiceHUD ? '0 0 14px rgba(239, 68, 68, 0.5)' : '0 2px 8px rgba(59, 130, 246, 0.3)'
+                }}
+              >
+                <Mic size={15} strokeWidth={2.5} />
+                <span>Voz AI</span>
+              </button>
+
+              <button className="btn-neu btn-primary" onClick={() => setShowScanner(true)} title="Escanear código de barras" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <Camera size={15} strokeWidth={2} />
                 <span>Escanear</span>
               </button>
 
-              <button className="btn-neu" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} title="Crear producto rÃ¡pido" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
+              <button className="btn-neu" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} title="Crear producto rápido" style={{ padding: '8px 10px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 4 }}>
                 <PlusCircle size={15} style={{ color: 'var(--accent-blue)' }} />
                 <span>Crear</span>
               </button>
@@ -1590,6 +1681,19 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
           onClose={() => setShowScanner(false)}
         />
       )}
+
+      {/* Audio-POS Voice HUD */}
+      <AudioPosHUD
+        isOpen={showVoiceHUD}
+        onClose={() => setShowVoiceHUD(false)}
+        products={products}
+        customers={customerList}
+        onAddItems={handleVoiceAddItems}
+        onSelectCustomer={handleVoiceSelectCustomer}
+        onSetPaymentMethod={handleVoiceSetPaymentMethod}
+        onSetReceivedAmount={handleVoiceSetReceivedAmount}
+        onClearCart={handleVoiceClearCart}
+      />
     </div>
   )
 }

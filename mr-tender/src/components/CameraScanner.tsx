@@ -66,6 +66,8 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
   const detectorRef = useRef<any>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const bannerTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const lastScannedCodeRef = useRef<string>('')
+  const lastScannedTimeRef = useRef<number>(0)
 
   useEffect(() => {
     async function startCamera() {
@@ -116,8 +118,6 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
     const isFound = result && result.found !== false && !result.isExpress
 
     if (!isFound) {
-      // Product NOT registered in inventory:
-      // Play alert tone, flash red, and close scanner so user goes to create product modal
       playErrorTone()
       if ('vibrate' in navigator) {
         try { navigator.vibrate([180, 80, 180]) } catch {}
@@ -135,13 +135,11 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
     }
 
     // Product IS registered:
-    // Play audio beep & vibration
     playScanBeep()
     if ('vibrate' in navigator) {
       try { navigator.vibrate([90, 40, 90]) } catch {}
     }
 
-    // Trigger green flash animation
     setFlashSuccess(true)
     setFlashRed(false)
     setNoCodeDetected(false)
@@ -149,7 +147,6 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
 
     setScanCount(prev => prev + 1)
 
-    // Show product confirmation banner
     const feedback: ScannedProductFeedback = result || {
       name: `Código: ${clean}`,
       sku: clean
@@ -161,13 +158,57 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
       setLastProduct(null)
     }, 3500)
 
-    // If not continuous, close modal
     if (!continuous) {
       setTimeout(() => {
         onClose()
       }, 500)
     }
   }, [onScan, onClose, continuous])
+
+  // Automated hands-free continuous scan loop
+  useEffect(() => {
+    let animationFrameId: number
+    let isSubscribed = true
+
+    async function scanLoop() {
+      if (!isSubscribed) return
+
+      if (videoRef.current && videoRef.current.readyState >= 2 && detectorRef.current && !isProcessing) {
+        try {
+          const barcodes = await detectorRef.current.detect(videoRef.current)
+          if (barcodes && barcodes.length > 0) {
+            const rawCode = barcodes[0].rawValue?.trim()
+            const now = Date.now()
+
+            // Debounce: allow scan if it's a different code OR more than 1.8s has elapsed
+            if (rawCode && (rawCode !== lastScannedCodeRef.current || now - lastScannedTimeRef.current > 1800)) {
+              lastScannedCodeRef.current = rawCode
+              lastScannedTimeRef.current = now
+              await processCode(rawCode)
+            }
+          }
+        } catch (err) {
+          // Ignore frame errors
+        }
+      }
+
+      setTimeout(() => {
+        if (isSubscribed) {
+          animationFrameId = requestAnimationFrame(scanLoop)
+        }
+      }, 140)
+    }
+
+    const startTimeout = setTimeout(() => {
+      animationFrameId = requestAnimationFrame(scanLoop)
+    }, 600)
+
+    return () => {
+      isSubscribed = false
+      clearTimeout(startTimeout)
+      cancelAnimationFrame(animationFrameId)
+    }
+  }, [processCode, isProcessing])
 
   // Trigger scan when user presses the scan button or taps target
   async function handleTriggerScan() {
@@ -179,7 +220,6 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
       if (videoRef.current && videoRef.current.readyState >= 2) {
         let detected = false
 
-        // Try BarcodeDetector first
         if (detectorRef.current) {
           try {
             const barcodes = await detectorRef.current.detect(videoRef.current)
@@ -196,7 +236,6 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
         }
 
         if (!detected) {
-          // If no code detected in frame
           setNoCodeDetected(true)
           setTimeout(() => setNoCodeDetected(false), 3000)
         }
