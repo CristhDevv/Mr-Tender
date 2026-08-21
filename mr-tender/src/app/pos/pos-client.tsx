@@ -877,7 +877,7 @@ export default function POSClient() {
 
   function sendTicketWhatsApp() {
     let rawPhone = selectedCustomer?.phone?.replace(/\D/g, '') || ''
-    const itemsText = cart.map(i => `â€¢ ${i.quantity}x ${i.name} (${formatCurrency(i.lineTotal)})`).join('\n')
+    const itemsText = cart.map(i => `• ${i.quantity}x ${i.name} (${formatCurrency(i.lineTotal)})`).join('\n')
     const message = `*FACTURA POS / TICKET DE COMPRA*
 *${businessName}*
 Folio: ${saleNumber}
@@ -886,10 +886,10 @@ Fecha: ${new Date().toLocaleString('es-CO')}
 ${itemsText}
 
 TOTAL: ${formatCurrency(total)}
-Pago: ${paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'fiao' ? 'Fiao (CrÃ©dito)' : 'Nequi / Daviplata'}
+Pago: ${paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'fiao' ? 'Fiao (Crédito)' : 'Nequi / Daviplata'}
 ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
-Â¡Muchas gracias por tu compra!`
+¡Muchas gracias por tu compra!`
 
     if (rawPhone) {
       if (!rawPhone.startsWith('57') && rawPhone.length === 10) rawPhone = '57' + rawPhone
@@ -1202,7 +1202,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}
 
                       {/* Quantity Controls */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 3, flexShrink: 0 }}>
-                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>âˆ’</button>
+                        <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 22, height: 22, minWidth: 22, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>-</button>
                         <span style={{ minWidth: 26, textAlign: 'center', fontWeight: 800, fontSize: '0.8rem' }}>
                           {item.quantity}{item.unit_type !== 'unit' ? item.unit_type : ''}
                         </span>

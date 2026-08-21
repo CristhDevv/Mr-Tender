@@ -490,7 +490,7 @@ export default function ReportsPage() {
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 2, fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
                   <span>{r.title}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>Ver â†’</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--accent-blue)' }}>Ver →</span>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.35 }}>{r.desc}</div>
               </div>
@@ -499,7 +499,7 @@ export default function ReportsPage() {
         })}
       </div>
 
-      {/* â”€â”€ MODAL: DETAILED REPORT EXPLORER & EXPORTER â”€â”€ */}
+      {/* MODAL: DETAILED REPORT EXPLORER & EXPORTER */}
       {activeReportModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 640, maxHeight: '90vh', display: 'flex', flexDirection: 'column', padding: 20 }}>
@@ -510,9 +510,9 @@ export default function ReportsPage() {
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   {REPORT_TYPES.find(r => r.id === activeReportModal)?.title}
                 </h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>{businessName} â€¢ Datos al dÃ­a</p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>{businessName} • Datos al día</p>
               </div>
-              <button className="btn-neu btn-ghost" onClick={() => setActiveReportModal(null)} style={{ padding: '2px 6px' }}>âœ•</button>
+              <button className="btn-neu btn-ghost" onClick={() => setActiveReportModal(null)} style={{ padding: '2px 6px' }}>✕</button>
             </div>
 
             {/* Modal Content Switch */}
@@ -526,7 +526,7 @@ export default function ReportsPage() {
                       <div>
                         <strong>{s.number}</strong>
                         <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{formatDate(s.created_at)}</span>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Cliente: {s.customers?.full_name || 'PÃºblico General'}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Cliente: {s.customers?.full_name || 'Público General'}</div>
                       </div>
                       <div style={{ textAlign: 'right', fontWeight: 800, color: 'var(--accent-blue)' }}>
                         {formatCurrency(s.total)}
@@ -565,10 +565,10 @@ export default function ReportsPage() {
                     <div key={c.id} className="neu-flat" style={{ padding: '8px 10px', borderRadius: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
                       <div>
                         <strong>{c.full_name}</strong>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tel: {c.phone || 'N/A'} â€¢ Cupo: {formatCurrency(c.credit_limit)}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Tel: {c.phone || 'N/A'} • Cupo: {formatCurrency(c.credit_limit)}</div>
                       </div>
                       <div style={{ textAlign: 'right', fontWeight: 800, color: c.credit_used > 0 ? 'var(--accent-coral)' : 'var(--accent-green)' }}>
-                        {c.credit_used > 0 ? `Debe: ${formatCurrency(c.credit_used)}` : 'Al dÃ­a'}
+                        {c.credit_used > 0 ? `Debe: ${formatCurrency(c.credit_used)}` : 'Al día'}
                       </div>
                     </div>
                   ))}
