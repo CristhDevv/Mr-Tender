@@ -24,7 +24,11 @@ import {
   Plus,
   Pill,
   ShieldAlert,
-  Lock
+  Lock,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react'
 
 interface NavItemDef {
@@ -39,7 +43,7 @@ const ALL_NAV_ITEMS: NavItemDef[] = [
   { href: '/dashboard',   Icon: LayoutDashboard, label: 'Inicio' },
   { href: '/pos',         Icon: ShoppingCart,    label: 'Punto de Venta', moduleKey: 'pos',         requiredPermission: 'pos.view' },
   { href: '/products',    Icon: Package,         label: 'Productos',                                requiredPermission: 'products.view' },
-  { href: '/pharmacy',    Icon: Pill,            label: 'Droguería 💊',  moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
+  { href: '/pharmacy',    Icon: Pill,            label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
   { href: '/inventory',   Icon: Boxes,           label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' },
   { href: '/customers',   Icon: Users,           label: 'Clientes',       moduleKey: 'customers',    requiredPermission: 'customers.view' },
   { href: '/suppliers',   Icon: Truck,           label: 'Proveedores',    moduleKey: 'suppliers',    requiredPermission: 'suppliers.view' },
@@ -47,7 +51,7 @@ const ALL_NAV_ITEMS: NavItemDef[] = [
   { href: '/cash',        Icon: DollarSign,      label: 'Caja',           moduleKey: 'cash',         requiredPermission: 'cash.view' },
   { href: '/reports',     Icon: BarChart3,       label: 'Reportes',       moduleKey: 'reports',      requiredPermission: 'reports.sales' },
   { href: '/accounting',  Icon: BookOpen,        label: 'Contabilidad',   moduleKey: 'accounting',   requiredPermission: 'accounting.view' },
-  { href: '/employees',   Icon: UserCheck,       label: 'Empleados',      moduleKey: 'employees',    requiredPermission: 'employees.view' },
+  { href: '/employees',   Icon: UserCheck,       label: 'Personal',       moduleKey: 'employees',    requiredPermission: 'employees.view' },
   { href: '/settings',    Icon: Settings,        label: 'Configuración',                            requiredPermission: 'settings.view' },
 ]
 
@@ -58,6 +62,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { roleName, color, isAdmin, hasPermission, loading: permsLoading } = usePermissions()
   
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [user, setUser] = useState<{ full_name?: string; email?: string } | null>(null)
   const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
     pos: true, inventory: true, cash: true, customers: true,
@@ -66,7 +71,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     pharmacy: true, restaurant: false
   })
 
+  // Load user, module settings & saved collapsed preference
   useEffect(() => {
+    try {
+      const savedCollapsed = localStorage.getItem('mr_tender_sidebar_collapsed')
+      if (savedCollapsed === 'true') setCollapsed(true)
+    } catch {}
+
     async function loadUserAndModules() {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
@@ -88,11 +99,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     loadUserAndModules()
   }, [])
 
+  function toggleCollapsed() {
+    setCollapsed(prev => {
+      const next = !prev
+      try { localStorage.setItem('mr_tender_sidebar_collapsed', String(next)) } catch {}
+      return next
+    })
+  }
+
   // Filter navigation items by Tenant enabled modules AND User Role permissions
   const navItems = ALL_NAV_ITEMS.filter(item => {
-    // 1. Module disabled globally for tenant (except when admin is browsing)
     if (item.moduleKey && enabledModules[item.moduleKey] === false) return false
-    // 2. Permission check (admins always pass)
     if (isAdmin) return true
     if (item.requiredPermission && !hasPermission(item.requiredPermission)) return false
     return true
@@ -111,29 +128,86 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   return (
     <div className="app-layout">
-      {/* Overlay mobile */}
+      {/* Mobile overlay */}
       {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 49 }} />}
 
-      {/* ── SIDEBAR ── */}
-      <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        {/* Clickable Brand Logo -> /dashboard */}
-        <Link href="/dashboard" onClick={() => setSidebarOpen(false)} style={{ textDecoration: 'none', padding: '16px 18px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/logo.png" alt="Mr Tender" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
-          <div>
-            <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</div>
-            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Panel de administración</div>
+      {/* ── SIDEBAR (EXPANDABLE / COLLAPSIBLE TO ICONS) ── */}
+      <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
+        
+        {/* Brand Header with Collapse Toggle Button */}
+        <div style={{
+          padding: collapsed ? '14px 10px' : '14px 14px 12px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: collapsed ? 'center' : 'space-between',
+          gap: 8,
+          flexShrink: 0
+        }}>
+          <Link
+            href="/dashboard"
+            onClick={() => setSidebarOpen(false)}
+            title="Mr Tender - Panel Principal"
+            style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}
+          >
+            <img src="/logo.png" alt="Mr Tender" style={{ width: 34, height: 34, borderRadius: 9, objectFit: 'contain', flexShrink: 0 }} />
+            <div className="sidebar-brand-text" style={{ minWidth: 0 }}>
+              <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                Mr Tender
+              </div>
+              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                Gestión Empresarial
+              </div>
+            </div>
+          </Link>
+
+          {/* Desktop Collapse / Expand Button */}
+          <button
+            onClick={toggleCollapsed}
+            className="btn-neu btn-ghost sidebar-collapse-btn"
+            title={collapsed ? "Expandir menú lateral" : "Colapsar a iconos"}
+            style={{
+              padding: '6px',
+              borderRadius: 8,
+              color: 'var(--text-secondary)',
+              display: collapsed ? 'none' : 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+        </div>
+
+        {/* Small Expand Trigger when Collapsed */}
+        {collapsed && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '0 0 8px', flexShrink: 0 }}>
+            <button
+              onClick={toggleCollapsed}
+              className="btn-neu btn-ghost"
+              title="Expandir menú lateral"
+              style={{ padding: '6px', borderRadius: 8, color: 'var(--text-secondary)' }}
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
-        </Link>
+        )}
 
-        <div className="divider" style={{ margin: '0 16px 12px' }} />
+        <div className="divider" style={{ margin: collapsed ? '0 10px 10px' : '0 14px 10px' }} />
 
-        {/* Nav */}
-        <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {/* Nav Items */}
+        <nav style={{ flex: 1, padding: collapsed ? '0 8px' : '0 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {navItems.map(item => {
             const Icon = item.Icon
             const isActive = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))
             return (
-              <Link key={item.href} href={item.href} className={`sidebar-nav-item ${isActive ? 'active' : ''}`} onClick={() => setSidebarOpen(false)}>
+              <Link
+                key={item.href}
+                href={item.href}
+                title={item.label}
+                className={`sidebar-nav-item ${isActive ? 'active' : ''}`}
+                onClick={() => setSidebarOpen(false)}
+              >
                 <Icon size={18} strokeWidth={2} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.8 }} />
                 <span>{item.label}</span>
               </Link>
@@ -141,32 +215,50 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           })}
         </nav>
 
-        {/* User Profile & Dynamic Role Badge */}
-        <div className="divider" style={{ margin: '12px 16px 0' }} />
-        <div style={{ padding: '14px 18px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 10, background: 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '0.85rem', color: 'var(--accent-blue)', boxShadow: 'var(--neu-subtle)' }}>
+        {/* User Profile & Role Footer */}
+        <div className="divider" style={{ margin: collapsed ? '8px 10px 0' : '10px 14px 0' }} />
+        
+        <div className="user-footer-box" style={{ padding: collapsed ? '10px 6px' : '12px 14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: collapsed ? 0 : 6 }}>
+            <div
+              title={user?.full_name || 'Usuario'}
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'var(--accent-blue-lt)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontWeight: 800,
+                fontSize: '0.8rem',
+                color: 'var(--accent-blue)',
+                boxShadow: 'var(--neu-subtle)',
+                flexShrink: 0
+              }}
+            >
               {getInitials(user?.full_name)}
             </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+
+            <div className="user-info-text" style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user?.full_name || 'Usuario'}
               </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {user?.email}
               </div>
             </div>
           </div>
 
-          {/* Dynamic Role Pill */}
-          <div style={{ marginBottom: 10 }}>
+          {/* Dynamic Role Badge */}
+          <div className="role-pill-text" style={{ marginBottom: 8 }}>
             <span style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 4,
-              fontSize: '0.68rem',
+              fontSize: '0.65rem',
               fontWeight: 800,
-              padding: '2px 8px',
+              padding: '2px 7px',
               borderRadius: 6,
               background: `${color}18`,
               color: color,
@@ -177,27 +269,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </span>
           </div>
 
-          <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '8px', fontSize: '0.8rem', justifyContent: 'center', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <LogOut size={16} strokeWidth={2} />
-            <span>Cerrar sesión</span>
+          <button
+            className="btn-neu btn-ghost"
+            onClick={handleLogout}
+            title="Cerrar sesión"
+            style={{
+              width: '100%',
+              padding: collapsed ? '8px 0' : '7px 10px',
+              fontSize: '0.78rem',
+              justifyContent: 'center',
+              color: 'var(--accent-coral)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <LogOut size={15} strokeWidth={2} />
+            <span className="role-pill-text">Cerrar sesión</span>
           </button>
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
-      <div className="app-content">
+      {/* ── MAIN CONTENT ── */}
+      <div className={`app-content ${collapsed ? 'collapsed' : ''}`}>
+        
         {/* Topbar Header */}
         <header className="topbar" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            {/* Mobile Sidebar Hamburger Toggle */}
+            {/* Mobile Toggle Button */}
             <button className="btn-neu btn-ghost sidebar-toggle-btn" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ padding: '7px 10px', fontSize: '0.8rem', fontWeight: 700, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
               <Menu size={16} strokeWidth={2} />
               <span>Menú</span>
             </button>
 
-            {/* Clickable Brand Logo (IMAGE LOGO) */}
+            {/* Clickable Brand Logo in Topbar */}
             <Link href="/dashboard" title="Mr Tender - Ir a Inicio" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <img src="/logo.png" alt="Mr Tender" style={{ width: 34, height: 34, borderRadius: 8, objectFit: 'contain' }} />
+              <img src="/logo.png" alt="Mr Tender" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain' }} />
             </Link>
 
             <div style={{ width: 1, height: 18, background: 'var(--border-color)', margin: '0 2px', flexShrink: 0 }} />
@@ -244,4 +351,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     </div>
   )
 }
-

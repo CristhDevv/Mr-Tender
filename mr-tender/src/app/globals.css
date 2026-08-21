@@ -264,7 +264,32 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: transform var(--dur-slow) var(--ease-neu);
+  transition: width 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform var(--dur-slow) var(--ease-neu);
+}
+
+.sidebar.collapsed {
+  width: 72px !important;
+}
+
+.sidebar.collapsed .sidebar-brand-text,
+.sidebar.collapsed .sidebar-nav-item span,
+.sidebar.collapsed .user-info-text,
+.sidebar.collapsed .role-pill-text {
+  display: none !important;
+}
+
+.sidebar.collapsed .sidebar-nav-item {
+  justify-content: center !important;
+  padding: 12px 0 !important;
+  border-radius: 12px;
+}
+
+.sidebar.collapsed .user-footer-box {
+  padding: 12px 8px !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .sidebar-nav-item {
@@ -323,6 +348,10 @@ body {
   display: flex;
   flex-direction: column;
   background: var(--bg);
+  transition: margin-left 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.app-content.collapsed {
+  margin-left: 72px !important;
 }
 .page-container {
   flex: 1;
