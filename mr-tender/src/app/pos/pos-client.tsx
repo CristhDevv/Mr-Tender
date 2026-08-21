@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -269,16 +269,25 @@ export default function POSClient() {
         
         const warehouse_id = warehouses?.[0]?.id || null
 
-        // Get active cash register session
-        const { data: registers } = await supabase
-          .from('cash_registers')
-          .select('id, current_session_id')
-          .eq('tenant_id', tenant_id)
-          .eq('is_active', true)
-          .limit(1)
-        
-        const register_id = registers?.[0]?.id || null
-        const session_id = registers?.[0]?.current_session_id || null
+        // Get active cash register and open session
+        const [regRes, sessRes] = await Promise.all([
+          supabase
+            .from('cash_registers')
+            .select('id, current_session_id')
+            .eq('tenant_id', tenant_id)
+            .eq('is_active', true)
+            .limit(1),
+          supabase
+            .from('cash_sessions')
+            .select('id, register_id')
+            .eq('tenant_id', tenant_id)
+            .eq('status', 'open')
+            .order('opened_at', { ascending: false })
+            .limit(1)
+        ])
+
+        const register_id = regRes.data?.[0]?.id || sessRes.data?.[0]?.register_id || null
+        const session_id = sessRes.data?.[0]?.id || regRes.data?.[0]?.current_session_id || null
 
         setSessionInfo({
           tenant_id,
