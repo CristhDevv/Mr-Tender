@@ -10,6 +10,7 @@ const BUSINESS_TYPES = [
   { value: 'pharmacy', label: 'Droguería y Farmacia' },
   { value: 'veterinary', label: 'Veterinaria, Pet Shop & Grooming' },
   { value: 'automotive', label: 'Taller Mecánico, Serviteca & Autolavado' },
+  { value: 'laundry', label: 'Lavandería, Tintorería & Planchado' },
   { value: 'liquor_tobacco', label: 'Licorera, Estanco & Cigarrería' },
   { value: 'restaurant', label: 'Restaurante / Cafetería' },
   { value: 'beauty_salon', label: 'Salón de Belleza, Barbería & Spa' },
@@ -84,6 +85,26 @@ export default function RegisterPage() {
       await supabase.auth.updateUser({
         data: { tenant_id: tenantId, role: 'admin', is_owner: true }
       })
+
+      // 4. Initialize specific vertical modules in tenant_settings
+      const initialModules: Record<string, boolean> = {
+        pos: true, inventory: true, cash: true, customers: true,
+        suppliers: true, purchases: true, employees: true,
+        accounting: true, reports: true, ecommerce: true,
+        pharmacy: form.businessType === 'pharmacy',
+        hardware: form.businessType === 'hardware',
+        liquor_tobacco: form.businessType === 'liquor_tobacco',
+        restaurant: form.businessType === 'restaurant',
+        beauty_salon: form.businessType === 'beauty_salon',
+        veterinary: form.businessType === 'veterinary',
+        automotive: form.businessType === 'automotive',
+        laundry: form.businessType === 'laundry'
+      }
+
+      await supabase.from('tenant_settings').upsert({
+        tenant_id: tenantId,
+        enabled_modules: initialModules
+      }, { onConflict: 'tenant_id' })
 
       router.push('/dashboard?onboarding=complete')
     } catch (e: unknown) {
