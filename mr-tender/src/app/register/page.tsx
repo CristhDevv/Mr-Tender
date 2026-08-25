@@ -10,6 +10,7 @@ const BUSINESS_TYPES = [
   { value: 'pharmacy', label: 'Droguería y Farmacia' },
   { value: 'liquor_tobacco', label: 'Licorera, Estanco & Cigarrería' },
   { value: 'restaurant', label: 'Restaurante / Cafetería' },
+  { value: 'beauty_salon', label: 'Salón de Belleza, Barbería & Spa' },
   { value: 'services', label: 'Servicios' },
   { value: 'wholesale', label: 'Mayorista / Distribuidor' },
   { value: 'clothing', label: 'Ropa y Moda' },

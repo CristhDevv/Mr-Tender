@@ -16,7 +16,8 @@ import {
   Pill,
   UtensilsCrossed,
   Globe,
-  Wine
+  Wine,
+  Scissors
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -41,7 +42,8 @@ export default function SettingsPage() {
     pharmacy: false,
     hardware: true,
     liquor_tobacco: true,
-    restaurant: false
+    restaurant: true,
+    beauty_salon: true
   })
 
   const [form, setForm] = useState({
@@ -244,6 +246,7 @@ export default function SettingsPage() {
     { id: 'pharmacy', name: 'Droguería & Farmacia', icon: Pill, color: 'var(--accent-purple)', desc: 'Control de lotes, FEFO, INVIMA, venta por blíster/tableta y genéricos' },
     { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: Wine, color: 'var(--accent-coral)', desc: 'Control de botellas en barra / copeo, envases retornables, combos y tabaco' },
     { id: 'restaurant', name: 'Restaurante & Mesas', icon: UtensilsCrossed, color: 'var(--accent-amber)', desc: 'Mapa de mesas, comandas de cocina KDS, recetas y propinas' },
+    { id: 'beauty_salon', name: 'Salón de Belleza & Spa', icon: Scissors, color: 'var(--accent-purple)', desc: 'Agenda de citas, turnos de estilistas, comisiones y fichas técnicas capilares' },
     { id: 'ecommerce', name: 'E-commerce & Tienda Web', icon: Globe, color: 'var(--accent-green)', desc: 'Catálogo público en línea con pedidos directos a WhatsApp' },
     { id: 'purchases', name: 'Compras & Proveedores', icon: ShoppingCart, color: 'var(--text-primary)', desc: 'Registro de facturas de compra, abastecimiento y proveedores' },
     { id: 'accounting', name: 'Contabilidad Automatizada', icon: DollarSign, color: 'var(--accent-blue)', desc: 'Plan de cuentas, balance general y generación de asientos contables' },
