@@ -410,6 +410,7 @@ export default function CopilotWidget() {
       {/* ── EXPANDABLE CHAT DRAWER ── */}
       {isOpen && (
         <div
+          className="copilot-drawer"
           style={{
             position: 'fixed',
             bottom: 84,

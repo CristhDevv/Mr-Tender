@@ -4,18 +4,35 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import CameraScanner from '@/components/CameraScanner'
 import { findMasterProduct } from '@/lib/catalog/colombia-products'
+import { Building2 } from 'lucide-react'
 
 interface Category {
   id: string
   name: string
 }
 
+interface Warehouse {
+  id: string
+  name: string
+  is_main: boolean
+}
+
 export default function NewProductPage() {
   const router = useRouter()
   const supabase = createClient()
 
-  const [form, setForm] = useState({ name: '', sku: '', price: '', cost: '', categoryId: '', description: '', initialStock: '0' })
+  const [form, setForm] = useState({
+    name: '',
+    sku: '',
+    price: '',
+    cost: '',
+    categoryId: '',
+    warehouseId: '',
+    description: '',
+    initialStock: '0'
+  })
   const [categories, setCategories] = useState<Category[]>([])
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -43,24 +60,21 @@ export default function NewProductPage() {
         setForm(f => ({ ...f, categoryId: catData[0].id }))
       }
 
-      // Load main warehouse
-      let { data: whData } = await supabase
+      // Load all warehouses
+      const { data: whData } = await supabase
         .from('warehouses')
-        .select('id')
+        .select('id, name, is_main')
         .eq('tenant_id', tenant_id)
-        .eq('is_main', true)
-        .limit(1)
+        .order('is_main', { ascending: false })
+        .order('name', { ascending: true })
       
-      if (!whData || whData.length === 0) {
-        const { data: fallbackWh } = await supabase
-          .from('warehouses')
-          .select('id')
-          .eq('tenant_id', tenant_id)
-          .limit(1)
-        whData = fallbackWh
+      let warehouse_id = ''
+      if (whData && whData.length > 0) {
+        setWarehouses(whData)
+        const mainWh = whData.find(w => w.is_main) || whData[0]
+        warehouse_id = mainWh.id
+        setForm(f => ({ ...f, warehouseId: mainWh.id }))
       }
-
-      let warehouse_id = whData?.[0]?.id || null
 
       // Auto-create default branch & warehouse if they don't exist (self-healing)
       if (!warehouse_id) {
@@ -93,10 +107,12 @@ export default function NewProductPage() {
                 code: 'ALM-001',
                 is_main: true
               })
-              .select('id')
+              .select('id, name, is_main')
               .single()
             if (!whErr && newWh) {
               warehouse_id = newWh.id
+              setWarehouses([newWh])
+              setForm(f => ({ ...f, warehouseId: newWh.id }))
             }
           }
         } catch (e) {
@@ -138,15 +154,12 @@ export default function NewProductPage() {
 
     const master = findMasterProduct(cleanCode)
     if (master) {
-      setFoundBadge(`✨ ¡Encontrado! ${master.emoji} ${master.name}`)
-      
-      // Auto-fill fields
+      setFoundBadge(`✨ Autocompletado desde Catálogo Colombiano: "${master.name}"`)
       setForm(f => ({
         ...f,
-        sku: cleanCode,
         name: master.name,
-        price: master.suggestedPrice.toString(),
         cost: master.suggestedCost.toString(),
+        price: master.suggestedPrice.toString()
       }))
 
       // Auto-match or create category
@@ -179,6 +192,12 @@ export default function NewProductPage() {
   async function handleSave(e: React.FormEvent) {
     e.preventDefault()
     if (!tenantInfo) return
+    const targetWarehouseId = form.warehouseId || tenantInfo.warehouse_id
+    if (!targetWarehouseId) {
+      setError('Debes seleccionar la bodega donde se guardará el producto.')
+      return
+    }
+
     setLoading(true)
     setError('')
 
@@ -201,14 +220,14 @@ export default function NewProductPage() {
 
       if (insertErr) throw insertErr
 
-      // Record initial inventory if stock > 0
+      // Record initial inventory in selected warehouse if stock > 0
       const stockQty = Number(form.initialStock)
-      if (stockQty > 0 && tenantInfo.warehouse_id && newProd) {
+      if (stockQty > 0 && targetWarehouseId && newProd) {
         const { error: invErr } = await supabase
           .from('inventory')
           .insert({
             tenant_id: tenantInfo.tenant_id,
-            warehouse_id: tenantInfo.warehouse_id,
+            warehouse_id: targetWarehouseId,
             product_id: newProd.id,
             quantity: stockQty,
             avg_cost: Number(form.cost)
@@ -220,7 +239,7 @@ export default function NewProductPage() {
           .from('stock_movements')
           .insert({
             tenant_id: tenantInfo.tenant_id,
-            warehouse_id: tenantInfo.warehouse_id,
+            warehouse_id: targetWarehouseId,
             product_id: newProd.id,
             movement_type: 'initial',
             quantity: stockQty,
@@ -297,6 +316,27 @@ export default function NewProductPage() {
             </select>
           </div>
 
+          {/* Mandatory Warehouse Selection */}
+          <div>
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>
+              Bodega de Almacenamiento *
+            </label>
+            <select
+              className="input-neu"
+              value={form.warehouseId}
+              onChange={e => set('warehouseId')(e.target.value)}
+              required
+              style={{ fontWeight: 700 }}
+            >
+              {warehouses.map(w => (
+                <option key={w.id} value={w.id}>
+                  📦 {w.name} {w.is_main ? '(Principal)' : ''}
+                </option>
+              ))}
+              {warehouses.length === 0 && <option value="">Cargando bodegas...</option>}
+            </select>
+          </div>
+
           <div>
             <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Precio de venta *</label>
             <input className="input-neu" type="number" step="100" placeholder="0" value={form.price} onChange={e => set('price')(e.target.value)} required style={{ fontWeight: 700 }} />
@@ -308,7 +348,9 @@ export default function NewProductPage() {
           </div>
 
           <div style={{ gridColumn: '1/-1' }}>
-            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Inventario inicial</label>
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>
+              Inventario inicial (Unidades en la bodega seleccionada)
+            </label>
             <input className="input-neu" type="number" placeholder="0" value={form.initialStock} onChange={e => set('initialStock')(e.target.value)} />
           </div>
 

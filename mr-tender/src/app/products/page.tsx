@@ -53,6 +53,9 @@ export default function ProductsPage() {
   const [showEditModal, setShowEditModal] = useState(false)
   const [showQuickStockModal, setShowQuickStockModal] = useState(false)
 
+  // Warehouses State
+  const [warehousesList, setWarehousesList] = useState<{ id: string; name: string; is_main: boolean }[]>([])
+
   // Edit / Create Product State
   const [editingProduct, setEditingProduct] = useState<DBProduct | null>(null)
   const [savingProduct, setSavingProduct] = useState(false)
@@ -60,6 +63,7 @@ export default function ProductsPage() {
     name: '',
     sku: '',
     category_id: '',
+    warehouse_id: '',
     cost_price: '0',
     sale_price: '0',
     stock: '0',
@@ -92,7 +96,7 @@ export default function ProductsPage() {
       setTenantId(tid)
 
       const [whRes, catsRes, prodsRes] = await Promise.all([
-        supabase.from('warehouses').select('id').eq('tenant_id', tid).eq('is_active', true).limit(1),
+        supabase.from('warehouses').select('id, name, is_main').eq('tenant_id', tid).eq('is_active', true).order('is_main', { ascending: false }).order('name', { ascending: true }),
         supabase.from('categories').select('id, name').eq('tenant_id', tid),
         supabase.from('products').select(`
           id, sku, name, product_type, sale_price, cost_price, is_active, category_id,
@@ -101,7 +105,11 @@ export default function ProductsPage() {
         `).eq('tenant_id', tid).order('name', { ascending: true })
       ])
 
-      if (whRes.data?.[0]) setWarehouseId(whRes.data[0].id)
+      if (whRes.data) {
+        setWarehousesList(whRes.data)
+        const mainWh = whRes.data.find(w => w.is_main) || whRes.data[0]
+        if (mainWh) setWarehouseId(mainWh.id)
+      }
       if (catsRes.data) {
         setCategoryList(catsRes.data)
         const cats = ['Todos', ...Array.from(new Set(catsRes.data.map(c => c.name)))]
@@ -133,10 +141,12 @@ export default function ProductsPage() {
   // Open Edit Product Modal
   function handleOpenEdit(p: DBProduct) {
     setEditingProduct(p)
+    const existingWhId = p.inventory?.[0]?.warehouse_id || warehouseId
     setProductForm({
       name: p.name,
       sku: p.sku || '',
       category_id: p.category_id || '',
+      warehouse_id: existingWhId,
       cost_price: String(p.cost_price || 0),
       sale_price: String(p.sale_price || 0),
       stock: String(getStock(p)),
@@ -156,6 +166,7 @@ export default function ProductsPage() {
       const saleP = parseFloat(productForm.sale_price) || 0
       const costP = parseFloat(productForm.cost_price) || 0
       const stockQty = parseFloat(productForm.stock) || 0
+      const targetWhId = productForm.warehouse_id || warehouseId
 
       if (editingProduct) {
         // Update product
@@ -173,13 +184,13 @@ export default function ProductsPage() {
 
         if (prodErr) throw prodErr
 
-        // Update inventory record if warehouse is present
-        if (warehouseId) {
-          const invRecord = editingProduct.inventory?.[0]
+        // Update inventory record for target warehouse
+        if (targetWhId) {
+          const invRecord = editingProduct.inventory?.find(i => i.warehouse_id === targetWhId) || editingProduct.inventory?.[0]
           if (invRecord?.id) {
-            await supabase.from('inventory').update({ quantity: stockQty, avg_cost: costP }).eq('id', invRecord.id)
+            await supabase.from('inventory').update({ quantity: stockQty, avg_cost: costP, warehouse_id: targetWhId }).eq('id', invRecord.id)
           } else {
-            await supabase.from('inventory').insert([{ tenant_id: tenantId, product_id: editingProduct.id, warehouse_id: warehouseId, quantity: stockQty, avg_cost: costP }])
+            await supabase.from('inventory').insert([{ tenant_id: tenantId, product_id: editingProduct.id, warehouse_id: targetWhId, quantity: stockQty, avg_cost: costP }])
           }
         }
 
@@ -599,7 +610,23 @@ export default function ProductsPage() {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Stock Actual (Uds)</label>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Bodega de Almacenamiento *</label>
+                  <select
+                    className="input-neu"
+                    value={productForm.warehouse_id}
+                    onChange={e => setProductForm({ ...productForm, warehouse_id: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.82rem', fontWeight: 700 }}
+                  >
+                    {warehousesList.map(w => (
+                      <option key={w.id} value={w.id}>
+                        📦 {w.name} {w.is_main ? '(Principal)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Stock en Bodega (Uds)</label>
                   <input
                     type="number"
                     className="input-neu"

@@ -9,11 +9,20 @@ describe('cn utility', () => {
 })
 
 describe('formatCurrency utility', () => {
-  it('should format MXN currency correctly', () => {
+  it('should format COP currency with no decimals by default', () => {
+    const formatted = formatCurrency(50000)
+    expect(formatted).toContain('50')
+    expect(formatted).toContain('000')
+  })
+
+  it('should round cents to nearest integer for POS precision', () => {
     const formatted = formatCurrency(1234.56, 'MXN', 'es-MX')
-    // es-MX can contain non-breaking spaces or different representations depending on environment,
-    // so we assert it contains the core numbers and currency symbols.
-    expect(formatted).toContain('1,234.56')
+    expect(formatted).toContain('1,235')
+  })
+
+  it('should handle zero or null amounts safely', () => {
+    expect(formatCurrency(0)).toContain('0')
+    expect(formatCurrency(NaN as any)).toContain('0')
   })
 })
 

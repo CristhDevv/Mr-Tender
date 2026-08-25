@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
 import {
   Building2,
   DollarSign,
@@ -8,8 +9,16 @@ import {
   ShoppingCart,
   Smartphone,
   Save,
-  Check
+  Check,
+  ExternalLink,
+  Layers,
+  Wrench,
+  Pill,
+  UtensilsCrossed,
+  Globe,
+  Wine
 } from 'lucide-react'
+import Link from 'next/link'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -18,6 +27,22 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [tenantId, setTenantId] = useState('')
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
+    pos: true,
+    inventory: true,
+    cash: true,
+    customers: true,
+    suppliers: true,
+    purchases: true,
+    employees: true,
+    accounting: true,
+    reports: true,
+    ecommerce: false,
+    pharmacy: false,
+    hardware: true,
+    liquor_tobacco: true,
+    restaurant: false
+  })
 
   const [form, setForm] = useState({
     businessName: '',
@@ -39,6 +64,9 @@ export default function SettingsPage() {
     dianRangeFrom: '1',
     dianRangeTo: '5000',
     dianSoftwareId: '',
+    dianSoftwarePin: '12345',
+    dianTechnicalKey: 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
+    dianEnvironment: '2', // 1: Prod, 2: Hab
     // Digital Payments
     nequiPhone: '',
     daviplataPhone: '',
@@ -65,6 +93,9 @@ export default function SettingsPage() {
 
         if (data && data.length > 0) {
           const row = data[0]
+          if (row.enabled_modules) {
+            setEnabledModules(prev => ({ ...prev, ...row.enabled_modules }))
+          }
           setForm({
             businessName: row.business_name || '',
             tradeName: row.trade_name || '',
@@ -84,6 +115,9 @@ export default function SettingsPage() {
             dianRangeFrom: row.dian_from || '1',
             dianRangeTo: row.dian_to || '5000',
             dianSoftwareId: row.dian_software_id || '',
+            dianSoftwarePin: row.fiscal_config?.software_pin || '12345',
+            dianTechnicalKey: row.fiscal_config?.technical_key || 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
+            dianEnvironment: row.fiscal_config?.environment || '2',
             nequiPhone: row.whatsapp || row.phone || '',
             daviplataPhone: row.phone || '',
             bancolombiaKey: '',
@@ -127,6 +161,13 @@ export default function SettingsPage() {
         dian_from: form.dianRangeFrom,
         dian_to: form.dianRangeTo,
         dian_software_id: form.dianSoftwareId,
+        enabled_modules: enabledModules,
+        fiscal_config: {
+          software_pin: form.dianSoftwarePin,
+          technical_key: form.dianTechnicalKey,
+          environment: form.dianEnvironment,
+          dv: calculateNITVerificationDigit(form.taxId || form.dianNit || '901234567')
+        }
       }
 
       const { error: upsertErr } = await supabase
@@ -155,6 +196,10 @@ export default function SettingsPage() {
       ]
     },
     {
+      title: 'Módulos de Negocio', Icon: Layers,
+      isModules: true
+    },
+    {
       title: 'Pagos Digitales & QR', Icon: Smartphone,
       fields: [
         { key: 'nequiPhone', label: 'Número Nequi para pagos QR', type: 'text', placeholder: '3001234567' },
@@ -173,13 +218,16 @@ export default function SettingsPage() {
     {
       title: 'Facturación DIAN', Icon: Receipt,
       fields: [
-        { key: 'dianNit', label: 'NIT / Identificación Fiscal DIAN', type: 'text', placeholder: 'Ej: 901234567-1' },
+        { key: 'dianEnvironment', label: 'Ambiente DIAN', type: 'select', options: ['2 - Habilitación / Pruebas', '1 - Producción Oficial'] },
+        { key: 'dianNit', label: 'NIT Emisor DIAN', type: 'text', placeholder: 'Ej: 901234567' },
         { key: 'dianRegimen', label: 'Régimen Fiscal', type: 'select', options: ['No Responsable de IVA', 'Responsable de IVA (Común)', 'Régimen Simple de TRIBUTACIÓN (RST)'] },
         { key: 'dianResolution', label: 'Resolución DIAN Nº', type: 'text', placeholder: '18760000001' },
         { key: 'dianPrefix', label: 'Prefijo Autorizado', type: 'text', placeholder: 'SETP' },
         { key: 'dianRangeFrom', label: 'Desde (Nº Inicial)', type: 'number', placeholder: '1' },
         { key: 'dianRangeTo', label: 'Hasta (Nº Final)', type: 'number', placeholder: '5000' },
         { key: 'dianSoftwareId', label: 'ID Software Habilitado DIAN', type: 'text', placeholder: 'ID de Software' },
+        { key: 'dianSoftwarePin', label: 'PIN del Software DIAN (5 dígitos)', type: 'text', placeholder: '12345' },
+        { key: 'dianTechnicalKey', label: 'Clave Técnica DIAN', type: 'text', placeholder: 'Clave técnica alfanumérica' },
       ]
     },
     {
@@ -189,6 +237,16 @@ export default function SettingsPage() {
         { key: 'receiptSeries', label: 'Serie de recibos', type: 'text', placeholder: 'R' },
       ]
     },
+  ]
+
+  const SYSTEM_MODULES = [
+    { id: 'hardware', name: 'Ferretería & Construcción', icon: Wrench, color: 'var(--accent-blue)', desc: 'Cotizaciones de obra, venta por metros/kilos, escalas y alquiler de herramientas' },
+    { id: 'pharmacy', name: 'Droguería & Farmacia', icon: Pill, color: 'var(--accent-purple)', desc: 'Control de lotes, FEFO, INVIMA, venta por blíster/tableta y genéricos' },
+    { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: Wine, color: 'var(--accent-coral)', desc: 'Control de botellas en barra / copeo, envases retornables, combos y tabaco' },
+    { id: 'restaurant', name: 'Restaurante & Mesas', icon: UtensilsCrossed, color: 'var(--accent-amber)', desc: 'Mapa de mesas, comandas de cocina KDS, recetas y propinas' },
+    { id: 'ecommerce', name: 'E-commerce & Tienda Web', icon: Globe, color: 'var(--accent-green)', desc: 'Catálogo público en línea con pedidos directos a WhatsApp' },
+    { id: 'purchases', name: 'Compras & Proveedores', icon: ShoppingCart, color: 'var(--text-primary)', desc: 'Registro de facturas de compra, abastecimiento y proveedores' },
+    { id: 'accounting', name: 'Contabilidad Automatizada', icon: DollarSign, color: 'var(--accent-blue)', desc: 'Plan de cuentas, balance general y generación de asientos contables' },
   ]
 
   if (loading) {
@@ -208,7 +266,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div style={{ marginBottom: 4 }}>
         <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 2px' }}>Configuración</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0, lineHeight: 1.3 }}>Ajustes generales, datos de facturación DIAN, Nequi y moneda</p>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0, lineHeight: 1.3 }}>Ajustes generales, módulos de negocio, facturación DIAN y pagos</p>
       </div>
 
       {/* Responsive Wrapping Navigation Tabs */}
@@ -229,27 +287,124 @@ export default function SettingsPage() {
 
       {/* Form Content */}
       <div className="neu-card" style={{ padding: '18px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)', marginBottom: 8 }}>
-          <CurrentSectionIcon size={17} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
-          <span>{currentSection.title}</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+            <CurrentSectionIcon size={17} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
+            <span>{currentSection.title}</span>
+          </div>
+          {currentSection.title === 'Facturación DIAN' && (
+            <Link
+              href="/invoices"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '6px 12px',
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #0284C7, #0369A1)',
+                color: '#fff',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                textDecoration: 'none'
+              }}
+            >
+              <ExternalLink size={13} />
+              <span>Ver Panel de Facturación DIAN</span>
+            </Link>
+          )}
         </div>
 
         <div className="divider" style={{ margin: '6px 0 14px' }} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-          {currentSection.fields.map(field => (
-            <div key={field.key}>
-              <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{field.label}</label>
-              {field.type === 'select' ? (
-                <select className="input-neu" value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }}>
-                  {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              ) : (
-                <input className="input-neu" type={field.type} placeholder={field.placeholder} value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }} />
-              )}
+        {currentSection.isModules ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Activa o desactiva los módulos según el modelo operativo de tu empresa. Los módulos habilitados aparecerán automáticamente en tu menú lateral y en el Punto de Venta.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+              {SYSTEM_MODULES.map(m => {
+                const isEnabled = !!enabledModules[m.id]
+                const IconComponent = m.icon
+                return (
+                  <div
+                    key={m.id}
+                    onClick={() => setEnabledModules(prev => ({ ...prev, [m.id]: !prev[m.id] }))}
+                    className="neu-card"
+                    style={{
+                      padding: 16,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      border: isEnabled ? `2px solid ${m.color}` : '1px solid var(--border-color)',
+                      background: isEnabled ? 'var(--bg-deep)' : 'var(--bg)',
+                      transition: '0.15s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                      <div style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: isEnabled ? `${m.color}15` : 'var(--bg-deep)',
+                        color: isEnabled ? m.color : 'var(--text-muted)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        <IconComponent size={19} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)', marginBottom: 2 }}>{m.name}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{m.desc}</div>
+                      </div>
+                    </div>
+
+                    {/* Toggle Switch */}
+                    <div style={{
+                      width: 38,
+                      height: 22,
+                      borderRadius: 12,
+                      background: isEnabled ? m.color : 'var(--border-color)',
+                      position: 'relative',
+                      flexShrink: 0,
+                      marginTop: 2,
+                      transition: '0.2s'
+                    }}>
+                      <div style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        background: '#fff',
+                        position: 'absolute',
+                        top: 3,
+                        left: isEnabled ? 19 : 3,
+                        transition: '0.2s'
+                      }} />
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+            {currentSection.fields?.map(field => (
+              <div key={field.key}>
+                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{field.label}</label>
+                {field.type === 'select' ? (
+                  <select className="input-neu" value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }}>
+                    {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                ) : (
+                  <input className="input-neu" type={field.type} placeholder={field.placeholder} value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }} />
+                )}
+              </div>
+            ))}
+          </div>
+        )}
 
         {error && (
           <div style={{ marginTop: 12, background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>

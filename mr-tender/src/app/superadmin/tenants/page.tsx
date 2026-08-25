@@ -46,6 +46,8 @@ const AVAILABLE_MODULES = [
   { id: 'accounting', name: 'Contabilidad', icon: '📈', description: 'Plan de cuentas y asientos automáticos' },
   { id: 'ecommerce', name: 'E-commerce / Catálogo Web', icon: '🌐', description: 'Tienda virtual con pedidos por WhatsApp' },
   { id: 'pharmacy', name: 'Droguería & Farmacia', icon: '💊', description: 'Lotes, FEFO, INVIMA, genéricos y controlados' },
+  { id: 'hardware', name: 'Ferretería & Construcción', icon: '🔩', description: 'Venta por metros/kilos, cotizaciones a contratistas, alquiler de herramientas' },
+  { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: '🍷', description: 'Control de copeo en barra, envases retornables, combos y tabaco' },
   { id: 'restaurant', name: 'Restaurante & Mesas', icon: '🍽️', description: 'Mesas, comandas y cocina' },
 ]
 
@@ -94,7 +96,7 @@ export default function TenantsAdminPage() {
         pos: true, inventory: true, cash: true, customers: true,
         suppliers: true, purchases: true, employees: true,
         accounting: true, reports: true, ecommerce: true,
-        pharmacy: false, restaurant: false
+        pharmacy: false, hardware: true, liquor_tobacco: true, restaurant: false
       }
 
       if (data?.[0]?.enabled_modules) {

@@ -17,7 +17,8 @@ import {
   ShoppingBag,
   AlertTriangle,
   CheckCircle2,
-  Plus
+  Plus,
+  TrendingUp
 } from 'lucide-react'
 
 const COLORS = ['#4A90D9', '#5CB85C', '#E8A030', '#8B72BE', '#E8745A']
@@ -40,6 +41,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState({
     salesToday: 0,
     ordersToday: 0,
+    profitToday: 0,
     avgTicket: 0,
     grossMargin: 0,
     pendingCredit: 0
@@ -112,12 +114,14 @@ export default function DashboardPage() {
             totalCost += (Number(item.cost_price || 0) * Number(item.quantity || 1))
           })
         })
-        const grossMargin = totalSales > 0 ? ((totalSales - totalCost) / totalSales) * 100 : 0
+        const totalProfit = totalSales - totalCost
+        const grossMargin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0
         const totalPendingCredit = (custRes.data || []).reduce((s, c) => s + Number(c.credit_used || 0), 0)
 
         setStats({
           salesToday: totalSales,
           ordersToday: totalOrders,
+          profitToday: totalProfit,
           avgTicket: totalOrders > 0 ? totalSales / totalOrders : 0,
           grossMargin,
           pendingCredit: totalPendingCredit
@@ -199,8 +203,9 @@ export default function DashboardPage() {
 
   const kpis = [
     { label: 'Ventas hoy', value: formatCurrency(stats.salesToday), Icon: DollarSign, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
-    { label: 'Pedidos hoy', value: formatNumber(stats.ordersToday), Icon: ShoppingCart, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
-    { label: 'Margen bruto est.', value: `${stats.grossMargin.toFixed(1)}%`, Icon: BarChart3, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
+    { label: 'Utilidad total', value: formatCurrency(stats.profitToday), Icon: TrendingUp, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
+    { label: 'Pedidos hoy', value: formatNumber(stats.ordersToday), Icon: ShoppingCart, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
+    { label: 'Margen bruto est.', value: `${stats.grossMargin.toFixed(1)}%`, Icon: BarChart3, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
     { label: 'Fiados por cobrar', value: formatCurrency(stats.pendingCredit), Icon: Users, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
   ]
 

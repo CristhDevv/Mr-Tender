@@ -670,9 +670,18 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
 
 [Ver Inventario ➔](/inventory)
 
-**Gestión de Inventario y Bodegas:**
-1. En **Inventario** puedes monitorear el stock de cada bodega y productos con alertas de stock bajo.
-2. Para corregir cantidades por conteo físico o mermas, haz clic en **"Ajustar Stock"**.`,
+**Gestión de Inventario y Kardex:**
+1. En **Inventario** puedes monitorear el stock general, consultar el Kardex de movimientos y realizar ajustes por merma.`,
+
+        warehouses: `📍 **Ruta en el menú lateral:** **Catálogo & Stock** ➡️ **Bodegas**
+
+[Ir a Bodegas & Almacenes ➔](/warehouses)
+
+**Control Multi-Bodega y Exportaciones:**
+1. Ingresa a **Bodegas** en el menú lateral para gestionar múltiples almacenes, sucursales y puntos de despacho.
+2. Puedes crear nuevas bodegas con el botón **"+ Nueva Bodega"**.
+3. Haz clic en **"Exportar Consolidado"** para descargar la matriz de stock en Excel/CSV de todas las bodegas.
+4. Para cada bodega específica, puedes exportar su inventario individual, generar la **Hoja de Conteo Físico / Auditoría** y hacer transferencias directas.`,
 
         customer_credit: `📍 **Ruta en el menú lateral:** **Ventas & Clientes** ➡️ **Clientes**
 

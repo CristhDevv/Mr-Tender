@@ -25,7 +25,12 @@ import {
   Lock,
   ChevronLeft,
   ChevronRight,
-  ChevronDown
+  ChevronDown,
+  Building2,
+  Receipt,
+  Wrench,
+  Wine,
+  UtensilsCrossed
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -56,9 +61,11 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Ventas & Clientes',
     Icon: ShoppingCart,
     items: [
-      { href: '/pos',       Icon: ShoppingCart, label: 'Punto de Venta', moduleKey: 'pos',       requiredPermission: 'pos.view' },
-      { href: '/cash',      Icon: DollarSign,   label: 'Caja & Turnos',  moduleKey: 'cash',      requiredPermission: 'cash.view' },
-      { href: '/customers', Icon: Users,        label: 'Clientes',       moduleKey: 'customers', requiredPermission: 'customers.view' }
+      { href: '/pos',        Icon: ShoppingCart,    label: 'Punto de Venta', moduleKey: 'pos',        requiredPermission: 'pos.view' },
+      { href: '/restaurant', Icon: UtensilsCrossed, label: 'Restaurante & Mesas', moduleKey: 'restaurant', requiredPermission: 'pos.view' },
+      { href: '/invoices',   Icon: Receipt,         label: 'Facturación DIAN',                        requiredPermission: 'pos.view' },
+      { href: '/cash',       Icon: DollarSign,      label: 'Caja & Turnos',  moduleKey: 'cash',       requiredPermission: 'cash.view' },
+      { href: '/customers',  Icon: Users,           label: 'Clientes',       moduleKey: 'customers',  requiredPermission: 'customers.view' }
     ]
   },
   {
@@ -66,9 +73,12 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Catálogo & Stock',
     Icon: Package,
     items: [
-      { href: '/products',  Icon: Package, label: 'Productos',                                requiredPermission: 'products.view' },
-      { href: '/pharmacy',  Icon: Pill,    label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
-      { href: '/inventory', Icon: Boxes,   label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' }
+      { href: '/products',   Icon: Package,   label: 'Productos',                                requiredPermission: 'products.view' },
+      { href: '/hardware',   Icon: Wrench,    label: 'Ferretería',     moduleKey: 'hardware',     requiredPermission: 'products.view' },
+      { href: '/pharmacy',   Icon: Pill,      label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
+      { href: '/estanco',    Icon: Wine,      label: 'Licorera & Estanco', moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
+      { href: '/inventory',  Icon: Boxes,     label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' },
+      { href: '/warehouses', Icon: Building2, label: 'Bodegas',        moduleKey: 'inventory',    requiredPermission: 'inventory.view' }
     ]
   },
   {
@@ -114,7 +124,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     pos: true, inventory: true, cash: true, customers: true,
     suppliers: true, purchases: true, employees: true,
     accounting: true, reports: true, ecommerce: false,
-    pharmacy: true, restaurant: false
+    pharmacy: true, hardware: true, liquor_tobacco: true, restaurant: true
   })
 
   // Load user, module settings & saved collapsed preference

@@ -605,7 +605,7 @@ export default function ReportsPage() {
                     <strong>{formatCurrency(totalSalesRevenue)}</strong>
                   </div>
                   <div className="neu-flat" style={{ padding: 12, borderRadius: 8, display: 'flex', justifyContent: 'space-between', color: 'var(--accent-coral)' }}>
-                    <span>(-) Costo Estimado de MercancÃ­a</span>
+                    <span>(-) Costo Estimado de Mercancía</span>
                     <strong>-{formatCurrency(totalCostOfGoods)}</strong>
                   </div>
                   <div className="divider" style={{ margin: '4px 0' }} />

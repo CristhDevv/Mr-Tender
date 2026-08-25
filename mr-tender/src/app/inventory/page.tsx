@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import {
@@ -19,7 +20,13 @@ import {
   Download,
   History,
   Edit2,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Plus,
+  Check,
+  X,
+  MapPin,
+  Shield,
+  Layers
 } from 'lucide-react'
 
 interface DBInventory {
@@ -27,6 +34,7 @@ interface DBInventory {
   quantity: number
   avg_cost: number
   products?: {
+    id?: string
     name: string
     sku: string
     product_type: string
@@ -35,11 +43,12 @@ interface DBInventory {
     categories?: { name: string } | null
   } | null
   warehouses?: {
+    id?: string
     name: string
   } | null
 }
 
-type TabKey = 'stock' | 'movements' | 'adjustments' | 'transfers'
+type TabKey = 'stock' | 'warehouses' | 'movements' | 'adjustments' | 'transfers'
 
 export default function InventoryPage() {
   const supabase = createClient()
@@ -54,6 +63,19 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [tenantId, setTenantId] = useState('')
   const [userId, setUserId] = useState('')
+
+  // Warehouse filter & management states
+  const [selectedStockWh, setSelectedStockWh] = useState<string>('all')
+  const [showWhModal, setShowWhModal] = useState(false)
+  const [editingWh, setEditingWh] = useState<any | null>(null)
+  const [whForm, setWhForm] = useState({
+    name: '',
+    code: '',
+    address: '',
+    is_main: false,
+    is_active: true
+  })
+  const [savingWh, setSavingWh] = useState(false)
 
   // Kardex filters & pagination
   const [kardexSearch, setKardexSearch] = useState('')
@@ -148,9 +170,10 @@ export default function InventoryPage() {
           .limit(30),
         supabase
           .from('warehouses')
-          .select('id, name')
+          .select('id, name, code, address, is_main, is_active, created_at')
           .eq('tenant_id', tenant_id)
-          .eq('is_active', true),
+          .order('is_main', { ascending: false })
+          .order('name', { ascending: true }),
         supabase
           .from('products')
           .select('id, name, sku, cost_price')
@@ -181,6 +204,102 @@ export default function InventoryPage() {
       console.error('Error loading inventory:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  function openCreateWarehouse() {
+    setEditingWh(null)
+    setWhForm({
+      name: '',
+      code: 'BOD-00' + (warehouses.length + 1),
+      address: '',
+      is_main: warehouses.length === 0,
+      is_active: true
+    })
+    setShowWhModal(true)
+  }
+
+  function openEditWarehouse(w: any) {
+    setEditingWh(w)
+    setWhForm({
+      name: w.name || '',
+      code: w.code || '',
+      address: w.address || '',
+      is_main: Boolean(w.is_main),
+      is_active: w.is_active !== false
+    })
+    setShowWhModal(true)
+  }
+
+  async function handleSaveWarehouse(e: React.FormEvent) {
+    e.preventDefault()
+    if (!whForm.name.trim() || !tenantId) return
+    setSavingWh(true)
+    try {
+      if (whForm.is_main) {
+        await supabase
+          .from('warehouses')
+          .update({ is_main: false })
+          .eq('tenant_id', tenantId)
+      }
+
+      if (editingWh) {
+        const { error } = await supabase
+          .from('warehouses')
+          .update({
+            name: whForm.name.trim(),
+            code: whForm.code.trim() || null,
+            address: whForm.address.trim() || null,
+            is_main: whForm.is_main,
+            is_active: whForm.is_active
+          })
+          .eq('id', editingWh.id)
+
+        if (error) throw error
+      } else {
+        const { data: brs } = await supabase
+          .from('branches')
+          .select('id')
+          .eq('tenant_id', tenantId)
+          .limit(1)
+
+        const branch_id = brs?.[0]?.id || null
+
+        const { data: newWh, error } = await supabase
+          .from('warehouses')
+          .insert([{
+            tenant_id: tenantId,
+            branch_id,
+            name: whForm.name.trim(),
+            code: whForm.code.trim() || `BOD-${Math.floor(100 + Math.random() * 900)}`,
+            address: whForm.address.trim() || null,
+            is_main: whForm.is_main,
+            is_active: whForm.is_active
+          }])
+          .select()
+          .single()
+
+        if (error) throw error
+
+        // Sync initial inventory rows for products in this new warehouse
+        if (newWh && productsList.length > 0) {
+          const invRows = productsList.map(p => ({
+            tenant_id: tenantId,
+            warehouse_id: newWh.id,
+            product_id: p.id,
+            quantity: 0,
+            avg_cost: p.cost_price || 0
+          }))
+          await supabase.from('inventory').insert(invRows)
+        }
+      }
+
+      setShowWhModal(false)
+      await loadInventory()
+    } catch (err: any) {
+      alert(err.message || 'Error al guardar la bodega')
+    } finally {
+      setSavingWh(false)
     }
   }
 
@@ -233,7 +352,10 @@ export default function InventoryPage() {
   const filtered = inventory.filter(i => {
     const name = i.products?.name || ''
     const sku = i.products?.sku || ''
-    return name.toLowerCase().includes(search.toLowerCase()) || sku.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = name.toLowerCase().includes(search.toLowerCase()) || sku.toLowerCase().includes(search.toLowerCase())
+    const whId = i.warehouses?.id || (i as any).warehouse_id
+    const matchWh = selectedStockWh === 'all' || whId === selectedStockWh
+    return matchSearch && matchWh
   })
 
   const lowStock = inventory.filter(i => {
@@ -246,6 +368,7 @@ export default function InventoryPage() {
 
   const TABS: { key: TabKey; label: string; Icon: any }[] = [
     { key: 'stock', label: 'Stock actual', Icon: Package },
+    { key: 'warehouses', label: 'Bodegas', Icon: Building2 },
     { key: 'movements', label: 'Kardex', Icon: Boxes },
     { key: 'adjustments', label: 'Ajustes', Icon: Wrench },
     { key: 'transfers', label: 'Transferencias', Icon: ArrowLeftRight },
@@ -418,9 +541,25 @@ export default function InventoryPage() {
       {/* TAB 1: Stock Actual */}
       {tab === 'stock' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <div className="input-group">
-            <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
-            <input className="input-neu" placeholder="Buscar por producto o SKU..." value={search} onChange={e => setSearch(e.target.value)} style={{ fontSize: '0.85rem' }} />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div className="input-group" style={{ flex: 1, minWidth: 200 }}>
+              <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
+              <input className="input-neu" placeholder="Buscar por producto o SKU..." value={search} onChange={e => setSearch(e.target.value)} style={{ fontSize: '0.85rem' }} />
+            </div>
+
+            <select
+              className="input-neu"
+              value={selectedStockWh}
+              onChange={e => setSelectedStockWh(e.target.value)}
+              style={{ fontSize: '0.8rem', padding: '6px 12px', minWidth: 180, fontWeight: 700 }}
+            >
+              <option value="all">📦 Todas las Bodegas ({warehouses.length})</option>
+              {warehouses.map(w => (
+                <option key={w.id} value={w.id}>
+                  {w.is_main ? '★ ' : ''}{w.name} {w.code ? `(${w.code})` : ''}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div className="neu-card" style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -510,6 +649,150 @@ export default function InventoryPage() {
                 <div style={{ fontSize: '0.85rem' }}>No se encontraron productos en el inventario</div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: Bodegas & Almacenes */}
+      {tab === 'warehouses' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="neu-card" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+            <div>
+              <h2 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                Gestión de Bodegas y Almacenes
+              </h2>
+              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
+                Control multi-almacén, puntos de despacho y existencias físicas individualizadas.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Link
+                href="/warehouses"
+                className="btn-neu"
+                style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 700 }}
+              >
+                <Building2 size={15} />
+                <span>Abrir Módulo Completo de Bodegas ➔</span>
+              </Link>
+
+              <button
+                type="button"
+                className="btn-neu btn-primary"
+                onClick={openCreateWarehouse}
+                style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
+              >
+                <Plus size={15} strokeWidth={2.5} />
+                <span>+ Nueva Bodega</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Warehouses Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
+            {warehouses.map(wh => {
+              const whItems = inventory.filter(i => (i.warehouses?.id === wh.id || (i as any).warehouse_id === wh.id))
+              const totalUnits = whItems.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0)
+              const totalVal = whItems.reduce((acc, curr) => acc + (Number(curr.quantity || 0) * Number(curr.avg_cost || 0)), 0)
+
+              return (
+                <div key={wh.id} className="neu-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, position: 'relative' }}>
+                  {/* Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <div style={{ width: 36, height: 36, borderRadius: 10, background: wh.is_main ? 'var(--accent-blue-lt)' : 'var(--bg-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Building2 size={18} style={{ color: wh.is_main ? 'var(--accent-blue)' : 'var(--text-secondary)' }} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                          {wh.name}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                          Código: {wh.code || 'BOD-001'}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                      {wh.is_main && (
+                        <span className="badge badge-blue" style={{ fontSize: '0.66rem', fontWeight: 800 }}>
+                          ★ Principal
+                        </span>
+                      )}
+                      <span className={`badge ${wh.is_active !== false ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.66rem' }}>
+                        {wh.is_active !== false ? 'Activa' : 'Inactiva'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Address if present */}
+                  {wh.address && (
+                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <MapPin size={12} style={{ color: 'var(--text-muted)' }} />
+                      <span>{wh.address}</span>
+                    </div>
+                  )}
+
+                  {/* Metrics */}
+                  <div className="neu-flat" style={{ padding: '8px 12px', borderRadius: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>PRODUCTOS / STOCK</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        {totalUnits} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-secondary)' }}>uds ({whItems.length} prods)</span>
+                      </div>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>VALORIZACIÓN</div>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--accent-blue)' }}>
+                        {formatCurrency(totalVal)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 8, marginTop: 'auto', gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn-neu btn-ghost"
+                      onClick={() => {
+                        setSelectedStockWh(wh.id)
+                        setTab('stock')
+                      }}
+                      style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4 }}
+                    >
+                      <Package size={13} />
+                      <span>Ver Stock</span>
+                    </button>
+
+                    <div style={{ display: 'flex', gap: 4 }}>
+                      <button
+                        type="button"
+                        className="btn-neu btn-ghost"
+                        onClick={() => {
+                          setTrfForm(f => ({ ...f, from_warehouse_id: wh.id }))
+                          setShowTrfModal(true)
+                        }}
+                        style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 4 }}
+                        title="Transferir productos desde esta bodega"
+                      >
+                        <ArrowLeftRight size={13} />
+                        <span>Transferir</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn-neu btn-ghost"
+                        onClick={() => openEditWarehouse(wh)}
+                        style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
+                      >
+                        <Edit2 size={13} />
+                        <span>Editar</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         </div>
       )}
@@ -796,10 +1079,129 @@ export default function InventoryPage() {
       )}
 
       {/* Modal: Transferencia */}
+      {/* Modal: Crear / Editar Bodega */}
+      {showWhModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, padding: 22 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Building2 size={18} style={{ color: 'var(--accent-blue)' }} />
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                  {editingWh ? 'Editar Bodega' : 'Crear Nueva Bodega'}
+                </h3>
+              </div>
+              <button className="btn-neu btn-ghost" onClick={() => setShowWhModal(false)} style={{ padding: '2px 6px' }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveWarehouse} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                  Nombre de la Bodega / Almacén *
+                </label>
+                <input
+                  type="text"
+                  required
+                  className="input-neu"
+                  placeholder="Ej: Bodega Norte, Mostrador 1, Almacén Central"
+                  value={whForm.name}
+                  onChange={e => setWhForm({ ...whForm, name: e.target.value })}
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                    Código / Prefijo
+                  </label>
+                  <input
+                    type="text"
+                    className="input-neu"
+                    placeholder="BOD-002"
+                    value={whForm.code}
+                    onChange={e => setWhForm({ ...whForm, code: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.82rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                    Estado
+                  </label>
+                  <select
+                    className="input-neu"
+                    value={whForm.is_active ? 'active' : 'inactive'}
+                    onChange={e => setWhForm({ ...whForm, is_active: e.target.value === 'active' })}
+                    style={{ width: '100%', fontSize: '0.82rem', padding: 8 }}
+                  >
+                    <option value="active">Activa</option>
+                    <option value="inactive">Inactiva</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 3 }}>
+                  Ubicación / Dirección física (Opcional)
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  placeholder="Ej: Calle 45 # 12-34 Local 2"
+                  value={whForm.address}
+                  onChange={e => setWhForm({ ...whForm, address: e.target.value })}
+                  style={{ width: '100%', fontSize: '0.82rem' }}
+                />
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', background: 'var(--bg-deep)', borderRadius: 8, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={whForm.is_main}
+                  onChange={e => setWhForm({ ...whForm, is_main: e.target.checked })}
+                  style={{ accentColor: 'var(--accent-blue)' }}
+                />
+                <div>
+                  <div style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)' }}>Establecer como Bodega Principal</div>
+                  <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Las ventas del POS y compras se asignarán a esta bodega por defecto</div>
+                </div>
+              </label>
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
+                <button
+                  type="button"
+                  className="btn-neu btn-ghost"
+                  onClick={() => setShowWhModal(false)}
+                  style={{ flex: 1, padding: 10, fontSize: '0.8rem' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-neu btn-primary"
+                  disabled={savingWh}
+                  style={{ flex: 1.2, padding: 10, fontSize: '0.82rem', fontWeight: 800 }}
+                >
+                  {savingWh ? 'Guardando...' : (editingWh ? 'Actualizar Bodega' : 'Crear Bodega')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Transferencia */}
       {showTrfModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, padding: 20 }}>
-            <h3 style={{ margin: '0 0 12px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>Transferencia entre Almacenes</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>Transferencia entre Bodegas</h3>
+              <button className="btn-neu btn-ghost" onClick={() => setShowTrfModal(false)} style={{ padding: '2px 6px' }}>
+                <X size={16} />
+              </button>
+            </div>
             <form onSubmit={handleCreateTransfer} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div>
