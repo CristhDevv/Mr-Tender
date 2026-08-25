@@ -54,6 +54,7 @@ const AVAILABLE_MODULES = [
   { id: 'automotive', name: 'Taller Mecánico & Autolavado', icon: '🚗', description: 'Órdenes de trabajo por placa, checklist de recepción, repuestos y cola de lavado' },
   { id: 'laundry', name: 'Lavandería & Tintorería', icon: '🧺', description: 'Tickets por prenda/kilo, control de percheros, lavado en seco y domicilios' },
   { id: 'gym', name: 'Gimnasio & Fitness', icon: '🏋️', description: 'Torniquete QR, membresías, clases grupales y valoración física antropométrica' },
+  { id: 'apparel', name: 'Boutique, Ropa & Calzado', icon: '👠', description: 'Matriz de talla/color, código de barras, control de probadores y lookbooks' },
 ]
 
 export default function TenantsAdminPage() {
@@ -102,7 +103,7 @@ export default function TenantsAdminPage() {
         suppliers: true, purchases: true, employees: true,
         accounting: true, reports: true, ecommerce: true,
         pharmacy: false, hardware: true, liquor_tobacco: true, restaurant: true,
-        beauty_salon: true, veterinary: true, automotive: true, laundry: true, gym: true
+        beauty_salon: true, veterinary: true, automotive: true, laundry: true, gym: true, apparel: true
       }
 
       if (data?.[0]?.enabled_modules) {

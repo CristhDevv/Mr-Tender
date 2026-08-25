@@ -100,7 +100,8 @@ export default function RegisterPage() {
         veterinary: form.businessType === 'veterinary',
         automotive: form.businessType === 'automotive',
         laundry: form.businessType === 'laundry',
-        gym: form.businessType === 'gym'
+        gym: form.businessType === 'gym',
+        apparel: form.businessType === 'clothing' || form.businessType === 'apparel'
       }
 
       await supabase.from('tenant_settings').upsert({

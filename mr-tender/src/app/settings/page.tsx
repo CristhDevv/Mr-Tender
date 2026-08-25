@@ -21,7 +21,8 @@ import {
   Dog,
   Car,
   Shirt,
-  Dumbbell
+  Dumbbell,
+  Footprints
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -51,7 +52,8 @@ export default function SettingsPage() {
     veterinary: true,
     automotive: true,
     laundry: true,
-    gym: true
+    gym: true,
+    apparel: true
   })
 
   const [form, setForm] = useState({
@@ -250,6 +252,7 @@ export default function SettingsPage() {
   ]
 
   const SYSTEM_MODULES = [
+    { id: 'apparel', name: 'Boutique, Ropa & Calzado', icon: Footprints, color: 'var(--accent-purple)', desc: 'Matriz de tallas/colores, código de barras, control de probadores y lookbooks' },
     { id: 'hardware', name: 'Ferretería & Construcción', icon: Wrench, color: 'var(--accent-blue)', desc: 'Cotizaciones de obra, venta por metros/kilos, escalas y alquiler de herramientas' },
     { id: 'pharmacy', name: 'Droguería & Farmacia', icon: Pill, color: 'var(--accent-purple)', desc: 'Control de lotes, FEFO, INVIMA, venta por blíster/tableta y genéricos' },
     { id: 'veterinary', name: 'Veterinaria & Pet Shop', icon: Dog, color: 'var(--accent-coral)', desc: 'Historias clínicas de mascotas, vacunas con WhatsApp, peluquería/hotel y concentrado a granel' },
