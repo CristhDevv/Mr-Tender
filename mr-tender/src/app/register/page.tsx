@@ -11,6 +11,7 @@ const BUSINESS_TYPES = [
   { value: 'veterinary', label: 'Veterinaria, Pet Shop & Grooming' },
   { value: 'automotive', label: 'Taller Mecánico, Serviteca & Autolavado' },
   { value: 'laundry', label: 'Lavandería, Tintorería & Planchado' },
+  { value: 'gym', label: 'Gimnasio, Fitness & Crossfit' },
   { value: 'liquor_tobacco', label: 'Licorera, Estanco & Cigarrería' },
   { value: 'restaurant', label: 'Restaurante / Cafetería' },
   { value: 'beauty_salon', label: 'Salón de Belleza, Barbería & Spa' },
@@ -98,7 +99,8 @@ export default function RegisterPage() {
         beauty_salon: form.businessType === 'beauty_salon',
         veterinary: form.businessType === 'veterinary',
         automotive: form.businessType === 'automotive',
-        laundry: form.businessType === 'laundry'
+        laundry: form.businessType === 'laundry',
+        gym: form.businessType === 'gym'
       }
 
       await supabase.from('tenant_settings').upsert({

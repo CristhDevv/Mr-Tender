@@ -34,7 +34,8 @@ import {
   Scissors,
   Dog,
   Car,
-  Shirt
+  Shirt,
+  Dumbbell
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -68,6 +69,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/pos',        Icon: ShoppingCart,    label: 'Punto de Venta', moduleKey: 'pos',        requiredPermission: 'pos.view' },
       { href: '/restaurant', Icon: UtensilsCrossed, label: 'Restaurante & Mesas', moduleKey: 'restaurant', requiredPermission: 'pos.view' },
       { href: '/salon',      Icon: Scissors,        label: 'Salón & Belleza', moduleKey: 'beauty_salon', requiredPermission: 'pos.view' },
+      { href: '/gym',        Icon: Dumbbell,        label: 'Gimnasio & Fitness', moduleKey: 'gym',      requiredPermission: 'pos.view' },
       { href: '/automotive', Icon: Car,             label: 'Taller & Autolavado', moduleKey: 'automotive', requiredPermission: 'pos.view' },
       { href: '/laundry',    Icon: Shirt,           label: 'Lavandería & Tintorería', moduleKey: 'laundry', requiredPermission: 'pos.view' },
       { href: '/invoices',   Icon: Receipt,         label: 'Facturación DIAN',                        requiredPermission: 'pos.view' },
@@ -133,7 +135,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     suppliers: true, purchases: true, employees: true,
     accounting: true, reports: true, ecommerce: false,
     pharmacy: true, hardware: true, liquor_tobacco: true, restaurant: true,
-    beauty_salon: true, veterinary: true, automotive: true, laundry: true
+    beauty_salon: true, veterinary: true, automotive: true, laundry: true, gym: true
   })
 
   // Load user, module settings & saved collapsed preference

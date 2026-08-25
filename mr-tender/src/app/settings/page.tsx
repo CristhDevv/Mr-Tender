@@ -20,7 +20,8 @@ import {
   Scissors,
   Dog,
   Car,
-  Shirt
+  Shirt,
+  Dumbbell
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -49,7 +50,8 @@ export default function SettingsPage() {
     beauty_salon: true,
     veterinary: true,
     automotive: true,
-    laundry: true
+    laundry: true,
+    gym: true
   })
 
   const [form, setForm] = useState({
@@ -253,6 +255,7 @@ export default function SettingsPage() {
     { id: 'veterinary', name: 'Veterinaria & Pet Shop', icon: Dog, color: 'var(--accent-coral)', desc: 'Historias clínicas de mascotas, vacunas con WhatsApp, peluquería/hotel y concentrado a granel' },
     { id: 'automotive', name: 'Taller Mecánico & Autolavado', icon: Car, color: 'var(--accent-blue)', desc: 'Órdenes de trabajo por placa, checklist de recepción, repuestos y cola de lavado' },
     { id: 'laundry', name: 'Lavandería & Tintorería', icon: Shirt, color: 'var(--accent-green)', desc: 'Tickets por prenda/kilo, control de percheros, lavado en seco y domicilios' },
+    { id: 'gym', name: 'Gimnasio & Fitness', icon: Dumbbell, color: 'var(--accent-coral)', desc: 'Torniquete QR, membresías, clases grupales y valoración física antropométrica' },
     { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: Wine, color: 'var(--accent-coral)', desc: 'Control de botellas en barra / copeo, envases retornables, combos y tabaco' },
     { id: 'restaurant', name: 'Restaurante & Mesas', icon: UtensilsCrossed, color: 'var(--accent-amber)', desc: 'Mapa de mesas, comandas de cocina KDS, recetas y propinas' },
     { id: 'beauty_salon', name: 'Salón de Belleza & Spa', icon: Scissors, color: 'var(--accent-purple)', desc: 'Agenda de citas, turnos de estilistas, comisiones y fichas técnicas capilares' },

@@ -53,6 +53,7 @@ const AVAILABLE_MODULES = [
   { id: 'veterinary', name: 'Veterinaria & Pet Shop', icon: '🐾', description: 'Historias clínicas, carnet de vacunas, peluquería canina y alimento a granel' },
   { id: 'automotive', name: 'Taller Mecánico & Autolavado', icon: '🚗', description: 'Órdenes de trabajo por placa, checklist de recepción, repuestos y cola de lavado' },
   { id: 'laundry', name: 'Lavandería & Tintorería', icon: '🧺', description: 'Tickets por prenda/kilo, control de percheros, lavado en seco y domicilios' },
+  { id: 'gym', name: 'Gimnasio & Fitness', icon: '🏋️', description: 'Torniquete QR, membresías, clases grupales y valoración física antropométrica' },
 ]
 
 export default function TenantsAdminPage() {
@@ -101,7 +102,7 @@ export default function TenantsAdminPage() {
         suppliers: true, purchases: true, employees: true,
         accounting: true, reports: true, ecommerce: true,
         pharmacy: false, hardware: true, liquor_tobacco: true, restaurant: true,
-        beauty_salon: true, veterinary: true, automotive: true, laundry: true
+        beauty_salon: true, veterinary: true, automotive: true, laundry: true, gym: true
       }
 
       if (data?.[0]?.enabled_modules) {
