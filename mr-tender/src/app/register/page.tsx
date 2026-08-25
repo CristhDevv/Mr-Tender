@@ -8,6 +8,7 @@ const BUSINESS_TYPES = [
   { value: 'retail', label: 'Tienda / Minimercado / Supermercado' },
   { value: 'hardware', label: 'Ferretería & Construcción' },
   { value: 'pharmacy', label: 'Droguería y Farmacia' },
+  { value: 'optometry', label: 'Óptica, Consultorio Visual & Lentes' },
   { value: 'veterinary', label: 'Veterinaria, Pet Shop & Grooming' },
   { value: 'automotive', label: 'Taller Mecánico, Serviteca & Autolavado' },
   { value: 'laundry', label: 'Lavandería, Tintorería & Planchado' },
@@ -15,9 +16,9 @@ const BUSINESS_TYPES = [
   { value: 'liquor_tobacco', label: 'Licorera, Estanco & Cigarrería' },
   { value: 'restaurant', label: 'Restaurante / Cafetería' },
   { value: 'beauty_salon', label: 'Salón de Belleza, Barbería & Spa' },
+  { value: 'clothing', label: 'Ropa, Calzado & Moda' },
   { value: 'services', label: 'Servicios' },
   { value: 'wholesale', label: 'Mayorista / Distribuidor' },
-  { value: 'clothing', label: 'Ropa y Moda' },
   { value: 'electronics', label: 'Electrónica y Tecnología' },
   { value: 'other', label: 'Otro Comercio' },
 ]
@@ -101,7 +102,8 @@ export default function RegisterPage() {
         automotive: form.businessType === 'automotive',
         laundry: form.businessType === 'laundry',
         gym: form.businessType === 'gym',
-        apparel: form.businessType === 'clothing' || form.businessType === 'apparel'
+        apparel: form.businessType === 'clothing' || form.businessType === 'apparel',
+        optometry: form.businessType === 'optometry'
       }
 
       await supabase.from('tenant_settings').upsert({

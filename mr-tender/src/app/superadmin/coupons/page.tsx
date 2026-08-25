@@ -1,21 +1,27 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import {
+  Tag,
+  Plus,
+  ArrowLeft,
+  RefreshCw,
+  Trash2,
+  Edit,
+  Check,
+  Percent,
+  DollarSign
+} from 'lucide-react'
 
 interface Coupon {
-  id: string; code: string; description: string; discount_type: string;
-  discount_value: number; max_uses: number; used_count: number; is_active: boolean;
-}
-
-const MODAL_STYLE: React.CSSProperties = {
-  position: 'fixed', inset: 0, zIndex: 1000,
-  background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
-  display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24,
-}
-const PANEL_STYLE: React.CSSProperties = {
-  background: 'var(--bg)', borderRadius: 20, padding: 32, width: '100%',
-  maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 18,
-  boxShadow: 'var(--neu-card)',
+  id: string
+  code: string
+  description: string
+  discount_type: string
+  discount_value: number
+  max_uses: number
+  used_count: number
+  is_active: boolean
 }
 
 export default function CouponsAdminPage() {
@@ -25,24 +31,27 @@ export default function CouponsAdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Create modal
-  const [showCreate, setShowCreate] = useState(false)
+  // Dedicated View: 'list' | 'new' | 'edit'
+  const [view, setView] = useState<'list' | 'new' | 'edit'>('list')
   const [newCode, setNewCode] = useState('')
   const [newDesc, setNewDesc] = useState('')
   const [newType, setNewType] = useState('percentage')
   const [newValue, setNewValue] = useState('')
   const [newMaxUses, setNewMaxUses] = useState('100')
 
-  // Edit modal
+  // Edit State
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null)
   const [editDesc, setEditDesc] = useState('')
   const [editValue, setEditValue] = useState('')
   const [editMaxUses, setEditMaxUses] = useState('')
 
-  useEffect(() => { fetchCoupons() }, [])
+  useEffect(() => {
+    fetchCoupons()
+  }, [])
 
   async function fetchCoupons() {
-    setLoading(true); setError(null)
+    setLoading(true)
+    setError(null)
     const { data, error } = await supabase.from('platform_coupons').select('*').order('created_at', { ascending: false })
     if (error) setError(error.message)
     else setCoupons(data || [])
@@ -50,7 +59,8 @@ export default function CouponsAdminPage() {
   }
 
   async function handleCreate(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true)
+    e.preventDefault()
+    setSaving(true)
     const { error } = await supabase.rpc('superadmin_create_coupon', {
       p_code: newCode.toUpperCase().trim(),
       p_description: newDesc.trim() || 'Descuento promocional',
@@ -58,27 +68,47 @@ export default function CouponsAdminPage() {
       p_discount_value: parseFloat(newValue),
       p_max_uses: parseInt(newMaxUses) || 100
     })
-    if (error) { alert('Error: ' + error.message); setSaving(false); return }
+    if (error) {
+      alert('Error: ' + error.message)
+      setSaving(false)
+      return
+    }
     await fetchCoupons()
-    setShowCreate(false); setNewCode(''); setNewDesc(''); setNewValue(''); setNewMaxUses('100')
+    setView('list')
+    setNewCode('')
+    setNewDesc('')
+    setNewValue('')
+    setNewMaxUses('100')
     setSaving(false)
   }
 
-  function openEdit(c: Coupon) {
-    setEditingCoupon(c); setEditDesc(c.description); setEditValue(c.discount_value.toString()); setEditMaxUses(c.max_uses.toString())
+  function startEdit(c: Coupon) {
+    setEditingCoupon(c)
+    setEditDesc(c.description)
+    setEditValue(c.discount_value.toString())
+    setEditMaxUses(c.max_uses.toString())
+    setView('edit')
   }
 
   async function handleEdit(e: React.FormEvent) {
-    e.preventDefault(); if (!editingCoupon) return; setSaving(true)
+    e.preventDefault()
+    if (!editingCoupon) return
+    setSaving(true)
     const { error } = await supabase.rpc('superadmin_update_coupon', {
       p_coupon_id: editingCoupon.id,
       p_description: editDesc,
       p_discount_value: parseFloat(editValue),
       p_max_uses: parseInt(editMaxUses)
     })
-    if (error) { alert('Error: ' + error.message); setSaving(false); return }
-    setCoupons(prev => prev.map(c => c.id === editingCoupon.id ? { ...c, description: editDesc, discount_value: parseFloat(editValue), max_uses: parseInt(editMaxUses) } : c))
-    setEditingCoupon(null); setSaving(false)
+    if (error) {
+      alert('Error: ' + error.message)
+      setSaving(false)
+      return
+    }
+    await fetchCoupons()
+    setView('list')
+    setEditingCoupon(null)
+    setSaving(false)
   }
 
   async function toggleActive(id: string, current: boolean) {
@@ -88,7 +118,7 @@ export default function CouponsAdminPage() {
   }
 
   async function handleDelete(id: string, code: string) {
-    if (!confirm(`¿Eliminar el cupón "${code}"? Esta acción no se puede deshacer.`)) return
+    if (!confirm(`¿Eliminar permanentemente el cupón "${code}"?`)) return
     const { error } = await supabase.rpc('superadmin_delete_coupon', { p_coupon_id: id })
     if (error) return alert('Error: ' + error.message)
     setCoupons(prev => prev.filter(c => c.id !== id))
@@ -98,161 +128,341 @@ export default function CouponsAdminPage() {
   const totalUses = coupons.reduce((sum, c) => sum + c.used_count, 0)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, width: '100%', overflowX: 'hidden' }}>
+      
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.45rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.025em' }}>Cupones de Descuento</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Códigos promocionales para la captación y retención de clientes</p>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={fetchCoupons} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem' }}>↻</button>
-          <button onClick={() => setShowCreate(true)} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.85rem' }}>+ Crear Cupón</button>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 14 }}>
-        {[
-          { label: 'Total Cupones', value: coupons.length, color: 'var(--accent-blue)' },
-          { label: 'Activos', value: activeCoupons, color: 'var(--accent-emerald)' },
-          { label: 'Desactivados', value: coupons.length - activeCoupons, color: 'var(--text-muted)' },
-          { label: 'Total Usos', value: totalUses, color: 'var(--accent-purple)' },
-        ].map(s => (
-          <div key={s.label} className="neu-card" style={{ padding: '14px 18px' }}>
-            <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{s.label}</div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: s.color }}>{s.value}</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: '1.4rem' }}>🏷️</span>
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+              Cupones de Descuento
+            </h1>
           </div>
-        ))}
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '2px 0 0' }}>
+            Códigos promocionales para adquisición y fidelización de comercios (Sin modales).
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={fetchCoupons} className="btn-neu btn-ghost" title="Recargar" style={{ padding: '8px 12px' }}>
+            <RefreshCw size={15} />
+          </button>
+          {view === 'list' ? (
+            <button
+              onClick={() => setView('new')}
+              className="btn-neu btn-primary"
+              style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Plus size={16} strokeWidth={2.5} />
+              <span>Crear Cupón</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setView('list')}
+              className="btn-neu btn-ghost"
+              style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <ArrowLeft size={16} />
+              <span>Volver a Cupones</span>
+            </button>
+          )}
+        </div>
       </div>
 
-      {error && <div className="neu-card" style={{ padding: 16, background: 'rgba(235,94,85,0.08)', border: '1px solid rgba(235,94,85,0.2)' }}><p style={{ color: 'var(--accent-coral)', margin: 0, fontSize: '0.85rem' }}>⚠️ {error}</p></div>}
-
-      {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando cupones...</div>
-      ) : coupons.length === 0 ? (
-        <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: 12 }}>🏷️</div>
-          <h2 style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>No hay cupones creados</h2>
-          <button onClick={() => setShowCreate(true)} className="btn-neu btn-primary" style={{ marginTop: 16, padding: '10px 24px' }}>+ Crear primer cupón</button>
-        </div>
-      ) : (
-        <div className="neu-card" style={{ padding: 0, overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-            <thead>
-              <tr style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                {['Código', 'Descripción', 'Descuento', 'Usos', 'Estado', 'Acciones'].map(h => (
-                  <th key={h} style={{ padding: '13px 18px', fontWeight: 600, textAlign: h === 'Acciones' ? 'right' : 'left' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {coupons.map(c => (
-                <tr key={c.id} style={{ borderBottom: '1px solid var(--border-color)' }} onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-deep)')} onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                  <td style={{ padding: '14px 18px', fontWeight: 800, color: 'var(--accent-blue)', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{c.code}</td>
-                  <td style={{ padding: '14px 18px', color: 'var(--text-secondary)', maxWidth: 220, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.description}</td>
-                  <td style={{ padding: '14px 18px', fontWeight: 700, color: 'var(--text-primary)' }}>
-                    {c.discount_type === 'percentage' ? `${c.discount_value}% OFF` : `$${c.discount_value} USD`}
-                  </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 60, height: 4, borderRadius: 2, background: 'var(--border-color)', overflow: 'hidden' }}>
-                        <div style={{ height: '100%', background: 'var(--accent-blue)', borderRadius: 2, width: `${Math.min(100, (c.used_count / Math.max(c.max_uses, 1)) * 100)}%` }} />
-                      </div>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>{c.used_count}/{c.max_uses}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '14px 18px' }}>
-                    <span style={{ padding: '4px 9px', borderRadius: 6, fontSize: '0.72rem', fontWeight: 700, background: c.is_active ? 'rgba(74,186,134,0.12)' : 'var(--border-color)', color: c.is_active ? 'var(--accent-emerald)' : 'var(--text-muted)' }}>
-                      {c.is_active ? 'Activo' : 'Desactivado'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '14px 18px', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
-                      <button onClick={() => openEdit(c)} className="btn-neu btn-ghost" style={{ padding: '5px 10px', fontSize: '0.75rem' }}>✎</button>
-                      <button onClick={() => toggleActive(c.id, c.is_active)} className="btn-neu btn-ghost" style={{ padding: '5px 10px', fontSize: '0.75rem', color: c.is_active ? 'var(--accent-coral)' : 'var(--accent-emerald)' }}>
-                        {c.is_active ? '⏸' : '▶'}
-                      </button>
-                      <button onClick={() => handleDelete(c.id, c.code)} className="btn-neu btn-ghost" style={{ padding: '5px 10px', fontSize: '0.75rem', color: 'var(--accent-coral)' }}>🗑</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {error && (
+        <div className="neu-card" style={{ padding: 12, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+          <span style={{ color: 'var(--accent-coral)', fontSize: '0.82rem', fontWeight: 600 }}>⚠️ {error}</span>
         </div>
       )}
 
-      {/* Create Modal */}
-      {showCreate && (
-        <div style={MODAL_STYLE} onClick={e => e.target === e.currentTarget && setShowCreate(false)}>
-          <form onSubmit={handleCreate} style={PANEL_STYLE}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>+ Nuevo Cupón</h2>
-              <button type="button" onClick={() => setShowCreate(false)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+      {/* ── DEDICATED VIEW: CREATE NEW COUPON ── */}
+      {view === 'new' && (
+        <div className="neu-card animate-scale-in" style={{ padding: 26, maxWidth: 600, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
+              + Crear Cupón de Descuento
+            </h2>
+          </div>
+
+          <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                Código del Cupón *
+              </label>
+              <input
+                type="text"
+                className="input-neu"
+                placeholder="PROMO2026, BIENVENIDA50..."
+                value={newCode}
+                onChange={e => setNewCode(e.target.value.toUpperCase())}
+                required
+                style={{ width: '100%', fontSize: '0.9rem', fontWeight: 800, fontFamily: 'monospace' }}
+              />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Código del Cupón *</label>
-                <input type="text" className="input-neu" value={newCode} onChange={e => setNewCode(e.target.value.toUpperCase())} placeholder="PROMO40" required style={{ width: '100%', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '0.06em' }} />
-              </div>
+
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                Descripción
+              </label>
+              <input
+                type="text"
+                className="input-neu"
+                placeholder="Descuento de apertura..."
+                value={newDesc}
+                onChange={e => setNewDesc(e.target.value)}
+                style={{ width: '100%', fontSize: '0.85rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Tipo *</label>
-                <select className="input-neu" value={newType} onChange={e => setNewType(e.target.value)} style={{ width: '100%' }}>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                  Tipo de Descuento
+                </label>
+                <select
+                  className="input-neu"
+                  value={newType}
+                  onChange={e => setNewType(e.target.value)}
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                >
                   <option value="percentage">Porcentaje (%)</option>
-                  <option value="fixed">Monto Fijo (USD)</option>
+                  <option value="fixed">Monto Fijo ($)</option>
                 </select>
               </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>{newType === 'percentage' ? 'Descuento (%) *' : 'Monto (USD) *'}</label>
-                <input type="number" className="input-neu" value={newValue} onChange={e => setNewValue(e.target.value)} placeholder={newType === 'percentage' ? '40' : '10.00'} required min="1" max={newType === 'percentage' ? '100' : undefined} style={{ width: '100%' }} />
-              </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Usos Máximos</label>
-                <input type="number" className="input-neu" value={newMaxUses} onChange={e => setNewMaxUses(e.target.value)} placeholder="100" min="1" style={{ width: '100%' }} />
-              </div>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Descripción</label>
-                <input type="text" className="input-neu" value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Descuento especial para clientes nuevos" style={{ width: '100%' }} />
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                  Valor *
+                </label>
+                <input
+                  type="number"
+                  className="input-neu"
+                  placeholder={newType === 'percentage' ? 'Ej: 20' : 'Ej: 50000'}
+                  value={newValue}
+                  onChange={e => setNewValue(e.target.value)}
+                  required
+                  style={{ width: '100%', fontSize: '0.85rem', fontWeight: 700 }}
+                />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setShowCreate(false)} className="btn-neu btn-ghost" style={{ padding: '10px 20px' }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-primary" disabled={saving} style={{ padding: '10px 24px' }}>{saving ? 'Creando...' : 'Crear Cupón'}</button>
+
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                Límite Máximo de Usos
+              </label>
+              <input
+                type="number"
+                className="input-neu"
+                value={newMaxUses}
+                onChange={e => setNewMaxUses(e.target.value)}
+                style={{ width: '100%', fontSize: '0.85rem' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 10 }}>
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className="btn-neu btn-ghost"
+                style={{ padding: '8px 18px' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-neu btn-primary"
+                style={{ padding: '8px 24px', fontWeight: 800 }}
+              >
+                {saving ? 'Guardando...' : 'Crear Cupón'}
+              </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Edit Modal */}
-      {editingCoupon && (
-        <div style={MODAL_STYLE} onClick={e => e.target === e.currentTarget && setEditingCoupon(null)}>
-          <form onSubmit={handleEdit} style={PANEL_STYLE}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>✎ Editar Cupón <span style={{ color: 'var(--accent-blue)', fontFamily: 'monospace' }}>{editingCoupon.code}</span></h2>
-              <button type="button" onClick={() => setEditingCoupon(null)} style={{ background: 'none', border: 'none', fontSize: '1.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+      {/* ── DEDICATED VIEW: EDIT COUPON ── */}
+      {view === 'edit' && editingCoupon && (
+        <div className="neu-card animate-scale-in" style={{ padding: 26, maxWidth: 600, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
+              ✎ Editar Cupón: {editingCoupon.code}
+            </h2>
+          </div>
+
+          <form onSubmit={handleEdit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                Descripción
+              </label>
+              <input
+                type="text"
+                className="input-neu"
+                value={editDesc}
+                onChange={e => setEditDesc(e.target.value)}
+                style={{ width: '100%', fontSize: '0.85rem' }}
+              />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-              <div style={{ gridColumn: 'span 2' }}>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Descripción</label>
-                <input type="text" className="input-neu" value={editDesc} onChange={e => setEditDesc(e.target.value)} style={{ width: '100%' }} />
-              </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Valor del Descuento</label>
-                <input type="number" className="input-neu" value={editValue} onChange={e => setEditValue(e.target.value)} min="1" style={{ width: '100%' }} />
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                  Valor del Descuento
+                </label>
+                <input
+                  type="number"
+                  className="input-neu"
+                  value={editValue}
+                  onChange={e => setEditValue(e.target.value)}
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
               </div>
+
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: 6 }}>Usos Máximos</label>
-                <input type="number" className="input-neu" value={editMaxUses} onChange={e => setEditMaxUses(e.target.value)} min={editingCoupon.used_count} style={{ width: '100%' }} />
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                  Máximo de Usos
+                </label>
+                <input
+                  type="number"
+                  className="input-neu"
+                  value={editMaxUses}
+                  onChange={e => setEditMaxUses(e.target.value)}
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setEditingCoupon(null)} className="btn-neu btn-ghost" style={{ padding: '10px 20px' }}>Cancelar</button>
-              <button type="submit" className="btn-neu btn-primary" disabled={saving} style={{ padding: '10px 24px' }}>{saving ? 'Guardando...' : 'Guardar Cambios'}</button>
+
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', paddingTop: 10 }}>
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className="btn-neu btn-ghost"
+                style={{ padding: '8px 18px' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-neu btn-primary"
+                style={{ padding: '8px 24px', fontWeight: 800 }}
+              >
+                {saving ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
             </div>
           </form>
         </div>
       )}
+
+      {/* ── DEDICATED VIEW: LIST OF COUPONS ── */}
+      {view === 'list' && (
+        <>
+          {/* Stats Ribbon */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
+            <div className="neu-card" style={{ padding: '12px 16px' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Cupones</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-blue)' }}>{coupons.length}</div>
+            </div>
+
+            <div className="neu-card" style={{ padding: '12px 16px' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Activos</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-green)' }}>{activeCoupons}</div>
+            </div>
+
+            <div className="neu-card" style={{ padding: '12px 16px' }}>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Usos</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-purple)' }}>{totalUses}</div>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="neu-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
+              <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 8px' }} />
+              <div>Cargando cupones...</div>
+            </div>
+          ) : coupons.length === 0 ? (
+            <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
+              <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>🏷️</div>
+              <h3 style={{ fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay cupones creados</h3>
+              <button onClick={() => setView('new')} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.82rem', marginTop: 10 }}>
+                + Crear primer cupón
+              </button>
+            </div>
+          ) : (
+            <div className="neu-card" style={{ padding: 0, overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+                <thead>
+                  <tr style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Código</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Descripción</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Descuento</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Usos</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Estado</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700 }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coupons.map(c => (
+                    <tr key={c.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--accent-purple)' }}>
+                        {c.code}
+                      </td>
+                      <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
+                        {c.description}
+                      </td>
+                      <td style={{ padding: '12px 16px', fontWeight: 700 }}>
+                        {c.discount_type === 'percentage' ? `${c.discount_value}%` : `$${c.discount_value}`}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {c.used_count} / {c.max_uses}
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <span style={{
+                          padding: '3px 8px',
+                          borderRadius: 6,
+                          fontSize: '0.7rem',
+                          fontWeight: 800,
+                          background: c.is_active ? 'rgba(74,186,134,0.15)' : 'var(--border-color)',
+                          color: c.is_active ? 'var(--accent-green)' : 'var(--text-muted)'
+                        }}>
+                          {c.is_active ? '🟢 Activo' : '⏸ Pausado'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => startEdit(c)}
+                            className="btn-neu btn-ghost"
+                            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
+                          >
+                            ✎ Editar
+                          </button>
+                          <button
+                            onClick={() => toggleActive(c.id, c.is_active)}
+                            className="btn-neu btn-ghost"
+                            style={{ padding: '4px 8px', fontSize: '0.72rem', color: c.is_active ? 'var(--accent-coral)' : 'var(--accent-green)' }}
+                          >
+                            {c.is_active ? 'Pausar' : 'Activar'}
+                          </button>
+                          <button
+                            onClick={() => handleDelete(c.id, c.code)}
+                            className="btn-neu btn-ghost"
+                            style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
     </div>
   )
 }

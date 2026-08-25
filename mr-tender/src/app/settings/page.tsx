@@ -22,7 +22,8 @@ import {
   Car,
   Shirt,
   Dumbbell,
-  Footprints
+  Footprints,
+  Glasses
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -53,7 +54,8 @@ export default function SettingsPage() {
     automotive: true,
     laundry: true,
     gym: true,
-    apparel: true
+    apparel: true,
+    optometry: true
   })
 
   const [form, setForm] = useState({
@@ -252,6 +254,7 @@ export default function SettingsPage() {
   ]
 
   const SYSTEM_MODULES = [
+    { id: 'optometry', name: 'Óptica & Consultorio Visual', icon: Glasses, color: 'var(--accent-blue)', desc: 'Fórmulas oftalmológicas OD/OI, órdenes de laboratorio, monturas y WhatsApp' },
     { id: 'apparel', name: 'Boutique, Ropa & Calzado', icon: Footprints, color: 'var(--accent-purple)', desc: 'Matriz de tallas/colores, código de barras, control de probadores y lookbooks' },
     { id: 'hardware', name: 'Ferretería & Construcción', icon: Wrench, color: 'var(--accent-blue)', desc: 'Cotizaciones de obra, venta por metros/kilos, escalas y alquiler de herramientas' },
     { id: 'pharmacy', name: 'Droguería & Farmacia', icon: Pill, color: 'var(--accent-purple)', desc: 'Control de lotes, FEFO, INVIMA, venta por blíster/tableta y genéricos' },

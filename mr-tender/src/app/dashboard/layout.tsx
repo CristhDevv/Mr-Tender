@@ -36,7 +36,8 @@ import {
   Car,
   Shirt,
   Dumbbell,
-  Footprints
+  Footprints,
+  Glasses
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -84,6 +85,7 @@ const NAV_SECTIONS: NavSection[] = [
     Icon: Package,
     items: [
       { href: '/products',   Icon: Package,   label: 'Productos',                                requiredPermission: 'products.view' },
+      { href: '/optometry',  Icon: Glasses,   label: 'Óptica & Lentes', moduleKey: 'optometry',  requiredPermission: 'products.view' },
       { href: '/apparel',    Icon: Footprints, label: 'Moda & Calzado', moduleKey: 'apparel',    requiredPermission: 'products.view' },
       { href: '/hardware',   Icon: Wrench,    label: 'Ferretería',     moduleKey: 'hardware',     requiredPermission: 'products.view' },
       { href: '/pharmacy',   Icon: Pill,      label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
@@ -137,7 +139,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     suppliers: true, purchases: true, employees: true,
     accounting: true, reports: true, ecommerce: false,
     pharmacy: true, hardware: true, liquor_tobacco: true, restaurant: true,
-    beauty_salon: true, veterinary: true, automotive: true, laundry: true, gym: true, apparel: true
+    beauty_salon: true, veterinary: true, automotive: true, laundry: true, gym: true, apparel: true, optometry: true
   })
 
   // Load user, module settings & saved collapsed preference
