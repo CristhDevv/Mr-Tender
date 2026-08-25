@@ -8,6 +8,7 @@ const BUSINESS_TYPES = [
   { value: 'retail', label: 'Tienda / Minimercado / Supermercado' },
   { value: 'hardware', label: 'Ferretería & Construcción' },
   { value: 'pharmacy', label: 'Droguería y Farmacia' },
+  { value: 'veterinary', label: 'Veterinaria, Pet Shop & Grooming' },
   { value: 'liquor_tobacco', label: 'Licorera, Estanco & Cigarrería' },
   { value: 'restaurant', label: 'Restaurante / Cafetería' },
   { value: 'beauty_salon', label: 'Salón de Belleza, Barbería & Spa' },

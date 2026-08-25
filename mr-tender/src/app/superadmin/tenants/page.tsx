@@ -50,6 +50,7 @@ const AVAILABLE_MODULES = [
   { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: '🍷', description: 'Control de copeo en barra, envases retornables, combos y tabaco' },
   { id: 'restaurant', name: 'Restaurante & Mesas', icon: '🍽️', description: 'Mesas, comandas y cocina' },
   { id: 'beauty_salon', name: 'Salón de Belleza & Spa', icon: '💇', description: 'Agenda de citas, estilistas, comisiones y fichas técnicas capilares' },
+  { id: 'veterinary', name: 'Veterinaria & Pet Shop', icon: '🐾', description: 'Historias clínicas, carnet de vacunas, peluquería canina y alimento a granel' },
 ]
 
 export default function TenantsAdminPage() {
@@ -98,7 +99,7 @@ export default function TenantsAdminPage() {
         suppliers: true, purchases: true, employees: true,
         accounting: true, reports: true, ecommerce: true,
         pharmacy: false, hardware: true, liquor_tobacco: true, restaurant: true,
-        beauty_salon: true
+        beauty_salon: true, veterinary: true
       }
 
       if (data?.[0]?.enabled_modules) {

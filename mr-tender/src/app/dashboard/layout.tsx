@@ -31,7 +31,8 @@ import {
   Wrench,
   Wine,
   UtensilsCrossed,
-  Scissors
+  Scissors,
+  Dog
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -78,6 +79,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/products',   Icon: Package,   label: 'Productos',                                requiredPermission: 'products.view' },
       { href: '/hardware',   Icon: Wrench,    label: 'Ferretería',     moduleKey: 'hardware',     requiredPermission: 'products.view' },
       { href: '/pharmacy',   Icon: Pill,      label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
+      { href: '/veterinary', Icon: Dog,       label: 'Veterinaria & Pet', moduleKey: 'veterinary',  requiredPermission: 'products.view' },
       { href: '/estanco',    Icon: Wine,      label: 'Licorera & Estanco', moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
       { href: '/inventory',  Icon: Boxes,     label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' },
       { href: '/warehouses', Icon: Building2, label: 'Bodegas',        moduleKey: 'inventory',    requiredPermission: 'inventory.view' }
@@ -127,7 +129,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     suppliers: true, purchases: true, employees: true,
     accounting: true, reports: true, ecommerce: false,
     pharmacy: true, hardware: true, liquor_tobacco: true, restaurant: true,
-    beauty_salon: true
+    beauty_salon: true, veterinary: true
   })
 
   // Load user, module settings & saved collapsed preference

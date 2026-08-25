@@ -17,7 +17,8 @@ import {
   UtensilsCrossed,
   Globe,
   Wine,
-  Scissors
+  Scissors,
+  Dog
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -43,7 +44,8 @@ export default function SettingsPage() {
     hardware: true,
     liquor_tobacco: true,
     restaurant: true,
-    beauty_salon: true
+    beauty_salon: true,
+    veterinary: true
   })
 
   const [form, setForm] = useState({
@@ -244,6 +246,7 @@ export default function SettingsPage() {
   const SYSTEM_MODULES = [
     { id: 'hardware', name: 'Ferretería & Construcción', icon: Wrench, color: 'var(--accent-blue)', desc: 'Cotizaciones de obra, venta por metros/kilos, escalas y alquiler de herramientas' },
     { id: 'pharmacy', name: 'Droguería & Farmacia', icon: Pill, color: 'var(--accent-purple)', desc: 'Control de lotes, FEFO, INVIMA, venta por blíster/tableta y genéricos' },
+    { id: 'veterinary', name: 'Veterinaria & Pet Shop', icon: Dog, color: 'var(--accent-coral)', desc: 'Historias clínicas de mascotas, vacunas con WhatsApp, peluquería/hotel y concentrado a granel' },
     { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: Wine, color: 'var(--accent-coral)', desc: 'Control de botellas en barra / copeo, envases retornables, combos y tabaco' },
     { id: 'restaurant', name: 'Restaurante & Mesas', icon: UtensilsCrossed, color: 'var(--accent-amber)', desc: 'Mapa de mesas, comandas de cocina KDS, recetas y propinas' },
     { id: 'beauty_salon', name: 'Salón de Belleza & Spa', icon: Scissors, color: 'var(--accent-purple)', desc: 'Agenda de citas, turnos de estilistas, comisiones y fichas técnicas capilares' },
