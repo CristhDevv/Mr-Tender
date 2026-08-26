@@ -38,7 +38,8 @@ import {
   Dumbbell,
   Footprints,
   Glasses,
-  Croissant
+  Croissant,
+  Briefcase
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -121,6 +122,7 @@ const NAV_SECTIONS: NavSection[] = [
     Icon: Settings,
     items: [
       { href: '/employees', Icon: UserCheck, label: 'Personal',      moduleKey: 'employees',  requiredPermission: 'employees.view' },
+      { href: '/payroll',   Icon: Briefcase, label: 'Nómina DIAN',   moduleKey: 'payroll',    requiredPermission: 'employees.view' },
       { href: '/settings',  Icon: Settings,  label: 'Configuración',                          requiredPermission: 'settings.view' }
     ]
   }

@@ -13,8 +13,10 @@ import {
   PackageCheck,
   Eye,
   X,
-  ArrowDownLeft
+  ArrowDownLeft,
+  ShieldCheck
 } from 'lucide-react'
+import Link from 'next/link'
 
 interface Supplier {
   id: string;
@@ -294,9 +296,20 @@ export default function PurchasesPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: '100%', overflowX: 'hidden' }}>
-      <div>
-        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Órdenes de Compra y Entrada</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Registra compras de inventario para aumentar el stock y valorizar tu almacén</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Órdenes de Compra y Entrada</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>Registra compras de inventario para aumentar el stock y valorizar tu almacén</p>
+        </div>
+
+        <Link
+          href="/purchases/support-doc"
+          className="btn-neu btn-ghost"
+          style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <ShieldCheck size={16} />
+          <span>Documento Soporte DIAN</span>
+        </Link>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 16 }}>

@@ -22,6 +22,7 @@ import {
   Pill,
   Wrench,
   Croissant,
+  Briefcase,
   Layers,
   LucideIcon
 } from 'lucide-react'
@@ -44,6 +45,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
   suppliers: Truck,
   purchases: ShoppingBag,
   employees: Clock,
+  payroll: Briefcase,
   reports: BarChart3,
   accounting: BookOpen,
   ecommerce: Globe,
@@ -128,6 +130,15 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'base',
     categoryName: 'Administración',
     description: 'Gestión de colaboradores, permisos por rol y control de horario/fichajes',
+    defaultEnabled: true
+  },
+  {
+    id: 'payroll',
+    name: 'Nómina Electrónica DIAN & RRHH',
+    iconName: 'Briefcase',
+    group: 'base',
+    categoryName: 'Administración & Legal',
+    description: 'Liquidación de salarios quincenal/mensual, deducciones de ley, emisión DIAN con CUNE y colillas por WhatsApp',
     defaultEnabled: true
   },
   {
