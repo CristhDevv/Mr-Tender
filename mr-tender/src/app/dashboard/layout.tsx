@@ -41,7 +41,18 @@ import {
   Croissant,
   Briefcase,
   TrendingUp,
-  Landmark
+  Landmark,
+  ChefHat,
+  Flame,
+  Clock,
+  Activity,
+  Sparkles,
+  ShieldCheck,
+  Thermometer,
+  Calendar,
+  Percent,
+  Globe,
+  FileText
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -56,78 +67,131 @@ interface NavSection {
   id: string
   label: string
   Icon: any
-  href?: string // if direct link
+  href?: string
   items?: NavSubItem[]
 }
 
 const NAV_SECTIONS: NavSection[] = [
+  // 1. INICIO
   {
     id: 'dashboard',
     label: 'Inicio',
     Icon: LayoutDashboard,
     href: '/dashboard'
   },
+
+  // 2. VENTAS & MOSTRADOR
   {
     id: 'sales',
-    label: 'Ventas & Clientes',
+    label: 'Ventas & Mostrador',
     Icon: ShoppingCart,
     items: [
-      { href: '/pos',        Icon: ShoppingCart,    label: 'Punto de Venta', moduleKey: 'pos',        requiredPermission: 'pos.view' },
-      { href: '/restaurant', Icon: UtensilsCrossed, label: 'Restaurante & Mesas', moduleKey: 'restaurant', requiredPermission: 'pos.view' },
-      { href: '/salon',      Icon: Scissors,        label: 'Salón & Belleza', moduleKey: 'beauty_salon', requiredPermission: 'pos.view' },
-      { href: '/gym',        Icon: Dumbbell,        label: 'Gimnasio & Fitness', moduleKey: 'gym',      requiredPermission: 'pos.view' },
-      { href: '/automotive', Icon: Car,             label: 'Taller & Autolavado', moduleKey: 'automotive', requiredPermission: 'pos.view' },
-      { href: '/laundry',    Icon: Shirt,           label: 'Lavandería & Tintorería', moduleKey: 'laundry', requiredPermission: 'pos.view' },
-      { href: '/invoices',   Icon: Receipt,         label: 'Facturación DIAN',                        requiredPermission: 'pos.view' },
-      { href: '/crm',        Icon: TrendingUp,      label: 'CRM & Embudo',   moduleKey: 'crm',        requiredPermission: 'pos.view' },
-      { href: '/cash',       Icon: DollarSign,      label: 'Caja & Turnos',  moduleKey: 'cash',       requiredPermission: 'cash.view' },
-      { href: '/customers',  Icon: Users,           label: 'Clientes',       moduleKey: 'customers',  requiredPermission: 'customers.view' }
+      { href: '/pos',                  Icon: ShoppingCart,    label: 'Punto de Venta (POS)', moduleKey: 'pos',          requiredPermission: 'pos.view' },
+      { href: '/restaurant/tables',     Icon: UtensilsCrossed, label: 'Mesas & Salón',        moduleKey: 'restaurant',   requiredPermission: 'pos.view' },
+      { href: '/cash',                 Icon: DollarSign,      label: 'Caja & Turnos',        moduleKey: 'cash',         requiredPermission: 'cash.view' },
+      { href: '/invoices',             Icon: Receipt,         label: 'Facturación DIAN',                                requiredPermission: 'pos.view' },
+      { href: '/crm',                  Icon: TrendingUp,      label: 'CRM & Embudo',         moduleKey: 'crm',          requiredPermission: 'pos.view' },
+      { href: '/hardware/quotes',       Icon: FileText,        label: 'Cotizaciones A4',      moduleKey: 'hardware',     requiredPermission: 'pos.view' },
+      { href: '/salon/agenda',          Icon: Calendar,        label: 'Agenda de Citas',      moduleKey: 'beauty_salon', requiredPermission: 'pos.view' },
+      { href: '/laundry/orders',        Icon: Shirt,           label: 'Recepción & Tickets',  moduleKey: 'laundry',      requiredPermission: 'pos.view' },
+      { href: '/automotive/orders',     Icon: Car,             label: 'Órdenes de Taller',    moduleKey: 'automotive',   requiredPermission: 'pos.view' },
+      { href: '/bakery/custom-orders',  Icon: Croissant,       label: 'Encargos & Tortas',    moduleKey: 'bakery',       requiredPermission: 'pos.view' },
+      { href: '/gym/classes',           Icon: Users,           label: 'Clases & Aforo',       moduleKey: 'gym',          requiredPermission: 'pos.view' },
+      { href: '/ecommerce',             Icon: Globe,           label: 'Tienda Online Web',    moduleKey: 'ecommerce',    requiredPermission: 'settings.view' }
     ]
   },
+
+  // 3. OPERACIONES & PRODUCCIÓN (Aparece dinámicamente según módulos)
+  {
+    id: 'operations',
+    label: 'Operaciones & Planta',
+    Icon: ChefHat,
+    items: [
+      { href: '/restaurant/kds',       Icon: Flame,      label: 'Comandera Cocina KDS', moduleKey: 'restaurant', requiredPermission: 'pos.view' },
+      { href: '/bakery/production',    Icon: Clock,      label: 'Horneadas & Mermas',   moduleKey: 'bakery',     requiredPermission: 'inventory.view' },
+      { href: '/gym/checkin',          Icon: Activity,   label: 'Terminal Check-in QR', moduleKey: 'gym',        requiredPermission: 'pos.view' },
+      { href: '/automotive/wash',      Icon: Sparkles,   label: 'Cola de Autolavado',   moduleKey: 'automotive', requiredPermission: 'pos.view' },
+      { href: '/laundry/rack',         Icon: Boxes,      label: 'Planta & Percheros',   moduleKey: 'laundry',    requiredPermission: 'inventory.view' },
+      { href: '/optometry/lab',        Icon: Glasses,    label: 'Laboratorio Biselado', moduleKey: 'optometry',  requiredPermission: 'inventory.view' },
+      { href: '/hardware/rentals',     Icon: Wrench,     label: 'Alquiler Herramientas',moduleKey: 'hardware',   requiredPermission: 'inventory.view' }
+    ]
+  },
+
+  // 4. CATÁLOGO & INVENTARIO
   {
     id: 'catalog',
-    label: 'Catálogo & Stock',
+    label: 'Catálogo & Inventario',
     Icon: Package,
     items: [
-      { href: '/products',   Icon: Package,   label: 'Productos',                                requiredPermission: 'products.view' },
-      { href: '/optometry',  Icon: Glasses,   label: 'Óptica & Lentes', moduleKey: 'optometry',  requiredPermission: 'products.view' },
-      { href: '/apparel',    Icon: Footprints, label: 'Moda & Calzado', moduleKey: 'apparel',    requiredPermission: 'products.view' },
-      { href: '/hardware',   Icon: Wrench,    label: 'Ferretería',     moduleKey: 'hardware',     requiredPermission: 'products.view' },
-      { href: '/pharmacy',   Icon: Pill,      label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
-      { href: '/veterinary', Icon: Dog,       label: 'Veterinaria & Pet', moduleKey: 'veterinary',  requiredPermission: 'products.view' },
-      { href: '/bakery',     Icon: Croissant, label: 'Panadería & Pasteles', moduleKey: 'bakery',   requiredPermission: 'products.view' },
-      { href: '/estanco',    Icon: Wine,      label: 'Licorera & Estanco', moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
-      { href: '/inventory',  Icon: Boxes,     label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' },
-      { href: '/warehouses', Icon: Building2, label: 'Bodegas',        moduleKey: 'inventory',    requiredPermission: 'inventory.view' }
+      { href: '/products',             Icon: Package,         label: 'Productos Generales',                            requiredPermission: 'products.view' },
+      { href: '/pharmacy/medicines',   Icon: Pill,            label: 'Medicamentos & INVIMA', moduleKey: 'pharmacy',   requiredPermission: 'products.view' },
+      { href: '/pharmacy/lots',        Icon: Clock,           label: 'Control Lotes & FEFO',  moduleKey: 'pharmacy',   requiredPermission: 'inventory.view' },
+      { href: '/restaurant/recipes',   Icon: UtensilsCrossed, label: 'Recetas & Escandallo',  moduleKey: 'restaurant', requiredPermission: 'products.view' },
+      { href: '/bakery/recipes',       Icon: Croissant,       label: 'Fichas de Panadería',   moduleKey: 'bakery',     requiredPermission: 'products.view' },
+      { href: '/apparel',              Icon: Footprints,      label: 'Variantes Talla/Color', moduleKey: 'apparel',    requiredPermission: 'products.view' },
+      { href: '/estanco',              Icon: Wine,            label: 'Copeo & Retornables',   moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
+      { href: '/inventory',            Icon: Boxes,           label: 'Inventario & Kardex',   moduleKey: 'inventory',  requiredPermission: 'inventory.view' },
+      { href: '/warehouses',           Icon: Building2,       label: 'Bodegas & Almacenes',   moduleKey: 'inventory',  requiredPermission: 'inventory.view' }
     ]
   },
+
+  // 5. CLIENTES & RELACIONES
+  {
+    id: 'customers',
+    label: 'Clientes & Pacientes',
+    Icon: Users,
+    items: [
+      { href: '/customers',            Icon: Users,     label: 'Directorio & Fiaos',       moduleKey: 'customers',  requiredPermission: 'customers.view' },
+      { href: '/gym/members',          Icon: Dumbbell,  label: 'Socios & Membresías',      moduleKey: 'gym',        requiredPermission: 'customers.view' },
+      { href: '/veterinary/pets',      Icon: Dog,       label: 'Pacientes & Vacunas Pet',  moduleKey: 'veterinary', requiredPermission: 'customers.view' },
+      { href: '/optometry/patients',   Icon: Glasses,   label: 'Consultorio & Fórmulas OD',moduleKey: 'optometry',  requiredPermission: 'customers.view' }
+    ]
+  },
+
+  // 6. ABASTECIMIENTO
   {
     id: 'procurement',
     label: 'Abastecimiento',
     Icon: Truck,
     items: [
-      { href: '/purchases', Icon: ShoppingBag, label: 'Compras',     moduleKey: 'purchases', requiredPermission: 'purchases.view' },
-      { href: '/suppliers', Icon: Truck,       label: 'Proveedores', moduleKey: 'suppliers', requiredPermission: 'suppliers.view' }
+      { href: '/purchases',             Icon: ShoppingBag, label: 'Compras & Recepción',    moduleKey: 'purchases', requiredPermission: 'purchases.view' },
+      { href: '/purchases/support-doc', Icon: Receipt,     label: 'Documento Soporte DIAN', moduleKey: 'purchases', requiredPermission: 'purchases.view' },
+      { href: '/suppliers',             Icon: Truck,       label: 'Proveedores & Contactos',moduleKey: 'suppliers', requiredPermission: 'suppliers.view' }
     ]
   },
+
+  // 7. FINANZAS & CONTABILIDAD
   {
     id: 'finance',
     label: 'Finanzas & Datos',
     Icon: BarChart3,
     items: [
-      { href: '/reports',    Icon: BarChart3, label: 'Reportes',            moduleKey: 'reports',    requiredPermission: 'reports.sales' },
-      { href: '/treasury',   Icon: Landmark,  label: 'Tesorería & Bancos',  moduleKey: 'treasury',   requiredPermission: 'accounting.view' },
-      { href: '/accounting', Icon: BookOpen,  label: 'Contabilidad',        moduleKey: 'accounting', requiredPermission: 'accounting.view' }
+      { href: '/reports',              Icon: BarChart3, label: 'Reportes & P&L',           moduleKey: 'reports',      requiredPermission: 'reports.sales' },
+      { href: '/treasury',             Icon: Landmark,  label: 'Tesorería & Bancos',       moduleKey: 'treasury',     requiredPermission: 'accounting.view' },
+      { href: '/accounting',           Icon: BookOpen,  label: 'Contabilidad PUC',         moduleKey: 'accounting',   requiredPermission: 'accounting.view' },
+      { href: '/salon/commissions',    Icon: Percent,   label: 'Liquidación Comisiones',   moduleKey: 'beauty_salon', requiredPermission: 'accounting.view' }
     ]
   },
+
+  // 8. CALIDAD & NORMATIVA
+  {
+    id: 'compliance',
+    label: 'Calidad & Normativa',
+    Icon: ShieldCheck,
+    items: [
+      { href: '/pharmacy/temperature', Icon: Thermometer, label: 'Termohigrometría & Salud', moduleKey: 'pharmacy', requiredPermission: 'inventory.view' }
+    ]
+  },
+
+  // 9. ADMINISTRACIÓN & PERSONAL
   {
     id: 'admin',
     label: 'Administración',
     Icon: Settings,
     items: [
-      { href: '/employees', Icon: UserCheck, label: 'Personal',      moduleKey: 'employees',  requiredPermission: 'employees.view' },
-      { href: '/payroll',   Icon: Briefcase, label: 'Nómina DIAN',   moduleKey: 'payroll',    requiredPermission: 'employees.view' },
-      { href: '/settings',  Icon: Settings,  label: 'Configuración',                          requiredPermission: 'settings.view' }
+      { href: '/employees', Icon: UserCheck, label: 'Personal & Asistencia', moduleKey: 'employees', requiredPermission: 'employees.view' },
+      { href: '/payroll',   Icon: Briefcase, label: 'Nómina Electrónica',   moduleKey: 'payroll',   requiredPermission: 'employees.view' },
+      { href: '/settings',  Icon: Settings,  label: 'Configuración Negocio',                         requiredPermission: 'settings.view' }
     ]
   }
 ]
