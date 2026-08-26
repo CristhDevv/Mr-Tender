@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
+import { ALL_SYSTEM_MODULES, getModuleIcon } from '@/lib/constants/modules'
 import {
   Building2,
   DollarSign,
@@ -38,28 +39,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [tenantId, setTenantId] = useState('')
-  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
-    pos: true,
-    inventory: true,
-    cash: true,
-    customers: true,
-    suppliers: true,
-    purchases: true,
-    employees: true,
-    accounting: true,
-    reports: true,
-    ecommerce: false,
-    pharmacy: false,
-    hardware: true,
-    liquor_tobacco: true,
-    restaurant: true,
-    beauty_salon: true,
-    veterinary: true,
-    automotive: true,
-    laundry: true,
-    gym: true,
-    apparel: true,
-    optometry: true
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>(() => {
+    const defaultMods: Record<string, boolean> = {}
+    ALL_SYSTEM_MODULES.forEach(m => {
+      defaultMods[m.id] = m.defaultEnabled
+    })
+    return defaultMods
   })
 
   const [form, setForm] = useState({
@@ -97,14 +82,36 @@ export default function SettingsPage() {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        const tenant_id = user.user_metadata?.tenant_id
-        if (!tenant_id) return
-        setTenantId(tenant_id)
+        let tid = user.user_metadata?.tenant_id
+        if (!tid) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .limit(1)
+
+          if (userData?.[0]?.tenant_id) {
+            tid = userData[0].tenant_id
+          } else {
+            const { data: ptData } = await supabase
+              .from('platform_tenants')
+              .select('id')
+              .eq('owner_email', user.email)
+              .limit(1)
+
+            if (ptData?.[0]?.id) {
+              tid = ptData[0].id
+            }
+          }
+        }
+
+        if (!tid) return
+        setTenantId(tid)
 
         const { data, error: fetchErr } = await supabase
           .from('tenant_settings')
           .select('*')
-          .eq('tenant_id', tenant_id)
+          .eq('tenant_id', tid)
           .limit(1)
 
         if (fetchErr) throw fetchErr
@@ -112,7 +119,9 @@ export default function SettingsPage() {
         if (data && data.length > 0) {
           const row = data[0]
           if (row.enabled_modules) {
-            setEnabledModules(prev => ({ ...prev, ...row.enabled_modules }))
+            const defaultMods: Record<string, boolean> = {}
+            ALL_SYSTEM_MODULES.forEach(m => { defaultMods[m.id] = m.defaultEnabled })
+            setEnabledModules({ ...defaultMods, ...row.enabled_modules })
           }
           setForm({
             businessName: row.business_name || '',
@@ -257,27 +266,6 @@ export default function SettingsPage() {
     },
   ]
 
-  const SYSTEM_MODULES = [
-    { id: 'optometry', name: 'Óptica & Consultorio Visual', icon: Glasses, desc: 'Fórmulas oftalmológicas OD/OI, órdenes de laboratorio, monturas y WhatsApp' },
-    { id: 'apparel', name: 'Boutique, Ropa & Calzado', icon: Footprints, desc: 'Matriz de tallas/colores, código de barras, control de probadores y lookbooks' },
-    { id: 'hardware', name: 'Ferretería & Construcción', icon: Wrench, desc: 'Cotizaciones de obra, venta por metros/kilos, escalas y alquiler de herramientas' },
-    { id: 'pharmacy', name: 'Droguería & Farmacia', icon: Pill, desc: 'Control de lotes, FEFO, INVIMA, venta por blíster/tableta y genéricos' },
-    { id: 'veterinary', name: 'Veterinaria & Pet Shop', icon: Dog, desc: 'Historias clínicas de mascotas, vacunas con WhatsApp, peluquería/hotel y concentrado a granel' },
-    { id: 'automotive', name: 'Taller Mecánico & Autolavado', icon: Car, desc: 'Órdenes de trabajo por placa, checklist de recepción, repuestos y cola de lavado' },
-    { id: 'laundry', name: 'Lavandería & Tintorería', icon: Shirt, desc: 'Tickets por prenda/kilo, control de percheros, lavado en seco y domicilios' },
-    { id: 'gym', name: 'Gimnasio & Fitness', icon: Dumbbell, desc: 'Torniquete QR, membresías, clases grupales y valoración física antropométrica' },
-    { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: Wine, desc: 'Control de botellas en barra / copeo, envases retornables, combos y tabaco' },
-    { id: 'restaurant', name: 'Restaurante & Mesas', icon: UtensilsCrossed, desc: 'Mapa de mesas, comandas de cocina KDS, recetas y propinas' },
-    { id: 'beauty_salon', name: 'Salón de Belleza & Spa', icon: Scissors, desc: 'Agenda de citas, turnos de estilistas, comisiones y fichas técnicas capilares' },
-    { id: 'bakery', name: 'Panadería & Pastelería', icon: Croissant, desc: 'Fichas técnicas/gramaje, horneadas del día, tortas personalizadas y encargos' },
-    { id: 'ecommerce', name: 'E-commerce & Tienda Web', icon: Globe, desc: 'Catálogo público en línea con pedidos directos a WhatsApp' },
-    { id: 'purchases', name: 'Compras & Proveedores', icon: ShoppingCart, desc: 'Registro de facturas de compra, abastecimiento y proveedores' },
-    { id: 'crm', name: 'CRM & Embudo de Ventas', icon: TrendingUp, desc: 'Embudo comercial Kanban, links de cobro Wompi/PSE y conversión a factura DIAN' },
-    { id: 'payroll', name: 'Nómina Electrónica DIAN & RRHH', icon: Briefcase, desc: 'Liquidación de salarios, devengados/deducciones, timbrado CUNE y colillas WhatsApp' },
-    { id: 'treasury', name: 'Tesorería, Bancos & Flujo de Caja', icon: Landmark, desc: 'Cuentas bancarias en tiempo real, conciliación y calendario de cobros/pagos' },
-    { id: 'accounting', name: 'Contabilidad Automatizada', icon: DollarSign, desc: 'Plan de cuentas, balance general y generación de asientos contables' },
-  ]
-
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
@@ -334,8 +322,8 @@ export default function SettingsPage() {
             </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-              {SYSTEM_MODULES.map(m => {
-                const IconComponent = m.icon
+              {ALL_SYSTEM_MODULES.map(m => {
+                const IconComponent = getModuleIcon(m.id)
                 const isEnabled = !!enabledModules[m.id]
                 return (
                   <div
@@ -370,7 +358,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)', marginBottom: 2 }}>{m.name}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{m.desc}</div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{m.description}</div>
                       </div>
                     </div>
 

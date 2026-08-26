@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import CopilotWidget from '@/components/CopilotWidget'
+import { ALL_SYSTEM_MODULES } from '@/lib/constants/modules'
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -90,20 +91,20 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Ventas & Mostrador',
     Icon: ShoppingCart,
     items: [
-      { href: '/pos',                   Icon: ShoppingCart,    label: 'Punto de Venta (POS)',                           requiredPermission: 'pos.view' },
-      { href: '/restaurant/tables',     Icon: UtensilsCrossed, label: 'Mesas & Salón',        moduleKey: 'restaurant',   requiredPermission: 'pos.view' },
-      { href: '/cash',                 Icon: DollarSign,      label: 'Caja & Turnos',        moduleKey: 'cash',         requiredPermission: 'cash.view' },
-      { href: '/invoices',             Icon: Receipt,         label: 'Facturación DIAN',                                requiredPermission: 'pos.view' },
-      { href: '/crm',                  Icon: TrendingUp,      label: 'CRM & Embudo',         moduleKey: 'crm',          requiredPermission: 'pos.view' },
-      { href: '/hardware/quotes',       Icon: FileText,        label: 'Cotizaciones A4',      moduleKey: 'hardware',     requiredPermission: 'pos.view' },
-      { href: '/salon/agenda',          Icon: Calendar,        label: 'Agenda de Citas',      moduleKey: 'beauty_salon', requiredPermission: 'pos.view' },
-      { href: '/laundry/orders',        Icon: Shirt,           label: 'Recepción & Tickets',  moduleKey: 'laundry',      requiredPermission: 'pos.view' },
-      { href: '/automotive/orders',     Icon: Car,             label: 'Órdenes de Taller',    moduleKey: 'automotive',   requiredPermission: 'pos.view' },
-      { href: '/bakery/custom-orders',  Icon: Croissant,       label: 'Encargos & Tortas',    moduleKey: 'bakery',       requiredPermission: 'pos.view' },
-      { href: '/gym/classes',           Icon: Users,           label: 'Clases & Aforo',       moduleKey: 'gym',          requiredPermission: 'pos.view' },
-      { href: '/estanco/combos',        Icon: Sparkles,        label: 'Combos & Happy Hour',  moduleKey: 'liquor_tobacco', requiredPermission: 'pos.view' },
-      { href: '/apparel/lookbooks',     Icon: Sparkles,        label: 'Outfits & Lookbooks',  moduleKey: 'apparel',      requiredPermission: 'pos.view' },
-      { href: '/ecommerce',             Icon: Globe,           label: 'Tienda Online Web',    moduleKey: 'ecommerce',    requiredPermission: 'settings.view' }
+      { href: '/pos',                   Icon: ShoppingCart,    label: 'Punto de Venta (POS)',        moduleKey: 'pos',            requiredPermission: 'pos.view' },
+      { href: '/restaurant/tables',     Icon: UtensilsCrossed, label: 'Mesas & Salón',              moduleKey: 'restaurant',     requiredPermission: 'pos.view' },
+      { href: '/cash',                  Icon: DollarSign,      label: 'Caja & Turnos',              moduleKey: 'cash',           requiredPermission: 'cash.view' },
+      { href: '/invoices',              Icon: Receipt,         label: 'Facturación DIAN',            moduleKey: 'pos',            requiredPermission: 'pos.view' },
+      { href: '/crm',                   Icon: TrendingUp,      label: 'CRM & Embudo',               moduleKey: 'crm',            requiredPermission: 'pos.view' },
+      { href: '/hardware/quotes',       Icon: FileText,        label: 'Cotizaciones A4',            moduleKey: 'hardware',       requiredPermission: 'pos.view' },
+      { href: '/salon/agenda',          Icon: Calendar,        label: 'Agenda de Citas',            moduleKey: 'beauty_salon',   requiredPermission: 'pos.view' },
+      { href: '/laundry/orders',        Icon: Shirt,           label: 'Recepción & Tickets',        moduleKey: 'laundry',        requiredPermission: 'pos.view' },
+      { href: '/automotive/orders',     Icon: Car,             label: 'Órdenes de Taller',          moduleKey: 'automotive',     requiredPermission: 'pos.view' },
+      { href: '/bakery/custom-orders',  Icon: Croissant,       label: 'Encargos & Tortas',          moduleKey: 'bakery',         requiredPermission: 'pos.view' },
+      { href: '/gym/classes',           Icon: Users,           label: 'Clases & Aforo',             moduleKey: 'gym',            requiredPermission: 'pos.view' },
+      { href: '/estanco/combos',        Icon: Sparkles,        label: 'Combos & Happy Hour',        moduleKey: 'liquor_tobacco', requiredPermission: 'pos.view' },
+      { href: '/apparel/lookbooks',     Icon: Sparkles,        label: 'Outfits & Lookbooks',        moduleKey: 'apparel',        requiredPermission: 'pos.view' },
+      { href: '/ecommerce',             Icon: Globe,           label: 'Tienda Online Web',          moduleKey: 'ecommerce',      requiredPermission: 'settings.view' }
     ]
   },
 
@@ -113,16 +114,16 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Operaciones & Planta',
     Icon: ChefHat,
     items: [
-      { href: '/restaurant/kds',       Icon: Flame,      label: 'Comandera Cocina KDS', moduleKey: 'restaurant',     requiredPermission: 'pos.view' },
-      { href: '/bakery/production',    Icon: Clock,      label: 'Horneadas & Mermas',   moduleKey: 'bakery',         requiredPermission: 'inventory.view' },
-      { href: '/gym/checkin',          Icon: Activity,   label: 'Terminal Check-in QR', moduleKey: 'gym',            requiredPermission: 'pos.view' },
-      { href: '/automotive/wash',      Icon: Sparkles,   label: 'Cola de Autolavado',   moduleKey: 'automotive',     requiredPermission: 'pos.view' },
-      { href: '/laundry/rack',         Icon: Boxes,      label: 'Planta & Percheros',   moduleKey: 'laundry',        requiredPermission: 'inventory.view' },
-      { href: '/optometry/lab',        Icon: Glasses,    label: 'Laboratorio Biselado', moduleKey: 'optometry',      requiredPermission: 'inventory.view' },
-      { href: '/hardware/rentals',     Icon: Wrench,     label: 'Alquiler Herramientas',moduleKey: 'hardware',       requiredPermission: 'inventory.view' },
-      { href: '/estanco/bar',          Icon: GlassWater, label: 'Barra & Copeo',        moduleKey: 'liquor_tobacco', requiredPermission: 'inventory.view' },
-      { href: '/apparel/fitting-rooms',Icon: Footprints, label: 'Probadores & Cabinas', moduleKey: 'apparel',        requiredPermission: 'pos.view' },
-      { href: '/veterinary/grooming',  Icon: Scissors,   label: 'Peluquería & Spa Pet', moduleKey: 'veterinary',     requiredPermission: 'pos.view' }
+      { href: '/restaurant/kds',        Icon: Flame,           label: 'Comandera Cocina KDS',       moduleKey: 'restaurant',     requiredPermission: 'pos.view' },
+      { href: '/bakery/production',     Icon: Clock,           label: 'Horneadas & Mermas',         moduleKey: 'bakery',         requiredPermission: 'inventory.view' },
+      { href: '/gym/checkin',           Icon: Activity,        label: 'Terminal Check-in QR',       moduleKey: 'gym',            requiredPermission: 'pos.view' },
+      { href: '/automotive/wash',       Icon: Sparkles,        label: 'Cola de Autolavado',         moduleKey: 'automotive',     requiredPermission: 'pos.view' },
+      { href: '/laundry/rack',          Icon: Boxes,           label: 'Planta & Percheros',         moduleKey: 'laundry',        requiredPermission: 'inventory.view' },
+      { href: '/optometry/lab',         Icon: Glasses,         label: 'Laboratorio Biselado',       moduleKey: 'optometry',      requiredPermission: 'inventory.view' },
+      { href: '/hardware/rentals',      Icon: Wrench,          label: 'Alquiler Herramientas',      moduleKey: 'hardware',       requiredPermission: 'inventory.view' },
+      { href: '/estanco/bar',           Icon: GlassWater,      label: 'Barra & Copeo',              moduleKey: 'liquor_tobacco', requiredPermission: 'inventory.view' },
+      { href: '/apparel/fitting-rooms', Icon: Footprints,      label: 'Probadores & Cabinas',       moduleKey: 'apparel',        requiredPermission: 'pos.view' },
+      { href: '/veterinary/grooming',   Icon: Scissors,        label: 'Peluquería & Spa Pet',       moduleKey: 'veterinary',     requiredPermission: 'pos.view' }
     ]
   },
 
@@ -132,15 +133,15 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Catálogo & Inventario',
     Icon: Package,
     items: [
-      { href: '/products',             Icon: Package,         label: 'Productos Generales',                            requiredPermission: 'products.view' },
-      { href: '/pharmacy/medicines',   Icon: Pill,            label: 'Medicamentos & INVIMA', moduleKey: 'pharmacy',   requiredPermission: 'products.view' },
-      { href: '/pharmacy/lots',        Icon: Clock,           label: 'Control Lotes & FEFO',  moduleKey: 'pharmacy',   requiredPermission: 'inventory.view' },
-      { href: '/restaurant/recipes',   Icon: UtensilsCrossed, label: 'Recetas & Escandallo',  moduleKey: 'restaurant', requiredPermission: 'products.view' },
-      { href: '/bakery/recipes',       Icon: Croissant,       label: 'Fichas de Panadería',   moduleKey: 'bakery',     requiredPermission: 'products.view' },
-      { href: '/apparel/matrix',       Icon: Shirt,           label: 'Matriz Talla / Color',  moduleKey: 'apparel',    requiredPermission: 'products.view' },
-      { href: '/estanco/returns',      Icon: RotateCcw,       label: 'Envases Retornables',   moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
-      { href: '/inventory',            Icon: Boxes,           label: 'Inventario & Kardex',   moduleKey: 'inventory',  requiredPermission: 'inventory.view' },
-      { href: '/warehouses',           Icon: Building2,       label: 'Bodegas & Almacenes',   moduleKey: 'inventory',  requiredPermission: 'inventory.view' }
+      { href: '/products',              Icon: Package,         label: 'Productos Generales',        moduleKey: 'inventory',      requiredPermission: 'products.view' },
+      { href: '/pharmacy/medicines',    Icon: Pill,            label: 'Medicamentos & INVIMA',      moduleKey: 'pharmacy',       requiredPermission: 'products.view' },
+      { href: '/pharmacy/lots',         Icon: Clock,           label: 'Control Lotes & FEFO',       moduleKey: 'pharmacy',       requiredPermission: 'inventory.view' },
+      { href: '/restaurant/recipes',    Icon: UtensilsCrossed, label: 'Recetas & Escandallo',       moduleKey: 'restaurant',     requiredPermission: 'products.view' },
+      { href: '/bakery/recipes',        Icon: Croissant,       label: 'Fichas de Panadería',        moduleKey: 'bakery',         requiredPermission: 'products.view' },
+      { href: '/apparel/matrix',        Icon: Shirt,           label: 'Matriz Talla / Color',       moduleKey: 'apparel',        requiredPermission: 'products.view' },
+      { href: '/estanco/returns',       Icon: RotateCcw,       label: 'Envases Retornables',        moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
+      { href: '/inventory',             Icon: Boxes,           label: 'Inventario & Kardex',        moduleKey: 'inventory',      requiredPermission: 'inventory.view' },
+      { href: '/warehouses',            Icon: Building2,       label: 'Bodegas & Almacenes',        moduleKey: 'inventory',      requiredPermission: 'inventory.view' }
     ]
   },
 
@@ -150,11 +151,11 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Clientes & Pacientes',
     Icon: Users,
     items: [
-      { href: '/customers',            Icon: Users,       label: 'Directorio & Fiaos',       moduleKey: 'customers',  requiredPermission: 'customers.view' },
-      { href: '/gym/members',          Icon: Dumbbell,    label: 'Socios & Membresías',      moduleKey: 'gym',        requiredPermission: 'customers.view' },
-      { href: '/veterinary/pets',      Icon: Dog,         label: 'Pacientes Mascotas',       moduleKey: 'veterinary', requiredPermission: 'customers.view' },
-      { href: '/veterinary/clinical',  Icon: Stethoscope, label: 'Consultas Médicas Vet',    moduleKey: 'veterinary', requiredPermission: 'customers.view' },
-      { href: '/optometry/patients',   Icon: Glasses,     label: 'Consultorio & Fórmulas OD',moduleKey: 'optometry',  requiredPermission: 'customers.view' }
+      { href: '/customers',             Icon: Users,           label: 'Directorio & Fiaos',         moduleKey: 'customers',      requiredPermission: 'customers.view' },
+      { href: '/gym/members',           Icon: Dumbbell,        label: 'Socios & Membresías',        moduleKey: 'gym',            requiredPermission: 'customers.view' },
+      { href: '/veterinary/pets',       Icon: Dog,             label: 'Pacientes Mascotas',         moduleKey: 'veterinary',     requiredPermission: 'customers.view' },
+      { href: '/veterinary/clinical',   Icon: Stethoscope,     label: 'Consultas Médicas Vet',      moduleKey: 'veterinary',     requiredPermission: 'customers.view' },
+      { href: '/optometry/patients',    Icon: Glasses,         label: 'Consultorio & Fórmulas OD',  moduleKey: 'optometry',      requiredPermission: 'customers.view' }
     ]
   },
 
@@ -164,9 +165,9 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Abastecimiento',
     Icon: Truck,
     items: [
-      { href: '/purchases',             Icon: ShoppingBag, label: 'Compras & Recepción',    moduleKey: 'purchases', requiredPermission: 'purchases.view' },
-      { href: '/purchases/support-doc', Icon: Receipt,     label: 'Documento Soporte DIAN', moduleKey: 'purchases', requiredPermission: 'purchases.view' },
-      { href: '/suppliers',             Icon: Truck,       label: 'Proveedores & Contactos',moduleKey: 'suppliers', requiredPermission: 'suppliers.view' }
+      { href: '/purchases',             Icon: ShoppingBag,     label: 'Compras & Recepción',        moduleKey: 'purchases',      requiredPermission: 'purchases.view' },
+      { href: '/purchases/support-doc', Icon: Receipt,         label: 'Documento Soporte DIAN',     moduleKey: 'purchases',      requiredPermission: 'purchases.view' },
+      { href: '/suppliers',             Icon: Truck,           label: 'Proveedores & Contactos',    moduleKey: 'suppliers',      requiredPermission: 'suppliers.view' }
     ]
   },
 
@@ -176,10 +177,10 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Finanzas & Datos',
     Icon: BarChart3,
     items: [
-      { href: '/reports',              Icon: BarChart3, label: 'Reportes & P&L',           moduleKey: 'reports',      requiredPermission: 'reports.sales' },
-      { href: '/treasury',             Icon: Landmark,  label: 'Tesorería & Bancos',       moduleKey: 'treasury',     requiredPermission: 'accounting.view' },
-      { href: '/accounting',           Icon: BookOpen,  label: 'Contabilidad PUC',         moduleKey: 'accounting',   requiredPermission: 'accounting.view' },
-      { href: '/salon/commissions',    Icon: Percent,   label: 'Liquidación Comisiones',   moduleKey: 'beauty_salon', requiredPermission: 'accounting.view' }
+      { href: '/reports',               Icon: BarChart3,       label: 'Reportes & P&L',             moduleKey: 'reports',        requiredPermission: 'reports.sales' },
+      { href: '/treasury',              Icon: Landmark,        label: 'Tesorería & Bancos',         moduleKey: 'treasury',       requiredPermission: 'accounting.view' },
+      { href: '/accounting',            Icon: BookOpen,        label: 'Contabilidad PUC',           moduleKey: 'accounting',     requiredPermission: 'accounting.view' },
+      { href: '/salon/commissions',     Icon: Percent,         label: 'Liquidación Comisiones',     moduleKey: 'beauty_salon',   requiredPermission: 'accounting.view' }
     ]
   },
 
@@ -189,8 +190,8 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Calidad & Normativa',
     Icon: ShieldCheck,
     items: [
-      { href: '/pharmacy/temperature', Icon: Thermometer, label: 'Termohigrometría & Salud', moduleKey: 'pharmacy',   requiredPermission: 'inventory.view' },
-      { href: '/veterinary/vaccines',  Icon: Syringe,     label: 'Carnet Vacunación Pet',   moduleKey: 'veterinary', requiredPermission: 'customers.view' }
+      { href: '/pharmacy/temperature',  Icon: Thermometer,     label: 'Termohigrometría & Salud',   moduleKey: 'pharmacy',       requiredPermission: 'inventory.view' },
+      { href: '/veterinary/vaccines',   Icon: Syringe,         label: 'Carnet Vacunación Pet',      moduleKey: 'veterinary',     requiredPermission: 'customers.view' }
     ]
   },
 
@@ -200,9 +201,9 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Administración',
     Icon: Settings,
     items: [
-      { href: '/employees', Icon: UserCheck, label: 'Personal & Asistencia', moduleKey: 'employees', requiredPermission: 'employees.view' },
-      { href: '/payroll',   Icon: Briefcase, label: 'Nómina Electrónica',   moduleKey: 'payroll',   requiredPermission: 'employees.view' },
-      { href: '/settings',  Icon: Settings,  label: 'Configuración Negocio',                         requiredPermission: 'settings.view' }
+      { href: '/employees',             Icon: UserCheck,       label: 'Personal & Asistencia',      moduleKey: 'employees',      requiredPermission: 'employees.view' },
+      { href: '/payroll',               Icon: Briefcase,       label: 'Nómina Electrónica',         moduleKey: 'payroll',        requiredPermission: 'employees.view' },
+      { href: '/settings',              Icon: Settings,        label: 'Configuración Negocio',                                   requiredPermission: 'settings.view' }
     ]
   }
 ]
@@ -217,12 +218,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [collapsed, setCollapsed] = useState(false)
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [user, setUser] = useState<{ full_name?: string; email?: string } | null>(null)
-  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({
-    pos: true, inventory: true, cash: true, customers: true,
-    suppliers: true, purchases: true, employees: true,
-    accounting: true, reports: true, ecommerce: false,
-    pharmacy: true, hardware: true, liquor_tobacco: true, restaurant: true,
-    beauty_salon: true, veterinary: true, automotive: true, laundry: true, gym: true, apparel: true, optometry: true
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>(() => {
+    const defaultMods: Record<string, boolean> = {}
+    ALL_SYSTEM_MODULES.forEach(m => {
+      defaultMods[m.id] = m.defaultEnabled
+    })
+    return defaultMods
   })
 
   // Load user, module settings & saved collapsed preference
@@ -236,7 +237,31 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUser({ full_name: user.user_metadata?.full_name, email: user.email })
-        const tid = user.user_metadata?.tenant_id
+        let tid = user.user_metadata?.tenant_id
+
+        // Fallback: resolve tenant_id if not present directly in auth user_metadata
+        if (!tid) {
+          const { data: userData } = await supabase
+            .from('users')
+            .select('tenant_id')
+            .eq('id', user.id)
+            .limit(1)
+
+          if (userData?.[0]?.tenant_id) {
+            tid = userData[0].tenant_id
+          } else {
+            const { data: ptData } = await supabase
+              .from('platform_tenants')
+              .select('id')
+              .eq('owner_email', user.email)
+              .limit(1)
+
+            if (ptData?.[0]?.id) {
+              tid = ptData[0].id
+            }
+          }
+        }
+
         if (tid) {
           const { data: tData } = await supabase
             .from('tenant_settings')
@@ -245,7 +270,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             .limit(1)
 
           if (tData?.[0]?.enabled_modules) {
-            setEnabledModules(prev => ({ ...prev, ...tData[0].enabled_modules }))
+            const defaultMods: Record<string, boolean> = {}
+            ALL_SYSTEM_MODULES.forEach(m => { defaultMods[m.id] = m.defaultEnabled })
+            setEnabledModules({ ...defaultMods, ...tData[0].enabled_modules })
           }
         }
       }
@@ -274,21 +301,29 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     setOpenGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }))
   }
 
-  // Filter items by permission & enabled module
+  // Filter items strictly by enabled module first, then by role permissions
   function filterItems(items?: NavSubItem[]) {
     if (!items) return []
     return items.filter(item => {
-      if (item.moduleKey && enabledModules[item.moduleKey] === false) return false
+      // 1. If item belongs to a specific module and that module is not active, hide it immediately
+      if (item.moduleKey && !enabledModules[item.moduleKey]) return false
+
+      // 2. Admins have access to all enabled modules
       if (isAdmin) return true
+
+      // 3. For other roles, check granular permissions
       if (item.requiredPermission && !hasPermission(item.requiredPermission)) return false
+
       return true
     })
   }
 
-  // Check if current page is authorized for user
-  const allSubItems = NAV_SECTIONS.flatMap(s => s.items || (s.href ? [{ href: s.href, label: s.label, Icon: s.Icon }] : []))
+  // Check if current page is authorized for user and module is enabled
+  const allSubItems = NAV_SECTIONS.flatMap(s => s.items || (s.href ? [{ href: s.href, label: s.label, Icon: s.Icon, moduleKey: undefined, requiredPermission: undefined }] : []))
   const currentNavItem = allSubItems.find(i => pathname === i.href || (i.href !== '/dashboard' && pathname.startsWith(i.href)))
-  const isPageAuthorized = isAdmin || !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
+  const isModuleEnabled = !currentNavItem?.moduleKey || !!enabledModules[currentNavItem.moduleKey]
+  const isRoleAuthorized = isAdmin || !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
+  const isPageAuthorized = isModuleEnabled && isRoleAuthorized
 
   async function handleLogout() {
     await supabase.auth.signOut()
@@ -567,14 +602,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--accent-coral-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-coral)' }}>
                 <Lock size={28} />
               </div>
-              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Acceso Restringido</h2>
+              <h2 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                {!isModuleEnabled ? 'Módulo Desactivado' : 'Acceso Restringido'}
+              </h2>
               <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.4 }}>
-                Tu rol actual (<strong>{roleName}</strong>) no tiene permisos para acceder a esta sección administrativa.
+                {!isModuleEnabled
+                  ? 'Este módulo no se encuentra activo para tu negocio. Puedes solicitar su activación al administrador de la plataforma desde el panel de gestión.'
+                  : `Tu rol actual (${roleName}) no tiene permisos asignados para acceder a esta sección.`}
               </p>
               <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-                <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem' }}>
-                  Ir al Punto de Venta
+                <Link href="/dashboard" className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem' }}>
+                  Ir al Inicio
                 </Link>
+                {enabledModules.pos && (
+                  <Link href="/pos" className="btn-neu btn-ghost" style={{ padding: '8px 16px', fontSize: '0.82rem' }}>
+                    Ir al POS
+                  </Link>
+                )}
               </div>
             </div>
           ) : (
