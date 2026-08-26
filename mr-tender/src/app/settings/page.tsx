@@ -25,7 +25,9 @@ import {
   Footprints,
   Glasses,
   Croissant,
-  Briefcase
+  Briefcase,
+  TrendingUp,
+  Landmark
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -270,7 +272,9 @@ export default function SettingsPage() {
     { id: 'bakery', name: 'Panadería & Pastelería', icon: Croissant, desc: 'Fichas técnicas/gramaje, horneadas del día, tortas personalizadas y encargos' },
     { id: 'ecommerce', name: 'E-commerce & Tienda Web', icon: Globe, desc: 'Catálogo público en línea con pedidos directos a WhatsApp' },
     { id: 'purchases', name: 'Compras & Proveedores', icon: ShoppingCart, desc: 'Registro de facturas de compra, abastecimiento y proveedores' },
+    { id: 'crm', name: 'CRM & Embudo de Ventas', icon: TrendingUp, desc: 'Embudo comercial Kanban, links de cobro Wompi/PSE y conversión a factura DIAN' },
     { id: 'payroll', name: 'Nómina Electrónica DIAN & RRHH', icon: Briefcase, desc: 'Liquidación de salarios, devengados/deducciones, timbrado CUNE y colillas WhatsApp' },
+    { id: 'treasury', name: 'Tesorería, Bancos & Flujo de Caja', icon: Landmark, desc: 'Cuentas bancarias en tiempo real, conciliación y calendario de cobros/pagos' },
     { id: 'accounting', name: 'Contabilidad Automatizada', icon: DollarSign, desc: 'Plan de cuentas, balance general y generación de asientos contables' },
   ]
 

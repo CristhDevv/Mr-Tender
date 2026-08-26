@@ -39,7 +39,9 @@ import {
   Footprints,
   Glasses,
   Croissant,
-  Briefcase
+  Briefcase,
+  TrendingUp,
+  Landmark
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -77,6 +79,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/automotive', Icon: Car,             label: 'Taller & Autolavado', moduleKey: 'automotive', requiredPermission: 'pos.view' },
       { href: '/laundry',    Icon: Shirt,           label: 'Lavandería & Tintorería', moduleKey: 'laundry', requiredPermission: 'pos.view' },
       { href: '/invoices',   Icon: Receipt,         label: 'Facturación DIAN',                        requiredPermission: 'pos.view' },
+      { href: '/crm',        Icon: TrendingUp,      label: 'CRM & Embudo',   moduleKey: 'crm',        requiredPermission: 'pos.view' },
       { href: '/cash',       Icon: DollarSign,      label: 'Caja & Turnos',  moduleKey: 'cash',       requiredPermission: 'cash.view' },
       { href: '/customers',  Icon: Users,           label: 'Clientes',       moduleKey: 'customers',  requiredPermission: 'customers.view' }
     ]
@@ -112,8 +115,9 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Finanzas & Datos',
     Icon: BarChart3,
     items: [
-      { href: '/reports',    Icon: BarChart3, label: 'Reportes',     moduleKey: 'reports',    requiredPermission: 'reports.sales' },
-      { href: '/accounting', Icon: BookOpen,  label: 'Contabilidad', moduleKey: 'accounting', requiredPermission: 'accounting.view' }
+      { href: '/reports',    Icon: BarChart3, label: 'Reportes',            moduleKey: 'reports',    requiredPermission: 'reports.sales' },
+      { href: '/treasury',   Icon: Landmark,  label: 'Tesorería & Bancos',  moduleKey: 'treasury',   requiredPermission: 'accounting.view' },
+      { href: '/accounting', Icon: BookOpen,  label: 'Contabilidad',        moduleKey: 'accounting', requiredPermission: 'accounting.view' }
     ]
   },
   {

@@ -23,6 +23,8 @@ import {
   Wrench,
   Croissant,
   Briefcase,
+  TrendingUp,
+  Landmark,
   Layers,
   LucideIcon
 } from 'lucide-react'
@@ -42,10 +44,12 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
   inventory: Boxes,
   cash: DollarSign,
   customers: Users,
+  crm: TrendingUp,
   suppliers: Truck,
   purchases: ShoppingBag,
   employees: Clock,
   payroll: Briefcase,
+  treasury: Landmark,
   reports: BarChart3,
   accounting: BookOpen,
   ecommerce: Globe,
@@ -106,6 +110,15 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     defaultEnabled: true
   },
   {
+    id: 'crm',
+    name: 'CRM & Embudo Kanban de Ventas',
+    iconName: 'TrendingUp',
+    group: 'base',
+    categoryName: 'Ventas & Clientes',
+    description: 'Tablero Kanban de prospectos, etapas comerciales, links de pago Wompi/PSE y conversión a factura DIAN en 1 clic',
+    defaultEnabled: true
+  },
+  {
     id: 'suppliers',
     name: 'Proveedores & Contactos',
     iconName: 'Truck',
@@ -148,6 +161,15 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'base',
     categoryName: 'Finanzas & Analítica',
     description: 'Reportes de ventas, utilidades, productos más vendidos y exportación Excel/PDF',
+    defaultEnabled: true
+  },
+  {
+    id: 'treasury',
+    name: 'Tesorería, Bancos & Flujo de Caja',
+    iconName: 'Landmark',
+    group: 'base',
+    categoryName: 'Finanzas & Tesorería',
+    description: 'Cuentas bancarias en tiempo real, conciliación de extractos y calendario de cobros (CxC) y pagos (CxP)',
     defaultEnabled: true
   },
   {

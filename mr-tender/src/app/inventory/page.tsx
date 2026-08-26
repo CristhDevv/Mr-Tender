@@ -489,6 +489,10 @@ export default function InventoryPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
+          <Link href="/inventory/import" className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <FileSpreadsheet size={15} strokeWidth={2} />
+            <span>Importar Excel / CSV</span>
+          </Link>
           <button className="btn-neu" onClick={() => setShowAdjModal(true)} style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-coral)' }}>
             <Wrench size={15} strokeWidth={2} />
             <span>Ajuste / Merma</span>
