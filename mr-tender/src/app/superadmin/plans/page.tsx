@@ -43,6 +43,93 @@ const EMPTY_PLAN = {
   trial_days: '14'
 }
 
+const INDUSTRY_PRESETS = [
+  {
+    name: 'Plan Retail General (Core)',
+    slug: 'plan-retail-core',
+    description: 'Incluye los 13 módulos base: POS, Inventario, Caja, Libreta de Fiaos, Compras y Facturación Estándar.',
+    price_monthly: '79000',
+    price_yearly: '790000',
+    currency: 'COP',
+    max_users: '3',
+    max_products: '1000',
+    max_branches: '1',
+    trial_days: '14'
+  },
+  {
+    name: 'Mr. Tender Farma Suite',
+    slug: 'mr-tender-farma',
+    description: 'Core Retail + Droguería Especializada: Lotes FEFO, catálogo INVIMA, termohigrometría y asistente de síntomas.',
+    price_monthly: '139000',
+    price_yearly: '1390000',
+    currency: 'COP',
+    max_users: '5',
+    max_products: '5000',
+    max_branches: '2',
+    trial_days: '14'
+  },
+  {
+    name: 'Mr. Tender Gastro Suite',
+    slug: 'mr-tender-gastro',
+    description: 'Core Retail + Restaurantes, Bares & Cafés: Mapa de mesas, comandas KDS a cocina/barra y escandallo de recetas.',
+    price_monthly: '149000',
+    price_yearly: '1490000',
+    currency: 'COP',
+    max_users: '8',
+    max_products: '1500',
+    max_branches: '2',
+    trial_days: '14'
+  },
+  {
+    name: 'Mr. Tender Taller & Autolavado',
+    slug: 'mr-tender-taller',
+    description: 'Core Retail + Taller Mecánico: Órdenes de trabajo por placa, checklist de recepción y bahías de lavado.',
+    price_monthly: '139000',
+    price_yearly: '1390000',
+    currency: 'COP',
+    max_users: '5',
+    max_products: '3000',
+    max_branches: '2',
+    trial_days: '14'
+  },
+  {
+    name: 'Mr. Tender Moda & Boutique',
+    slug: 'mr-tender-moda',
+    description: 'Core Retail + Ropa & Calzado: Matriz de tallas y colores, control de probadores y lookbooks de outfits.',
+    price_monthly: '129000',
+    price_yearly: '1290000',
+    currency: 'COP',
+    max_users: '4',
+    max_products: '3000',
+    max_branches: '2',
+    trial_days: '14'
+  },
+  {
+    name: 'Mr. Tender Gym & Fitness',
+    slug: 'mr-tender-gym',
+    description: 'Core Retail + Gimnasios & Crossfit: Control de torniquetes, check-in QR de socios, aforo y membresías.',
+    price_monthly: '129000',
+    price_yearly: '1290000',
+    currency: 'COP',
+    max_users: '4',
+    max_products: '500',
+    max_branches: '1',
+    trial_days: '14'
+  },
+  {
+    name: 'Mr. Tender Vet & Pet Shop',
+    slug: 'mr-tender-vet',
+    description: 'Core Retail + Veterinaria: Historias clínicas de pacientes pet, carnet de vacunación y turnos de peluquería.',
+    price_monthly: '139000',
+    price_yearly: '1390000',
+    currency: 'COP',
+    max_users: '5',
+    max_products: '3000',
+    max_branches: '2',
+    trial_days: '14'
+  }
+]
+
 export default function PlansAdminPage() {
   const supabase = createClient()
   const [plans, setPlans] = useState<Plan[]>([])
@@ -174,8 +261,35 @@ export default function PlansAdminPage() {
               Crear Nuevo Nivel de Suscripción
             </h2>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-              Define los límites de usuarios, productos, sucursales y tarifas del nuevo plan.
+              Selecciona una plantilla por industria o define límites y tarifas personalizadas.
             </p>
+          </div>
+
+          {/* Industry Preset Pills */}
+          <div>
+            <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+              ⚡ Cargar Plantilla Preconfigurada por Vertical:
+            </label>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              {INDUSTRY_PRESETS.map(preset => (
+                <button
+                  key={preset.slug}
+                  type="button"
+                  onClick={() => setNewPlan(preset)}
+                  className="btn-neu"
+                  style={{
+                    padding: '6px 12px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    background: newPlan.slug === preset.slug ? 'var(--text-primary)' : 'var(--bg)',
+                    color: newPlan.slug === preset.slug ? 'var(--bg)' : 'var(--text-secondary)'
+                  }}
+                >
+                  {preset.name}
+                </button>
+              ))}
+            </div>
           </div>
 
           <form onSubmit={handleCreatePlan} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>

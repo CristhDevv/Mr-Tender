@@ -58,8 +58,16 @@ function computeMatchScore(spoken: string, productName: string): number {
   return coverage
 }
 
+import { createClient as createServerSupabase } from '@/lib/supabase/server'
+
 export async function POST(req: NextRequest) {
   try {
+    const supabase = await createServerSupabase()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    }
+
     const { transcript, products, customers } = (await req.json()) as {
       transcript: string
       products: ProductItem[]
@@ -74,12 +82,14 @@ export async function POST(req: NextRequest) {
     const result: {
       action: 'add_items' | 'remove_item' | 'clear_cart' | 'select_customer' | 'set_payment' | 'set_discount' | 'mixed'
       transcript: string
-      itemsToAdd: Array<{ product: ProductItem; quantity: number }>
+      itemsToAdd: Array<{ product: ProductItem; quantity: number; matchConfidence: number }>
       itemsToRemove: string[]
       selectedCustomer: CustomerItem | null
       paymentMethod: string | null
       receivedAmount: number | null
       discountAmount: number | null
+      requiresConfirmation: boolean
+      confidence: number
       feedbackMessage: string
     } = {
       action: 'mixed',
@@ -90,6 +100,8 @@ export async function POST(req: NextRequest) {
       paymentMethod: null,
       receivedAmount: null,
       discountAmount: null,
+      requiresConfirmation: false,
+      confidence: 1.0,
       feedbackMessage: ''
     }
 
@@ -172,26 +184,39 @@ export async function POST(req: NextRequest) {
 
         for (const prod of products) {
           const score = computeMatchScore(cleanSeg, prod.name)
-          if (score > bestScore && score >= 0.3) {
+          if (score > bestScore && score >= 0.35) {
             bestScore = score
             bestMatch = prod
           }
         }
 
-        if (bestMatch && bestScore >= 0.3) {
+        if (bestMatch && bestScore >= 0.35) {
           const existing = result.itemsToAdd.find(it => it.product.id === bestMatch!.id)
           if (existing) {
             existing.quantity += qty
           } else {
-            result.itemsToAdd.push({ product: bestMatch, quantity: qty })
+            result.itemsToAdd.push({
+              product: bestMatch,
+              quantity: qty,
+              matchConfidence: Math.round(bestScore * 100) / 100
+            })
+          }
+
+          if (bestScore < 0.70) {
+            result.requiresConfirmation = true
           }
         }
       }
     }
 
+    if (result.itemsToAdd.length > 0) {
+      const avgConfidence = result.itemsToAdd.reduce((sum, it) => sum + it.matchConfidence, 0) / result.itemsToAdd.length
+      result.confidence = Math.round(avgConfidence * 100) / 100
+    }
+
     const feedbackParts: string[] = []
     if (result.itemsToAdd.length > 0) {
-      const itemsList = result.itemsToAdd.map(it => `${it.quantity}x ${it.product.name}`).join(', ')
+      const itemsList = result.itemsToAdd.map(it => `${it.quantity}x ${it.product.name}${it.matchConfidence < 0.70 ? ' (¿Confirmar?)' : ''}`).join(', ')
       feedbackParts.push(`${itemsList}`)
     }
     if (result.selectedCustomer) {

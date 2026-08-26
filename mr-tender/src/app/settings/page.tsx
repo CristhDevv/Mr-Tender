@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
-import { ALL_SYSTEM_MODULES, getModuleIcon } from '@/lib/constants/modules'
+import { ALL_SYSTEM_MODULES, getModuleIcon, resolveModuleToggle, getModuleById } from '@/lib/constants/modules'
 import {
   Building2,
   DollarSign,
@@ -28,7 +28,9 @@ import {
   Croissant,
   Briefcase,
   TrendingUp,
-  Landmark
+  Landmark,
+  AlertTriangle,
+  Info
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -38,6 +40,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [dependencyNotice, setDependencyNotice] = useState<string | null>(null)
   const [tenantId, setTenantId] = useState('')
   const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>(() => {
     const defaultMods: Record<string, boolean> = {}
@@ -321,14 +324,54 @@ export default function SettingsPage() {
               Activa o desactiva las funcionalidades que tu negocio necesita. Al activar un módulo, aparecerá instantáneamente en tu barra de navegación izquierda.
             </p>
 
+            {dependencyNotice && (
+              <div style={{
+                background: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral-lt)' : 'var(--accent-blue-lt)',
+                color: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral)' : 'var(--accent-blue)',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.82rem',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                border: `1px solid ${dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral)' : 'var(--accent-blue)'}`
+              }}>
+                <span>{dependencyNotice}</span>
+              </div>
+            )}
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
               {ALL_SYSTEM_MODULES.map(m => {
                 const IconComponent = getModuleIcon(m.id)
                 const isEnabled = !!enabledModules[m.id]
+                const requiresNames = m.requires?.map(reqId => getModuleById(reqId)?.name.split('(')[0].trim() || reqId) || []
+
                 return (
                   <div
                     key={m.id}
-                    onClick={() => setEnabledModules(prev => ({ ...prev, [m.id]: !prev[m.id] }))}
+                    onClick={() => {
+                      const currentState = !!enabledModules[m.id]
+                      const targetState = !currentState
+                      const result = resolveModuleToggle(m.id, targetState, enabledModules)
+
+                      if (!targetState && result.blockedBy.length > 0) {
+                        const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+                        setDependencyNotice(`⚠️ No puedes desactivar "${m.name}" porque es requerido por los siguientes módulos activos: ${blockedNames}. Desactiva primero esos módulos.`)
+                        setTimeout(() => setDependencyNotice(null), 6000)
+                        return
+                      }
+
+                      if (targetState && result.autoEnabled.length > 0) {
+                        const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+                        setDependencyNotice(`ℹ️ Se activaron automáticamente los prerrequisitos: ${autoNames}`)
+                        setTimeout(() => setDependencyNotice(null), 5000)
+                      } else {
+                        setDependencyNotice(null)
+                      }
+
+                      setEnabledModules(result.updatedModules)
+                    }}
                     className="neu-card"
                     style={{
                       padding: 14,
@@ -342,7 +385,7 @@ export default function SettingsPage() {
                       transition: '0.15s ease'
                     }}
                   >
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flex: 1 }}>
                       <div style={{
                         width: 36,
                         height: 36,
@@ -356,9 +399,24 @@ export default function SettingsPage() {
                       }}>
                         <IconComponent size={18} strokeWidth={2} />
                       </div>
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)', marginBottom: 2 }}>{m.name}</div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{m.description}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)' }}>{m.name}</span>
+                          {m.group === 'vertical' && (
+                            <span style={{ fontSize: '0.65rem', background: 'var(--accent-blue-lt)', color: 'var(--accent-blue)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
+                              VERTICAL
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.3, marginBottom: requiresNames.length > 0 ? 4 : 0 }}>
+                          {m.description}
+                        </div>
+                        {requiresNames.length > 0 && (
+                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span>🔗 Requiere:</span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{requiresNames.join(', ')}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

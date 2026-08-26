@@ -13,7 +13,7 @@ export function formatCurrency(amount: number, currency = 'COP', locale = 'es-CO
   }).format(Math.round(amount || 0))
 }
 
-export function formatDate(date: string | Date, locale = 'es-MX'): string {
+export function formatDate(date: string | Date, locale = 'es-CO'): string {
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: 'short',
@@ -21,7 +21,7 @@ export function formatDate(date: string | Date, locale = 'es-MX'): string {
   }).format(new Date(date))
 }
 
-export function formatDateTime(date: string | Date, locale = 'es-MX'): string {
+export function formatDateTime(date: string | Date, locale = 'es-CO'): string {
   return new Intl.DateTimeFormat(locale, {
     day: '2-digit',
     month: 'short',
@@ -31,8 +31,8 @@ export function formatDateTime(date: string | Date, locale = 'es-MX'): string {
   }).format(new Date(date))
 }
 
-export function formatNumber(n: number, decimals = 0): string {
-  return new Intl.NumberFormat('es-MX', {
+export function formatNumber(n: number, decimals = 0, locale = 'es-CO'): string {
+  return new Intl.NumberFormat(locale, {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
   }).format(n)

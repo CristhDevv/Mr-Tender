@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
+import { validateTenantAccess, getSecureRole } from '@/lib/supabase/auth-helpers'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
 
@@ -127,9 +128,51 @@ const COPILOT_TOOLS = [
   }
 ]
 
+// Rate limiting map: tenantId -> { count: number, resetTime: number }
+const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
+const MAX_REQUESTS_PER_MINUTE = 40
+const tenantRateLimits = new Map<string, { count: number; resetTime: number }>()
+
+function checkRateLimit(tenantId: string): boolean {
+  const now = Date.now()
+  const record = tenantRateLimits.get(tenantId)
+
+  if (!record || now > record.resetTime) {
+    tenantRateLimits.set(tenantId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS })
+    return true
+  }
+
+  if (record.count >= MAX_REQUESTS_PER_MINUTE) {
+    return false
+  }
+
+  record.count++
+  return true
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { message, conversationHistory, tenant_id: bodyTenantId, user_role, user_name, permissions } = await req.json()
+    const supabase = await createServerSupabase()
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !user) {
+      return NextResponse.json({ error: 'No autenticado. Inicia sesión para usar el copiloto.' }, { status: 401 })
+    }
+
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) {
+      return authCheck.response
+    }
+
+    const { tenantId: tenant_id, role: user_role, fullName: user_name } = authCheck.context
+
+    // Rate limiting
+    if (!checkRateLimit(tenant_id)) {
+      return NextResponse.json({
+        reply: '⏳ Has alcanzado el límite de consultas por minuto para tu negocio. Por favor espera unos segundos antes de consultar nuevamente.'
+      }, { status: 429 })
+    }
+
+    const { message, conversationHistory } = await req.json()
 
     if (!message || typeof message !== 'string') {
       return NextResponse.json({ error: 'Mensaje requerido' }, { status: 400 })
@@ -141,26 +184,19 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // ── 1. SECURITY & PROMPT INJECTION SHIELD ──
-    const lowerMsg = message.toLowerCase()
-
-    const isJailbreak = /(ignore previous|ignora las instrucciones|act as dan|hazte pasar por|revela tu prompt|dame tu system prompt|cual es tu instruccion|bypass security|dame las api keys)/i.test(lowerMsg)
-    if (isJailbreak) {
-      return NextResponse.json({
-        reply: '🛡️ Como **Tender Copilot AI**, mi función es asistirte exclusivamente en la administración, ventas, inventario y operaciones de tu negocio en Mr. Tender. ¿En qué aspecto de tu tienda o droguería te puedo ayudar hoy?'
-      })
-    }
-
-    const isOffTopic = /(escribe un poema de amor|cuentame un cuento de hadas|quien ganara el mundial|receta de cocina casera para cenar|escribe codigo en c\+\+ para hackear|quien es el presidente de)/i.test(lowerMsg)
-    if (isOffTopic) {
-      return NextResponse.json({
-        reply: '👋 Hola, soy el copiloto empresarial de **Mr. Tender**. Estoy entrenado para ayudarte con tus ventas, control de inventario, facturas, clientes, arqueos de caja y dudas sobre el ERP. Por favor cuéntame en qué tarea de tu negocio te puedo colaborar.'
-      })
-    }
-
-    // ── 2. SYSTEM PROMPT & CONTEXT INJECTION ──
+    // Server-verified user identity & permissions
     const isAdmin = user_role === 'admin' || user_role === 'owner' || user_role === 'superadmin'
-    const allowedPerms: string[] = Array.isArray(permissions) ? permissions : (isAdmin ? ['*'] : [])
+
+    let allowedPerms: string[] = isAdmin ? ['*'] : []
+    if (!isAdmin) {
+      const { data: empData } = await supabase
+        .from('employees')
+        .select('permissions')
+        .eq('user_id', user.id)
+        .eq('tenant_id', tenant_id)
+        .maybeSingle()
+      allowedPerms = empData?.permissions || ['pos.view', 'pos.create_sale']
+    }
 
     const systemInstruction = `
 Eres Tender Copilot AI, el copiloto inteligente y asistente clínico-farmacéutico de Mr. Tender ERP para comercios y droguerías en Colombia.
@@ -267,7 +303,7 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
 
     if (Array.isArray(conversationHistory)) {
       conversationHistory.slice(-6).forEach((h: any) => {
-        if (h.role && h.content) {
+        if (h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string') {
           contents.push({
             role: h.role === 'assistant' ? 'model' : 'user',
             parts: [{ text: h.content }]
@@ -280,11 +316,6 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
       role: 'user',
       parts: [{ text: message }]
     })
-
-    // Create Authenticated Server Client (reads cookies so RLS passes)
-    const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
-    const tenant_id = user?.user_metadata?.tenant_id || bodyTenantId
 
     // Call Gemini API (First Turn)
     const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`
@@ -329,29 +360,26 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
       if (!isAdmin && !allowedPerms.includes('reports.sales') && !allowedPerms.includes('*')) {
         toolResult = { error: 'Acceso denegado. No tienes permisos para ver reportes de ventas.' }
       } else {
-        const todayStr = new Date().toISOString().split('T')[0]
-        let startDate = todayStr + 'T00:00:00'
-        let endDate = todayStr + 'T23:59:59'
+        const colDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
+        let startDate = `${colDateStr}T00:00:00-05:00`
+        let endDate = `${colDateStr}T23:59:59-05:00`
 
         if (funcArgs.period === 'week') {
           startDate = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
           endDate = new Date().toISOString()
         } else if (funcArgs.period === 'month') {
-          startDate = todayStr.substring(0, 7) + '-01T00:00:00'
-          endDate = todayStr + 'T23:59:59'
+          startDate = `${colDateStr.substring(0, 7)}-01T00:00:00-05:00`
+          endDate = `${colDateStr}T23:59:59-05:00`
         }
 
         let query = supabase
           .from('sales')
           .select('id, number, total, subtotal, tax_amount, created_at')
+          .eq('tenant_id', tenant_id)
           .gte('created_at', startDate)
 
         if (funcArgs.period === 'today') {
           query = query.lte('created_at', endDate)
-        }
-
-        if (tenant_id) {
-          query = query.eq('tenant_id', tenant_id)
         }
 
         const { data: sales, error: salesErr } = await query
@@ -412,11 +440,8 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
       let queryBuilder = supabase
         .from('products')
         .select('id, name, sku, sale_price, cost_price, inventory(quantity, warehouse_id)')
-        .limit(20)
-
-      if (tenant_id) {
-        queryBuilder = queryBuilder.eq('tenant_id', tenant_id)
-      }
+        .eq('tenant_id', tenant_id)
+        .limit(30)
 
       if (funcArgs.query) {
         queryBuilder = queryBuilder.ilike('name', `%${funcArgs.query}%`)
@@ -446,39 +471,37 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
         // Also search pharmacy medicines
         let pharmMeds: any[] = []
         if (funcArgs.query) {
-          let pQuery = supabase
+          const { data: pMeds } = await supabase
             .from('pharmacy_medicines')
             .select('trade_name, generic_name, concentration, unit_price, cost_price')
+            .eq('tenant_id', tenant_id)
             .ilike('trade_name', `%${funcArgs.query}%`)
-            .limit(5)
-
-          if (tenant_id) pQuery = pQuery.eq('tenant_id', tenant_id)
-          const { data: pMeds } = await pQuery
+            .limit(10)
           pharmMeds = pMeds || []
         }
 
         toolResult = {
-          products: filtered.slice(0, 10),
+          products: filtered.slice(0, 20),
           pharmacyMedicines: pharmMeds,
           totalFound: filtered.length + pharmMeds.length
         }
       }
     } else if (funcName === 'query_customers_debt') {
-      let queryBuilder = supabase
+      const { data: custs, error } = await supabase
         .from('customers')
         .select('id, full_name, phone, credit_limit, credit_used')
+        .eq('tenant_id', tenant_id)
         .order('credit_used', { ascending: false })
-        .limit(15)
-
-      if (tenant_id) queryBuilder = queryBuilder.eq('tenant_id', tenant_id)
-      if (funcArgs.customer_name) queryBuilder = queryBuilder.ilike('full_name', `%${funcArgs.customer_name}%`)
-
-      const { data: custs, error } = await queryBuilder
+        .limit(20)
 
       if (error) {
         toolResult = { error: error.message }
       } else {
         let list = custs || []
+        if (funcArgs.customer_name) {
+          const qName = funcArgs.customer_name.toLowerCase()
+          list = list.filter(c => c.full_name?.toLowerCase().includes(qName))
+        }
         if (funcArgs.only_debtors) {
           list = list.filter(c => Number(c.credit_used || 0) > 0)
         }
@@ -537,21 +560,19 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
         }
       }
     } else if (funcName === 'generate_invoice_pdf') {
-      let query = supabase
+      const { data: saleData } = await supabase
         .from('sales')
         .select('id, number, total, subtotal, tax_amount, customer_id, created_at')
+        .eq('tenant_id', tenant_id)
         .or(`number.eq.${funcArgs.sale_number},id.eq.${funcArgs.sale_number}`)
         .limit(1)
-
-      if (tenant_id) query = query.eq('tenant_id', tenant_id)
-      const { data: saleData } = await query
 
       if (!saleData || saleData.length === 0) {
         toolResult = { error: `No se encontró ninguna factura con folio ${funcArgs.sale_number}` }
       } else {
         const s = saleData[0]
         const [custRes, itemsRes, payRes, setRes] = await Promise.all([
-          s.customer_id ? supabase.from('customers').select('full_name, phone').eq('id', s.customer_id).limit(1) : Promise.resolve({ data: null }),
+          s.customer_id ? supabase.from('customers').select('full_name, phone').eq('id', s.customer_id).eq('tenant_id', tenant_id).limit(1) : Promise.resolve({ data: null }),
           supabase.from('sale_items').select('product_name, quantity, unit_price, total').eq('sale_id', s.id),
           supabase.from('sale_payments').select('payment_method, amount').eq('sale_id', s.id),
           supabase.from('tenant_settings').select('business_name, phone').eq('tenant_id', tenant_id).limit(1)
@@ -599,13 +620,11 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
           ? todayStr + 'T00:00:00'
           : todayStr.substring(0, 7) + '-01T00:00:00'
 
-        let sQuery = supabase
+        const { data: sales } = await supabase
           .from('sales')
           .select('id, total, discount_amount')
+          .eq('tenant_id', tenant_id)
           .gte('created_at', startDate)
-
-        if (tenant_id) sQuery = sQuery.eq('tenant_id', tenant_id)
-        const { data: sales } = await sQuery
 
         const saleIds = sales?.map(s => s.id) || []
         let saleItems: any[] = []
@@ -755,15 +774,12 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
               status
             )
           `)
-
-        if (tenant_id) {
-          pharmQuery = pharmQuery.eq('tenant_id', tenant_id)
-        }
+          .eq('tenant_id', tenant_id)
 
         const { data: pharmData, error: pharmErr } = await pharmQuery
 
         // 2. Fetch general store products that could be OTC/wellness/first-aid
-        let prodQuery = supabase
+        const { data: prodData } = await supabase
           .from('products')
           .select(`
             id,
@@ -774,13 +790,8 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
               quantity
             )
           `)
+          .eq('tenant_id', tenant_id)
           .limit(40)
-
-        if (tenant_id) {
-          prodQuery = prodQuery.eq('tenant_id', tenant_id)
-        }
-
-        const { data: prodData } = await prodQuery
 
         // Process and structure pharmacy items with current physical stock
         const processedMedicines = (pharmData || []).map((m: any) => {

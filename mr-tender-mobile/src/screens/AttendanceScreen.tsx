@@ -52,16 +52,13 @@ export default function AttendanceScreen() {
     setProcessing(true)
 
     try {
-      const lat = 19.4326 + (Math.random() - 0.5) * 0.01
-      const lng = -99.1332 + (Math.random() - 0.5) * 0.01
-
       const { data, error } = await supabase
         .from('attendance')
         .insert({
           tenant_id: tenantId,
           employee_id: employeeId,
           check_in: new Date().toISOString(),
-          notes: 'Fichaje móvil'
+          notes: 'Fichaje móvil registrado'
         })
         .select('*')
         .single()
@@ -123,7 +120,7 @@ export default function AttendanceScreen() {
     <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>Control de Asistencia</Text>
-        <Text style={styles.subtitle}>Geolocalización activa</Text>
+        <Text style={styles.subtitle}>Registro de jornada laboral</Text>
 
         <View style={styles.divider} />
 
@@ -131,7 +128,7 @@ export default function AttendanceScreen() {
           <View style={{ alignItems: 'center' }}>
             <Text style={styles.statusText}>🟢 Fichado</Text>
             <Text style={styles.timeText}>
-              Entrada: {new Date(activeAttendance.check_in).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+              Entrada: {new Date(activeAttendance.check_in).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
             </Text>
             <TouchableOpacity style={[styles.btn, styles.btnDanger]} onPress={handleCheckOut} disabled={processing}>
               {processing ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnText}>Fichar Salida</Text>}

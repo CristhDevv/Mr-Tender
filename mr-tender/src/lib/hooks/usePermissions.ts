@@ -33,9 +33,14 @@ export function usePermissions(): UserPermissionContext {
           return
         }
 
-        // Check user metadata first
-        const userMetaRole = user.user_metadata?.role
-        const isOwnerMeta = user.user_metadata?.is_owner === true || userMetaRole === 'admin' || userMetaRole === 'superadmin' || !userMetaRole
+        // Check user metadata safely
+        const userMetaRole = user.app_metadata?.role || user.user_metadata?.role
+        const isOwnerMeta = Boolean(
+          user.user_metadata?.is_owner === true ||
+          userMetaRole === 'admin' ||
+          userMetaRole === 'superadmin' ||
+          userMetaRole === 'owner'
+        )
 
         // Call RPC get_user_permissions
         const { data, error } = await supabase.rpc('get_user_permissions', {
@@ -44,7 +49,7 @@ export function usePermissions(): UserPermissionContext {
 
         if (error || !data) {
           setIsAdmin(isOwnerMeta)
-          setRole(userMetaRole || (isOwnerMeta ? 'admin' : 'cashier'))
+          setRole(userMetaRole || (isOwnerMeta ? 'admin' : 'employee'))
           setRoleName(isOwnerMeta ? 'Administrador' : 'Empleado')
           setPermissions(isOwnerMeta ? ['*'] : ['pos.view', 'pos.create_sale', 'cash.view'])
           return
@@ -61,15 +66,17 @@ export function usePermissions(): UserPermissionContext {
         )
 
         setIsAdmin(isUserAdmin)
-        setRole(data.role || (isUserAdmin ? 'admin' : 'cashier'))
+        setRole(data.role || (isUserAdmin ? 'admin' : 'employee'))
         setRoleName(data.role_name || (isUserAdmin ? 'Administrador' : 'Empleado'))
         setColor(data.color || '#3B82F6')
         setPermissions(isUserAdmin ? ['*'] : (data.permissions || []))
       } catch (err) {
         console.error('Error loading permissions:', err)
-        // Safe admin fallback
-        setIsAdmin(true)
-        setPermissions(['*'])
+        // Safe least-privilege fallback on network or unexpected errors
+        setIsAdmin(false)
+        setPermissions([])
+        setRole('restricted')
+        setRoleName('Acceso Restringido')
       } finally {
         setLoading(false)
       }

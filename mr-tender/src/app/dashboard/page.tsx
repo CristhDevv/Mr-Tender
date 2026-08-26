@@ -56,10 +56,16 @@ export default function DashboardPage() {
     async function loadDashboardData() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+          setLoading(false)
+          return
+        }
 
-        const tenant_id = user.user_metadata?.tenant_id
-        if (!tenant_id) return
+        const tenant_id = user.app_metadata?.tenant_id || user.user_metadata?.tenant_id
+        if (!tenant_id) {
+          setLoading(false)
+          return
+        }
         setTenantName(user.user_metadata?.full_name || 'Mi Negocio')
 
         const todayStr = new Date().toISOString().split('T')[0]
@@ -99,7 +105,8 @@ export default function DashboardPage() {
             .eq('tenant_id', tenant_id),
           supabase
             .from('sale_items')
-            .select('product_name, quantity, total')
+            .select('product_name, quantity, total, sales!inner(tenant_id)')
+            .eq('sales.tenant_id', tenant_id)
             .limit(100)
         ])
 

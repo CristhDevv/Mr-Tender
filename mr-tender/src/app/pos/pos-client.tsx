@@ -48,12 +48,31 @@ import {
 import { generateDianInvoicePdfA4, generateDianInvoicePdfPos } from '@/lib/dian/pdf-dian'
 import { getDianVerificationUrl } from '@/lib/dian/qr'
 
-// Web Audio sound generator for tactile feedback
+// Web Audio sound generator for tactile feedback (Singleton context to prevent memory leaks)
+let sharedAudioCtx: AudioContext | null = null
+
+function getAudioContext(): AudioContext | null {
+  if (typeof window === 'undefined') return null
+  try {
+    if (!sharedAudioCtx) {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+      if (AudioContextClass) {
+        sharedAudioCtx = new AudioContextClass()
+      }
+    }
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume().catch(() => {})
+    }
+    return sharedAudioCtx
+  } catch {
+    return null
+  }
+}
+
 function playSound(type: 'beep' | 'success' | 'tap' | 'error') {
   try {
-    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
-    if (!AudioContextClass) return
-    const ctx = new AudioContextClass()
+    const ctx = getAudioContext()
+    if (!ctx) return
 
     if (type === 'tap') {
       const osc = ctx.createOscillator()
@@ -176,6 +195,7 @@ export default function POSClient() {
   const [businessName, setBusinessName] = useState('MI TIENDA')
   const [merchantPhone, setMerchantPhone] = useState('3001234567')
   const [defaultTaxRate, setDefaultTaxRate] = useState(19)
+  const [tenantSettingsFull, setTenantSettingsFull] = useState<any>(null)
   const [isOnline, setIsOnline] = useState(true)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
 
@@ -229,10 +249,11 @@ export default function POSClient() {
         if (existingIdx >= 0) {
           const updated = [...prevCart]
           const newQty = updated[existingIdx].quantity + quantity
+          const itemDisc = updated[existingIdx].discount || 0
           updated[existingIdx] = {
             ...updated[existingIdx],
             quantity: newQty,
-            lineTotal: (newQty * updated[existingIdx].price) - updated[existingIdx].discount
+            lineTotal: newQty * updated[existingIdx].price * (1 - itemDisc / 100)
           }
           return updated
         } else {
@@ -376,12 +397,13 @@ export default function POSClient() {
         // Get tenant settings
         const { data: tSettings } = await supabase
           .from('tenant_settings')
-          .select('business_name, whatsapp, phone, tax_rate, tax_name')
+          .select('*')
           .eq('tenant_id', tenant_id)
           .limit(1)
 
         let currentTaxRate = 19
         if (tSettings?.[0]) {
+          setTenantSettingsFull(tSettings[0])
           if (tSettings[0].business_name) setBusinessName(tSettings[0].business_name)
           setMerchantPhone(tSettings[0].whatsapp || tSettings[0].phone || '3001234567')
           if (tSettings[0].tax_rate !== null && tSettings[0].tax_rate !== undefined) {
@@ -701,7 +723,7 @@ export default function POSClient() {
     const cleanCode = code.trim()
     setSearch(cleanCode)
 
-    const foundInInventory = products.find(p => p.sku === cleanCode || p.name.toLowerCase().includes(cleanCode.toLowerCase()))
+    const foundInInventory = products.find(p => p.sku === cleanCode || p.barcode === cleanCode || p.name.toLowerCase().includes(cleanCode.toLowerCase()))
     if (foundInInventory) {
       if (foundInInventory.unit_type !== 'unit') {
         setWeighingProduct(foundInInventory)
@@ -1012,38 +1034,42 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
   }
 
   async function handleDownloadOfficialPdfA4() {
+    const emisorNit = tenantSettingsFull?.tax_id ? tenantSettingsFull.tax_id.replace(/\D/g, '') : '901234567'
+    const resolutionNum = tenantSettingsFull?.dian_resolution || '18760000001'
+    const resolutionPrefix = tenantSettingsFull?.dian_prefix || 'SETP'
+
     const payload = {
       documentType: '01' as any,
       number: dianResult?.number || saleNumber,
-      prefix: 'SETP',
+      prefix: resolutionPrefix,
       folio: 1,
       issueDate: new Date().toISOString().split('T')[0],
       issueTime: new Date().toTimeString().split(' ')[0] + '-05:00',
       currency: 'COP',
-      environment: '2' as any,
+      environment: (tenantSettingsFull?.dian_environment || '2') as any,
       resolution: {
-        resolutionNumber: '18760000001',
-        prefix: 'SETP',
-        fromNumber: 1,
-        toNumber: 50000,
+        resolutionNumber: resolutionNum,
+        prefix: resolutionPrefix,
+        fromNumber: Number(tenantSettingsFull?.dian_from || 1),
+        toNumber: Number(tenantSettingsFull?.dian_to || 50000),
         currentNumber: 1,
         validFrom: '2026-01-01',
         validTo: '2027-12-31',
-        technicalKey: 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
-        environment: '2' as any
+        technicalKey: tenantSettingsFull?.dian_technical_key || 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
+        environment: (tenantSettingsFull?.dian_environment || '2') as any
       },
       emisor: {
-        nit: '901234567',
+        nit: emisorNit,
         dv: '1',
-        businessName: businessName,
-        regime: '48' as any,
+        businessName: tenantSettingsFull?.business_name || businessName,
+        regime: (tenantSettingsFull?.dian_regimen?.includes('No') ? '49' : '48') as any,
         personType: '1' as any,
         idType: '31' as any,
-        email: 'facturacion@mrtender.com',
-        phone: merchantPhone,
-        address: 'Calle 100 # 15-20',
-        city: 'Bogotá',
-        state: 'Bogotá D.C.',
+        email: tenantSettingsFull?.email || 'facturacion@mrtender.com',
+        phone: tenantSettingsFull?.phone || merchantPhone,
+        address: tenantSettingsFull?.address || 'Calle Principal # 1-23',
+        city: tenantSettingsFull?.city || 'Bogotá',
+        state: tenantSettingsFull?.state || 'Bogotá D.C.',
         country: 'Colombia'
       },
       adquiriente: {

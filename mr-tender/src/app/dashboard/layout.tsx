@@ -85,10 +85,10 @@ const NAV_SECTIONS: NavSection[] = [
     href: '/dashboard'
   },
 
-  // 2. VENTAS & MOSTRADOR
+  // 2. VENTAS
   {
     id: 'sales',
-    label: 'Ventas & Mostrador',
+    label: 'Ventas',
     Icon: ShoppingCart,
     items: [
       { href: '/pos',                   Icon: ShoppingCart,    label: 'Punto de Venta (POS)',        moduleKey: 'pos',            requiredPermission: 'pos.view' },
@@ -108,10 +108,10 @@ const NAV_SECTIONS: NavSection[] = [
     ]
   },
 
-  // 3. OPERACIONES & PRODUCCIÓN (Aparece dinámicamente según módulos)
+  // 3. OPERACIONES (Aparece dinámicamente según módulos)
   {
     id: 'operations',
-    label: 'Operaciones & Planta',
+    label: 'Operaciones',
     Icon: ChefHat,
     items: [
       { href: '/restaurant/kds',        Icon: Flame,           label: 'Comandera Cocina KDS',       moduleKey: 'restaurant',     requiredPermission: 'pos.view' },
@@ -127,10 +127,10 @@ const NAV_SECTIONS: NavSection[] = [
     ]
   },
 
-  // 4. CATÁLOGO & INVENTARIO
+  // 4. INVENTARIO
   {
     id: 'catalog',
-    label: 'Catálogo & Inventario',
+    label: 'Inventario',
     Icon: Package,
     items: [
       { href: '/products',              Icon: Package,         label: 'Productos Generales',        moduleKey: 'inventory',      requiredPermission: 'products.view' },
@@ -145,10 +145,10 @@ const NAV_SECTIONS: NavSection[] = [
     ]
   },
 
-  // 5. CLIENTES & RELACIONES
+  // 5. CLIENTES
   {
     id: 'customers',
-    label: 'Clientes & Pacientes',
+    label: 'Clientes',
     Icon: Users,
     items: [
       { href: '/customers',             Icon: Users,           label: 'Directorio & Fiaos',         moduleKey: 'customers',      requiredPermission: 'customers.view' },
@@ -159,10 +159,10 @@ const NAV_SECTIONS: NavSection[] = [
     ]
   },
 
-  // 6. ABASTECIMIENTO
+  // 6. COMPRAS
   {
     id: 'procurement',
-    label: 'Abastecimiento',
+    label: 'Compras',
     Icon: Truck,
     items: [
       { href: '/purchases',             Icon: ShoppingBag,     label: 'Compras & Recepción',        moduleKey: 'purchases',      requiredPermission: 'purchases.view' },
@@ -171,10 +171,10 @@ const NAV_SECTIONS: NavSection[] = [
     ]
   },
 
-  // 7. FINANZAS & CONTABILIDAD
+  // 7. FINANZAS
   {
     id: 'finance',
-    label: 'Finanzas & Datos',
+    label: 'Finanzas',
     Icon: BarChart3,
     items: [
       { href: '/reports',               Icon: BarChart3,       label: 'Reportes & P&L',             moduleKey: 'reports',        requiredPermission: 'reports.sales' },
@@ -184,10 +184,10 @@ const NAV_SECTIONS: NavSection[] = [
     ]
   },
 
-  // 8. CALIDAD & NORMATIVA
+  // 8. CALIDAD
   {
     id: 'compliance',
-    label: 'Calidad & Normativa',
+    label: 'Calidad',
     Icon: ShieldCheck,
     items: [
       { href: '/pharmacy/temperature',  Icon: Thermometer,     label: 'Termohigrometría & Salud',   moduleKey: 'pharmacy',       requiredPermission: 'inventory.view' },
@@ -195,7 +195,7 @@ const NAV_SECTIONS: NavSection[] = [
     ]
   },
 
-  // 9. ADMINISTRACIÓN & PERSONAL
+  // 9. ADMINISTRACIÓN
   {
     id: 'admin',
     label: 'Administración',
@@ -237,9 +237,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
         setUser({ full_name: user.user_metadata?.full_name, email: user.email })
-        let tid = user.user_metadata?.tenant_id
+        let tid = user.app_metadata?.tenant_id || user.app_metadata?.tenantId || user.user_metadata?.tenant_id
 
-        // Fallback: resolve tenant_id if not present directly in auth user_metadata
+        // Fallback: resolve tenant_id if not present directly in auth app_metadata
         if (!tid) {
           const { data: userData } = await supabase
             .from('users')

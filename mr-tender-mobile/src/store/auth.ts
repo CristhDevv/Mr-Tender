@@ -28,8 +28,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (error) throw error
 
       const user = data.user
-      const role = user?.user_metadata?.role || 'seller'
-      const tenantId = user?.user_metadata?.tenant_id || null
+      const role = user?.app_metadata?.role || user?.user_metadata?.role || 'seller'
+      const tenantId = user?.app_metadata?.tenant_id || user?.app_metadata?.tenantId || null
 
       set({ user, session: data.session, role, tenantId, loading: false })
       return true
@@ -45,12 +45,21 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   restoreSession: async () => {
-    const { data: { session } } = await supabase.auth.getSession()
-    if (session) {
-      const user = session.user
-      const role = user?.user_metadata?.role || 'seller'
-      const tenantId = user?.user_metadata?.tenant_id || null
-      set({ user, session, role, tenantId })
+    try {
+      set({ loading: true })
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) throw error
+      if (session) {
+        const user = session.user
+        const role = user?.app_metadata?.role || user?.user_metadata?.role || 'seller'
+        const tenantId = user?.app_metadata?.tenant_id || user?.app_metadata?.tenantId || null
+        set({ user, session, role, tenantId, loading: false })
+      } else {
+        set({ user: null, session: null, role: null, tenantId: null, loading: false })
+      }
+    } catch (err: any) {
+      console.error('Error restoring session:', err)
+      set({ error: err.message, loading: false })
     }
   }
 }))

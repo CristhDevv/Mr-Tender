@@ -1,0 +1,57 @@
+name: Mr. Tender CI Pipeline
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  audit-and-test:
+    name: Security, Linting & Automated Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            mr-tender/package-lock.json
+            mr-tender-mobile/package-lock.json
+
+      - name: Install Web Dependencies
+        working-directory: ./mr-tender
+        run: npm ci
+
+      - name: TypeScript Typecheck (Web)
+        working-directory: ./mr-tender
+        run: npx tsc --noEmit
+
+      - name: Run Web Test Suite (RLS, DAG, DIAN, Copilot, Offline)
+        working-directory: ./mr-tender
+        run: npm run test
+
+      - name: Build Web Application
+        working-directory: ./mr-tender
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://dysvpqdgqpidieshwrgv.supabase.co' }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy_anon_key' }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY || 'dummy_gemini_key' }}
+        run: npm run build
+
+      - name: Install Mobile Dependencies
+        working-directory: ./mr-tender-mobile
+        run: npm ci
+
+      - name: TypeScript Typecheck (Mobile)
+        working-directory: ./mr-tender-mobile
+        run: npx tsc --noEmit
+
+      - name: Run Mobile Test Suite
+        working-directory: ./mr-tender-mobile
+        run: npm run test

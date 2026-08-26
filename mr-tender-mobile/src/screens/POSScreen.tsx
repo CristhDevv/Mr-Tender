@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   StyleSheet,
   Text,
@@ -178,6 +178,10 @@ export default function POSScreen({ navigation }: any) {
 
     setSubmitting(true)
 
+    const taxRate = 19.00
+    const calculatedSubtotal = total / (1 + taxRate / 100)
+    const calculatedTax = total - calculatedSubtotal
+
     const payload = {
       tenant_id: tenantId,
       seller_id: user.id,
@@ -185,30 +189,34 @@ export default function POSScreen({ navigation }: any) {
       session_id: config.session_id,
       branch_id: config.branch_id,
       customer_id: selectedCustomer ? selectedCustomer.id : null,
-      subtotal: total,
+      subtotal: calculatedSubtotal,
       discount_amount: 0,
-      tax_amount: total * 0.16,
+      tax_amount: calculatedTax,
       tip_amount: 0,
       total,
       change_amount: 0,
       points_redeemed: 0,
-      items: cart.map(item => ({
-        product_id: item.id,
-        variant_id: null,
-        product_name: item.name,
-        product_sku: item.sku,
-        quantity: item.quantity,
-        unit_price: item.price,
-        original_price: item.price,
-        discount_percentage: 0,
-        discount_amount: 0,
-        tax_rate: 16.00,
-        tax_amount: item.lineTotal * 0.16,
-        subtotal: item.lineTotal / 1.16,
-        total: item.lineTotal,
-        cost_price: item.cost,
-        warehouse_id: config.warehouse_id
-      })),
+      items: cart.map(item => {
+        const itemSubtotal = item.lineTotal / (1 + taxRate / 100)
+        const itemTax = item.lineTotal - itemSubtotal
+        return {
+          product_id: item.id,
+          variant_id: null,
+          product_name: item.name,
+          product_sku: item.sku,
+          quantity: item.quantity,
+          unit_price: item.price,
+          original_price: item.price,
+          discount_percentage: 0,
+          discount_amount: 0,
+          tax_rate: taxRate,
+          tax_amount: itemTax,
+          subtotal: itemSubtotal,
+          total: item.lineTotal,
+          cost_price: item.cost,
+          warehouse_id: config.warehouse_id
+        }
+      }),
       payments: [
         {
           payment_method: paymentMethod,
@@ -227,7 +235,15 @@ export default function POSScreen({ navigation }: any) {
 
       if (paymentMethod === 'fiao' && selectedCustomer) {
         const newCredit = Number(selectedCustomer.credit_used || 0) + total
-        await supabase.from('customers').update({ credit_used: newCredit }).eq('id', selectedCustomer.id)
+        const { error: custErr } = await supabase
+          .from('customers')
+          .update({ credit_used: newCredit })
+          .eq('id', selectedCustomer.id)
+          .eq('tenant_id', tenantId)
+
+        if (custErr) {
+          console.error('Error updating customer credit:', custErr)
+        }
       }
 
       Alert.alert('✅ Venta Exitosa', `Venta completada correctamente.\nFolio: ${data.number}\nMétodo: ${paymentMethod === 'cash' ? 'Efectivo' : paymentMethod === 'transfer' ? 'Transferencia' : 'Fiao'}`)

@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateTenantAccess } from '@/lib/supabase/auth-helpers'
 import { runDianTestSet } from '@/lib/dian/test-set-runner'
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-
-    const tenantId = user.user_metadata?.tenant_id
-    if (!tenantId) return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 })
+    
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) {
+      return authCheck.response
+    }
+    const { tenantId } = authCheck.context
 
     const body = await req.json()
     const { testSetId } = body
@@ -35,10 +38,12 @@ export async function GET() {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-
-    const tenantId = user.user_metadata?.tenant_id
-    if (!tenantId) return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 })
+    
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) {
+      return authCheck.response
+    }
+    const { tenantId } = authCheck.context
 
     const { data: testSets, error } = await supabase
       .from('dian_test_sets')

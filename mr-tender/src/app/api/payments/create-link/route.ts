@@ -1,17 +1,21 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateTenantAccess } from '@/lib/supabase/auth-helpers'
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    
     if (authErr || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     }
-    const tenantId = user.user_metadata?.tenant_id
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 })
+
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) {
+      return authCheck.response
     }
+    const { tenantId } = authCheck.context
 
     const body = await req.json()
     const {
@@ -28,10 +32,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Monto y referencia son requeridos' }, { status: 400 })
     }
 
+    // Consultar configuración del tenant para llave pública de pasarela
+    const { data: tenantSettings } = await supabase
+      .from('tenant_settings')
+      .select('wompi_public_key')
+      .eq('tenant_id', tenantId)
+      .maybeSingle()
+
+    const wompiPubKey = tenantSettings?.wompi_public_key || process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || process.env.WOMPI_PUBLIC_KEY || 'pub_prod_demo'
+    const origin = req.nextUrl.origin || 'https://mr-tender.vercel.app'
+    const redirectUrl = `${origin}/invoices`
+
     // Generar link dinámico de checkout (Wompi / PSE / Nequi compatible)
-    // En producción se usa la llave pública de Wompi del tenant o pasarela configurada
-    const cleanPhone = (customerPhone || '').replace(/\D/g, '')
-    const wompiCheckoutUrl = `https://checkout.wompi.co/p/?public-key=pub_prod_demo&currency=${currency}&amount-in-cents=${Math.round(amount * 100)}&reference=${reference}&redirect-url=https://mr-tender.vercel.app/invoices`
+    const wompiCheckoutUrl = `https://checkout.wompi.co/p/?public-key=${wompiPubKey}&currency=${currency}&amount-in-cents=${Math.round(amount * 100)}&reference=${reference}&redirect-url=${encodeURIComponent(redirectUrl)}`
 
     // QR universal para pago
     const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(wompiCheckoutUrl)}`

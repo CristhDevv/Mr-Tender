@@ -12,7 +12,7 @@ export async function middleware(request: NextRequest) {
     pathname === '/manifest.json' ||
     pathname === '/sw.js' ||
     pathname.startsWith('/_next') ||
-    pathname.includes('.')
+    /\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map|txt|webmanifest|json)$/i.test(pathname)
   ) {
     return supabaseResponse
   }
@@ -49,13 +49,17 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && (pathname === '/login' || pathname === '/register')) {
-    const isSuperadmin = user.user_metadata?.role === 'superadmin'
+    const role = user.app_metadata?.role || user.user_metadata?.role
+    const isSuperadmin = role === 'superadmin'
     return NextResponse.redirect(new URL(isSuperadmin ? '/superadmin' : '/dashboard', request.url))
   }
 
-  // Protect superadmin routes
-  if (pathname.startsWith('/superadmin') && user?.user_metadata?.role !== 'superadmin') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  // Protect superadmin routes (must have superadmin in app_metadata or fallback)
+  if (pathname.startsWith('/superadmin')) {
+    const role = user?.app_metadata?.role || user?.user_metadata?.role
+    if (role !== 'superadmin') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
   }
 
   return supabaseResponse

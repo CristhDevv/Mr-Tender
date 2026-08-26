@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateTenantAccess } from '@/lib/supabase/auth-helpers'
 import { DianCreditNotePayload } from '@/lib/dian/types'
 import { buildCreditNoteUblXml } from '@/lib/dian/ubl-builder'
 import { dianClient } from '@/lib/dian/dian-client'
@@ -9,27 +10,26 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-
-    const tenantId = user.user_metadata?.tenant_id
-    if (!tenantId) return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 })
+    
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) {
+      return authCheck.response
+    }
+    const { tenantId } = authCheck.context
 
     const body = await req.json()
     const { invoiceId, discrepancyCode, reason } = body
 
-    if (!invoiceId) {
-      return NextResponse.json({ error: 'invoiceId requerido' }, { status: 400 })
-    }
-
-    // 1. Obtener la factura original
+    // 1. Obtener la factura original asegurando el tenant_id de la sesión
     const { data: invoice, error: invErr } = await supabase
       .from('invoices')
       .select('*')
       .eq('id', invoiceId)
+      .eq('tenant_id', tenantId)
       .single()
 
     if (invErr || !invoice) {
-      return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 })
+      return NextResponse.json({ error: 'Factura no encontrada o no pertenece a este comercio' }, { status: 404 })
     }
 
     // 2. Obtener configuración de negocio
@@ -178,6 +178,7 @@ export async function POST(req: NextRequest) {
         cancelled_at: new Date().toISOString()
       })
       .eq('id', invoice.id)
+      .eq('tenant_id', tenantId)
 
     return NextResponse.json({
       success: true,

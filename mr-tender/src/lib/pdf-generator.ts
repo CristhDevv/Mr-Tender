@@ -29,10 +29,14 @@ export interface PnlReportPdfData {
 }
 
 export function generateInvoicePdf(data: InvoicePdfData): void {
+  // Calculate dynamic height based on number of items and header/footer info
+  const baseHeight = 90 + (data.items.length * 6) + (data.merchantPhone ? 5 : 0) + (data.change ? 5 : 0)
+  const receiptHeight = Math.max(120, baseHeight)
+
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
-    format: [80, 200] // 80mm POS Thermal Receipt format
+    format: [80, receiptHeight] // Dynamic 80mm POS Thermal Receipt format
   })
 
   let y = 10

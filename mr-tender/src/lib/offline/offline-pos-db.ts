@@ -26,6 +26,10 @@ export interface OfflineSale {
   created_at: string
   synced: boolean
   sync_error?: string | null
+  retry_count?: number
+  last_attempt_at?: string | null
+  fiscal_status?: 'pending' | 'emitted' | 'failed'
+  conflict_flag?: string | null
 }
 
 export interface OfflineProduct {
@@ -39,6 +43,7 @@ export interface OfflineProduct {
   stock: number
   tax_rate: number
   category_id?: string | null
+  last_synced_at?: string
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -81,7 +86,9 @@ export async function saveOfflineSale(sale: Omit<OfflineSale, 'id' | 'created_at
     ...sale,
     id: 'off_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
     created_at: new Date().toISOString(),
-    synced: false
+    synced: false,
+    retry_count: 0,
+    fiscal_status: 'pending'
   }
 
   return new Promise((resolve, reject) => {
@@ -126,6 +133,31 @@ export async function markSaleSynced(id: string): Promise<void> {
       const item: OfflineSale = getReq.result
       if (item) {
         item.synced = true
+        item.sync_error = null
+        store.put(item)
+      }
+      resolve()
+    }
+    getReq.onerror = () => reject(getReq.error)
+  })
+}
+
+/**
+ * Registra un fallo de sincronización en una venta offline
+ */
+export async function recordSaleSyncError(id: string, errorMessage: string): Promise<void> {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('offline_sales', 'readwrite')
+    const store = tx.objectStore('offline_sales')
+    const getReq = store.get(id)
+
+    getReq.onsuccess = () => {
+      const item: OfflineSale = getReq.result
+      if (item) {
+        item.sync_error = errorMessage
+        item.retry_count = (item.retry_count || 0) + 1
+        item.last_attempt_at = new Date().toISOString()
         store.put(item)
       }
       resolve()
@@ -139,11 +171,14 @@ export async function markSaleSynced(id: string): Promise<void> {
  */
 export async function cacheOfflineProducts(products: OfflineProduct[]): Promise<void> {
   const db = await openDB()
+  const now = new Date().toISOString()
   return new Promise((resolve, reject) => {
     const tx = db.transaction('offline_products', 'readwrite')
     const store = tx.objectStore('offline_products')
 
-    products.forEach(p => store.put(p))
+    products.forEach(p => {
+      store.put({ ...p, last_synced_at: now })
+    })
 
     tx.oncomplete = () => resolve()
     tx.onerror = () => reject(tx.error)
@@ -161,6 +196,66 @@ export async function getOfflineProducts(): Promise<OfflineProduct[]> {
     const req = store.getAll()
 
     req.onsuccess = () => resolve(req.result || [])
+    req.onerror = () => reject(req.error)
+  })
+}
+
+/**
+ * Sincronizador de Lote de Ventas Offline con Manejo de Conflictos
+ */
+export async function syncPendingSalesBatch(
+  syncExecutor: (sale: OfflineSale) => Promise<{ success: boolean; conflict?: string; error?: string }>
+): Promise<{ syncedCount: number; failedCount: number; conflicts: string[] }> {
+  const pending = await getPendingOfflineSales()
+  let syncedCount = 0
+  let failedCount = 0
+  const conflicts: string[] = []
+
+  for (const sale of pending) {
+    try {
+      const res = await syncExecutor(sale)
+      if (res.success) {
+        await markSaleSynced(sale.id)
+        syncedCount++
+        if (res.conflict) {
+          conflicts.push(`Venta ${sale.id}: ${res.conflict}`)
+        }
+      } else {
+        await recordSaleSyncError(sale.id, res.error || 'Error desconocido')
+        failedCount++
+      }
+    } catch (err: any) {
+      await recordSaleSyncError(sale.id, err.message)
+      failedCount++
+    }
+  }
+
+  return { syncedCount, failedCount, conflicts }
+}
+
+/**
+ * Pega/limpia ventas antiguas ya sincronizadas para evitar crecimiento indefinido de IndexedDB
+ */
+export async function pruneSyncedSales(olderThanMs = 7 * 24 * 60 * 60 * 1000): Promise<number> {
+  const db = await openDB()
+  const cutoffTime = Date.now() - olderThanMs
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('offline_sales', 'readwrite')
+    const store = tx.objectStore('offline_sales')
+    const req = store.getAll()
+
+    req.onsuccess = () => {
+      const all: OfflineSale[] = req.result || []
+      let deleted = 0
+      for (const sale of all) {
+        if (sale.synced && new Date(sale.created_at).getTime() < cutoffTime) {
+          store.delete(sale.id)
+          deleted++
+        }
+      }
+      resolve(deleted)
+    }
     req.onerror = () => reject(req.error)
   })
 }

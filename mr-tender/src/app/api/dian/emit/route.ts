@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateTenantAccess } from '@/lib/supabase/auth-helpers'
 import { DianInvoicePayload, DianTaxRegime, DianPersonType, DianIdType, DianPaymentMethod } from '@/lib/dian/types'
 import { buildInvoiceUblXml } from '@/lib/dian/ubl-builder'
 import { dianClient } from '@/lib/dian/dian-client'
@@ -8,15 +9,16 @@ import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
+    const { data: { user }, error: authErr } = await supabase.auth.getUser()
+    if (authErr || !user) {
+      return NextResponse.json({ error: 'No autenticado. Inicie sesión para continuar.' }, { status: 401 })
     }
-
-    const tenantId = user.user_metadata?.tenant_id
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 })
+    
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) {
+      return authCheck.response
     }
+    const { tenantId } = authCheck.context
 
     const body = await req.json()
     const { saleId, customCustomer, customItems, paymentMethod, notes } = body
@@ -51,8 +53,8 @@ export async function POST(req: NextRequest) {
         current_number: 1,
         valid_from: '2026-01-01',
         valid_to: '2027-12-31',
-        technical_key: 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
-        environment: '2'
+        technical_key: tenantSettings.dian_technical_key || 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
+        environment: tenantSettings.dian_environment || '2'
       }
     }
 
@@ -70,6 +72,7 @@ export async function POST(req: NextRequest) {
         .from('sales')
         .select('*')
         .eq('id', saleId)
+        .eq('tenant_id', tenantId)
         .single()
       saleData = sData
 
@@ -84,6 +87,7 @@ export async function POST(req: NextRequest) {
           .from('customers')
           .select('*')
           .eq('id', saleData.customer_id)
+          .eq('tenant_id', tenantId)
           .single()
         customerData = cData
       }
@@ -107,20 +111,21 @@ export async function POST(req: NextRequest) {
       city: tenantSettings.city || 'Bogotá',
       state: tenantSettings.state || 'Bogotá D.C.',
       country: 'Colombia',
-      softwareId: tenantSettings.dian_software_id || 'soft-mrtender-01',
-      softwarePin: '12345'
+      softwareId: tenantSettings.dian_software_id || process.env.DIAN_SOFTWARE_ID || 'soft-mrtender-01',
+      softwarePin: tenantSettings.dian_software_pin || process.env.DIAN_SOFTWARE_PIN || '12345'
     }
 
     // 5. Mapear Adquiriente (Cliente)
     const adqRawId = customCustomer?.id || customerData?.tax_id || customerData?.phone || '222222222222'
     const adqCleanId = String(adqRawId).replace(/[^a-zA-Z0-9]/g, '')
+    const isConsumidorFinal = adqCleanId === '222222222222' || !adqCleanId
 
     const adquiriente = {
-      id: adqCleanId,
-      idType: (customCustomer?.idType || (adqCleanId.length >= 9 ? '31' : '13')) as DianIdType,
-      dv: customCustomer?.idType === '31' ? calculateNITVerificationDigit(adqCleanId) : undefined,
+      id: isConsumidorFinal ? '222222222222' : adqCleanId,
+      idType: (customCustomer?.idType || (isConsumidorFinal ? '13' : adqCleanId.length >= 9 ? '31' : '13')) as DianIdType,
+      dv: !isConsumidorFinal && customCustomer?.idType === '31' ? calculateNITVerificationDigit(adqCleanId) : undefined,
       name: customCustomer?.name || customerData?.full_name || 'Consumidor Final',
-      personType: (customCustomer?.personType || (adqCleanId.length >= 9 ? '1' : '2')) as DianPersonType,
+      personType: (customCustomer?.personType || (isConsumidorFinal ? '2' : adqCleanId.length >= 9 ? '1' : '2')) as DianPersonType,
       regime: (customCustomer?.regime || '49') as DianTaxRegime,
       email: customCustomer?.email || customerData?.email || '',
       phone: customCustomer?.phone || customerData?.phone || '',
@@ -313,12 +318,13 @@ export async function POST(req: NextRequest) {
       console.error('Error saving invoice to database:', invErr)
     }
 
-    // 12. Actualizar consecutivo en la resolución si existe
+    // 12. Actualizar consecutivo en la resolución si existe (aislado por tenant_id)
     if (resolution.id) {
       await supabase
         .from('dian_resolutions')
         .update({ current_number: nextFolio })
         .eq('id', resolution.id)
+        .eq('tenant_id', tenantId)
     }
 
     // 13. Si viene de una venta, asociar el invoice_id a la venta
@@ -330,6 +336,7 @@ export async function POST(req: NextRequest) {
           requires_invoice: true
         })
         .eq('id', saleId)
+        .eq('tenant_id', tenantId)
     }
 
     return NextResponse.json({

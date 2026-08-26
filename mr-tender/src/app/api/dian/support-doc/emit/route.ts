@@ -1,18 +1,18 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateTenantAccess } from '@/lib/supabase/auth-helpers'
 import { buildSupportDocUBLXML, SupportDocUblData } from '@/lib/dian/support-doc-ubl'
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
-    if (authErr || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) {
+      return authCheck.response
     }
-    const tenantId = user.user_metadata?.tenant_id
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 })
-    }
+    const { tenantId } = authCheck.context
 
     const body = await req.json()
     const {

@@ -37,6 +37,8 @@ export interface SystemModule {
   categoryName: string
   description: string
   defaultEnabled: boolean
+  requires?: string[]
+  suggests?: string[]
 }
 
 export const MODULE_ICONS: Record<string, LucideIcon> = {
@@ -74,15 +76,6 @@ export function getModuleIcon(id: string): LucideIcon {
 export const ALL_SYSTEM_MODULES: SystemModule[] = [
   // ── Módulos Base & Operativos ──
   {
-    id: 'pos',
-    name: 'Punto de Venta (POS)',
-    iconName: 'ShoppingCart',
-    group: 'base',
-    categoryName: 'Operaciones Comerciales',
-    description: 'Venta rápida, caja, tickets térmicos, lectura de código de barras y facturación',
-    defaultEnabled: true
-  },
-  {
     id: 'inventory',
     name: 'Inventario, Bodegas & Kardex',
     iconName: 'Boxes',
@@ -90,6 +83,16 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     categoryName: 'Operaciones Comerciales',
     description: 'Control de existencias, Kardex, traslados entre bodegas y alertas de stock bajo',
     defaultEnabled: true
+  },
+  {
+    id: 'pos',
+    name: 'Punto de Venta (POS)',
+    iconName: 'ShoppingCart',
+    group: 'base',
+    categoryName: 'Operaciones Comerciales',
+    description: 'Venta rápida, caja, tickets térmicos, lectura de código de barras y facturación',
+    defaultEnabled: true,
+    requires: ['inventory']
   },
   {
     id: 'cash',
@@ -116,7 +119,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'base',
     categoryName: 'Ventas & Clientes',
     description: 'Tablero Kanban de prospectos, etapas comerciales, links de pago Wompi/PSE y conversión a factura DIAN en 1 clic',
-    defaultEnabled: true
+    defaultEnabled: true,
+    requires: ['customers', 'pos']
   },
   {
     id: 'suppliers',
@@ -134,7 +138,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'base',
     categoryName: 'Abastecimiento',
     description: 'Registro de facturas de compra, recepción de mercancía y actualización de costo',
-    defaultEnabled: true
+    defaultEnabled: true,
+    requires: ['suppliers', 'inventory']
   },
   {
     id: 'employees',
@@ -152,7 +157,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'base',
     categoryName: 'Administración & Legal',
     description: 'Liquidación de salarios quincenal/mensual, deducciones de ley, emisión DIAN con CUNE y colillas por WhatsApp',
-    defaultEnabled: true
+    defaultEnabled: true,
+    requires: ['employees']
   },
   {
     id: 'reports',
@@ -170,7 +176,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'base',
     categoryName: 'Finanzas & Tesorería',
     description: 'Cuentas bancarias en tiempo real, conciliación de extractos y calendario de cobros (CxC) y pagos (CxP)',
-    defaultEnabled: true
+    defaultEnabled: true,
+    requires: ['cash']
   },
   {
     id: 'accounting',
@@ -179,7 +186,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'base',
     categoryName: 'Finanzas & Analítica',
     description: 'Plan único de cuentas contables, balance general y generación automática de asientos',
-    defaultEnabled: true
+    defaultEnabled: true,
+    requires: ['purchases', 'pos']
   },
   {
     id: 'ecommerce',
@@ -188,7 +196,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'base',
     categoryName: 'Ventas Digitales',
     description: 'Catálogo web público con subdominio propio y pedidos directos a WhatsApp',
-    defaultEnabled: true
+    defaultEnabled: true,
+    requires: ['inventory']
   },
 
   // ── Módulos Verticales Especializados ──
@@ -199,7 +208,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Salud & Bienestar',
     description: 'Fórmulas oftalmológicas OD/OI, órdenes de laboratorio de biselado, monturas y WhatsApp',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['customers', 'pos']
   },
   {
     id: 'apparel',
@@ -208,7 +218,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Moda & Retail',
     description: 'Matriz de talla/color, códigos de barras por variante, control de probadores y lookbooks',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
   },
   {
     id: 'gym',
@@ -217,7 +228,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Deportes & Bienestar',
     description: 'Torniquete y check-in QR, membresías con WhatsApp, aforo de clases y antropometría',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['customers', 'pos']
   },
   {
     id: 'laundry',
@@ -226,7 +238,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Servicios',
     description: 'Tickets por prenda/kilo, control visual de percheros, lavado en seco y domicilios',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['customers', 'pos']
   },
   {
     id: 'automotive',
@@ -235,7 +248,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Automotriz',
     description: 'Órdenes de trabajo por placa, checklist de recepción, repuestos y cola de lavado',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['customers', 'inventory', 'pos']
   },
   {
     id: 'veterinary',
@@ -244,7 +258,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Mascotas & Salud',
     description: 'Historias clínicas, carnet de vacunas con WhatsApp, peluquería canina y alimento a granel',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['customers', 'pos']
   },
   {
     id: 'beauty_salon',
@@ -253,7 +268,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Belleza & Cuidado',
     description: 'Agenda de citas con WhatsApp, liquidación de comisiones y fichas técnicas capilares',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['employees', 'pos']
   },
   {
     id: 'restaurant',
@@ -262,7 +278,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Gastronomía',
     description: 'Mapa de mesas, comandas digitales KDS a cocina/barra, split bill y recetas',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
   },
   {
     id: 'liquor_tobacco',
@@ -271,7 +288,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Bebidas & Ocio',
     description: 'Control de botellas y copeo en barra, envases retornables, combos y tabaco (+18)',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
   },
   {
     id: 'pharmacy',
@@ -280,7 +298,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Salud & Farma',
     description: 'Catálogo INVIMA, genéricos, semáforo de lotes FEFO, termohigrometría y controlados',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['inventory', 'purchases']
   },
   {
     id: 'hardware',
@@ -289,7 +308,8 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Construcción & Ferretería',
     description: 'Cotizaciones en PDF A4, venta fraccionada (metros/kilos) y alquiler de herramientas',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
   },
   {
     id: 'bakery',
@@ -298,9 +318,87 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     group: 'vertical',
     categoryName: 'Gastronomía & Panadería',
     description: 'Recetas por gramaje/harina, horneadas del día, mermas, tortas personalizadas y encargos',
-    defaultEnabled: false
+    defaultEnabled: false,
+    requires: ['inventory', 'purchases']
   }
 ]
+
+export function getModuleById(id: string): SystemModule | undefined {
+  return ALL_SYSTEM_MODULES.find(m => m.id === id)
+}
+
+export function getMissingDependencies(moduleId: string, enabledModules: Record<string, boolean>): string[] {
+  const mod = getModuleById(moduleId)
+  if (!mod || !mod.requires) return []
+  return mod.requires.filter(reqId => !enabledModules[reqId])
+}
+
+export function getDependents(moduleId: string, enabledModules: Record<string, boolean>): string[] {
+  return ALL_SYSTEM_MODULES
+    .filter(m => enabledModules[m.id] && m.requires?.includes(moduleId))
+    .map(m => m.id)
+}
+
+export function resolveModuleToggle(
+  moduleId: string,
+  targetState: boolean,
+  currentModules: Record<string, boolean>
+): {
+  updatedModules: Record<string, boolean>
+  autoEnabled: string[]
+  blockedBy: string[]
+} {
+  const updated = { ...currentModules }
+  const autoEnabled: string[] = []
+
+  if (targetState) {
+    // Turning ON: recursively enable required dependencies
+    const queue = [moduleId]
+    const visited = new Set<string>()
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!
+      if (visited.has(currentId)) continue
+      visited.add(currentId)
+
+      updated[currentId] = true
+      if (currentId !== moduleId && !currentModules[currentId]) {
+        autoEnabled.push(currentId)
+      }
+
+      const mod = getModuleById(currentId)
+      if (mod?.requires) {
+        for (const reqId of mod.requires) {
+          if (!updated[reqId]) {
+            queue.push(reqId)
+          }
+        }
+      }
+    }
+
+    return {
+      updatedModules: updated,
+      autoEnabled,
+      blockedBy: []
+    }
+  } else {
+    // Turning OFF: check if other active modules require this one
+    const dependents = getDependents(moduleId, currentModules)
+    if (dependents.length > 0) {
+      return {
+        updatedModules: currentModules,
+        autoEnabled: [],
+        blockedBy: dependents
+      }
+    }
+    updated[moduleId] = false
+    return {
+      updatedModules: updated,
+      autoEnabled: [],
+      blockedBy: []
+    }
+  }
+}
 
 export function getDefaultModulesForBusinessType(businessType: string): Record<string, boolean> {
   const mods: Record<string, boolean> = {}
@@ -312,18 +410,24 @@ export function getDefaultModulesForBusinessType(businessType: string): Record<s
     }
   })
 
-  if (businessType === 'hardware') mods.hardware = true
-  if (businessType === 'pharmacy') mods.pharmacy = true
-  if (businessType === 'liquor_tobacco') mods.liquor_tobacco = true
-  if (businessType === 'restaurant') mods.restaurant = true
-  if (businessType === 'beauty_salon') mods.beauty_salon = true
-  if (businessType === 'veterinary') mods.veterinary = true
-  if (businessType === 'automotive') mods.automotive = true
-  if (businessType === 'laundry') mods.laundry = true
-  if (businessType === 'gym') mods.gym = true
-  if (businessType === 'clothing' || businessType === 'apparel') mods.apparel = true
-  if (businessType === 'optometry') mods.optometry = true
-  if (businessType === 'bakery') mods.bakery = true
+  let targetVertical: string | null = null
+  if (businessType === 'hardware') targetVertical = 'hardware'
+  if (businessType === 'pharmacy') targetVertical = 'pharmacy'
+  if (businessType === 'liquor_tobacco') targetVertical = 'liquor_tobacco'
+  if (businessType === 'restaurant') targetVertical = 'restaurant'
+  if (businessType === 'beauty_salon') targetVertical = 'beauty_salon'
+  if (businessType === 'veterinary') targetVertical = 'veterinary'
+  if (businessType === 'automotive') targetVertical = 'automotive'
+  if (businessType === 'laundry') targetVertical = 'laundry'
+  if (businessType === 'gym') targetVertical = 'gym'
+  if (businessType === 'clothing' || businessType === 'apparel') targetVertical = 'apparel'
+  if (businessType === 'optometry') targetVertical = 'optometry'
+  if (businessType === 'bakery') targetVertical = 'bakery'
+
+  if (targetVertical) {
+    const { updatedModules } = resolveModuleToggle(targetVertical, true, mods)
+    return updatedModules
+  }
 
   return mods
 }

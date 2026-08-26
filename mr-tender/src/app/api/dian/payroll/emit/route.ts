@@ -1,18 +1,18 @@
-﻿import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { validateTenantAccess } from '@/lib/supabase/auth-helpers'
 import { buildPayrollUBLXML, PayrollUblData } from '@/lib/dian/payroll-ubl'
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createClient()
     const { data: { user }, error: authErr } = await supabase.auth.getUser()
-    if (authErr || !user) {
-      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) {
+      return authCheck.response
     }
-    const tenantId = user.user_metadata?.tenant_id
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant no encontrado' }, { status: 400 })
-    }
+    const { tenantId } = authCheck.context
 
     const body = await req.json()
     const { settlementId } = body
@@ -97,11 +97,12 @@ export async function POST(req: NextRequest) {
 
     if (docErr) throw docErr
 
-    // Actualizar estado de la liquidación
+    // Actualizar estado de la liquidación (aislado por tenant_id)
     await supabase
       .from('payroll_settlements')
       .update({ status: 'emitted_dian' })
       .eq('id', settlement.id)
+      .eq('tenant_id', tenantId)
 
     return NextResponse.json({
       success: true,
