@@ -47,7 +47,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
           <img src="/logo.png" alt="Mr Tender" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
           <div>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--accent-purple)', fontWeight: 600 }}>⚡ Superadmin</div>
+            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Superadmin</div>
           </div>
         </Link>
 

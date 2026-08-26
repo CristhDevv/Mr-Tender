@@ -254,20 +254,20 @@ export default function SettingsPage() {
   ]
 
   const SYSTEM_MODULES = [
-    { id: 'optometry', name: 'Óptica & Consultorio Visual', icon: Glasses, color: 'var(--accent-blue)', desc: 'Fórmulas oftalmológicas OD/OI, órdenes de laboratorio, monturas y WhatsApp' },
-    { id: 'apparel', name: 'Boutique, Ropa & Calzado', icon: Footprints, color: 'var(--accent-purple)', desc: 'Matriz de tallas/colores, código de barras, control de probadores y lookbooks' },
-    { id: 'hardware', name: 'Ferretería & Construcción', icon: Wrench, color: 'var(--accent-blue)', desc: 'Cotizaciones de obra, venta por metros/kilos, escalas y alquiler de herramientas' },
-    { id: 'pharmacy', name: 'Droguería & Farmacia', icon: Pill, color: 'var(--accent-purple)', desc: 'Control de lotes, FEFO, INVIMA, venta por blíster/tableta y genéricos' },
-    { id: 'veterinary', name: 'Veterinaria & Pet Shop', icon: Dog, color: 'var(--accent-coral)', desc: 'Historias clínicas de mascotas, vacunas con WhatsApp, peluquería/hotel y concentrado a granel' },
-    { id: 'automotive', name: 'Taller Mecánico & Autolavado', icon: Car, color: 'var(--accent-blue)', desc: 'Órdenes de trabajo por placa, checklist de recepción, repuestos y cola de lavado' },
-    { id: 'laundry', name: 'Lavandería & Tintorería', icon: Shirt, color: 'var(--accent-green)', desc: 'Tickets por prenda/kilo, control de percheros, lavado en seco y domicilios' },
-    { id: 'gym', name: 'Gimnasio & Fitness', icon: Dumbbell, color: 'var(--accent-coral)', desc: 'Torniquete QR, membresías, clases grupales y valoración física antropométrica' },
-    { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: Wine, color: 'var(--accent-coral)', desc: 'Control de botellas en barra / copeo, envases retornables, combos y tabaco' },
-    { id: 'restaurant', name: 'Restaurante & Mesas', icon: UtensilsCrossed, color: 'var(--accent-amber)', desc: 'Mapa de mesas, comandas de cocina KDS, recetas y propinas' },
-    { id: 'beauty_salon', name: 'Salón de Belleza & Spa', icon: Scissors, color: 'var(--accent-purple)', desc: 'Agenda de citas, turnos de estilistas, comisiones y fichas técnicas capilares' },
-    { id: 'ecommerce', name: 'E-commerce & Tienda Web', icon: Globe, color: 'var(--accent-green)', desc: 'Catálogo público en línea con pedidos directos a WhatsApp' },
-    { id: 'purchases', name: 'Compras & Proveedores', icon: ShoppingCart, color: 'var(--text-primary)', desc: 'Registro de facturas de compra, abastecimiento y proveedores' },
-    { id: 'accounting', name: 'Contabilidad Automatizada', icon: DollarSign, color: 'var(--accent-blue)', desc: 'Plan de cuentas, balance general y generación de asientos contables' },
+    { id: 'optometry', name: 'Óptica & Consultorio Visual', icon: Glasses, desc: 'Fórmulas oftalmológicas OD/OI, órdenes de laboratorio, monturas y WhatsApp' },
+    { id: 'apparel', name: 'Boutique, Ropa & Calzado', icon: Footprints, desc: 'Matriz de tallas/colores, código de barras, control de probadores y lookbooks' },
+    { id: 'hardware', name: 'Ferretería & Construcción', icon: Wrench, desc: 'Cotizaciones de obra, venta por metros/kilos, escalas y alquiler de herramientas' },
+    { id: 'pharmacy', name: 'Droguería & Farmacia', icon: Pill, desc: 'Control de lotes, FEFO, INVIMA, venta por blíster/tableta y genéricos' },
+    { id: 'veterinary', name: 'Veterinaria & Pet Shop', icon: Dog, desc: 'Historias clínicas de mascotas, vacunas con WhatsApp, peluquería/hotel y concentrado a granel' },
+    { id: 'automotive', name: 'Taller Mecánico & Autolavado', icon: Car, desc: 'Órdenes de trabajo por placa, checklist de recepción, repuestos y cola de lavado' },
+    { id: 'laundry', name: 'Lavandería & Tintorería', icon: Shirt, desc: 'Tickets por prenda/kilo, control de percheros, lavado en seco y domicilios' },
+    { id: 'gym', name: 'Gimnasio & Fitness', icon: Dumbbell, desc: 'Torniquete QR, membresías, clases grupales y valoración física antropométrica' },
+    { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: Wine, desc: 'Control de botellas en barra / copeo, envases retornables, combos y tabaco' },
+    { id: 'restaurant', name: 'Restaurante & Mesas', icon: UtensilsCrossed, desc: 'Mapa de mesas, comandas de cocina KDS, recetas y propinas' },
+    { id: 'beauty_salon', name: 'Salón de Belleza & Spa', icon: Scissors, desc: 'Agenda de citas, turnos de estilistas, comisiones y fichas técnicas capilares' },
+    { id: 'ecommerce', name: 'E-commerce & Tienda Web', icon: Globe, desc: 'Catálogo público en línea con pedidos directos a WhatsApp' },
+    { id: 'purchases', name: 'Compras & Proveedores', icon: ShoppingCart, desc: 'Registro de facturas de compra, abastecimiento y proveedores' },
+    { id: 'accounting', name: 'Contabilidad Automatizada', icon: DollarSign, desc: 'Plan de cuentas, balance general y generación de asientos contables' },
   ]
 
   if (loading) {
@@ -298,68 +298,51 @@ export default function SettingsPage() {
           return (
             <button key={s.title} onClick={() => setActiveSection(i)}
               className="btn-neu"
-              style={{ padding: '8px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6, background: isActive ? 'var(--accent-blue)' : 'var(--bg)', color: isActive ? '#fff' : 'var(--text-secondary)', boxShadow: isActive ? '4px 4px 10px rgba(74,144,217,0.4)' : 'var(--neu-raised)' }}>
-              <SectionIcon size={15} strokeWidth={2} style={{ color: isActive ? '#fff' : 'inherit' }} />
-              <span style={{ fontWeight: isActive ? 700 : 500 }}>{s.title}</span>
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '8px 14px', fontSize: '0.8rem', fontWeight: isActive ? 700 : 500,
+                background: isActive ? 'var(--text-primary)' : 'var(--bg)',
+                color: isActive ? 'var(--bg)' : 'var(--text-secondary)',
+                border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
+              }}>
+              <SectionIcon size={15} strokeWidth={2} />
+              <span>{s.title}</span>
             </button>
           )
         })}
       </div>
 
       {/* Form Content */}
-      <div className="neu-card" style={{ padding: '18px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
-            <CurrentSectionIcon size={17} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
-            <span>{currentSection.title}</span>
-          </div>
-          {currentSection.title === 'Facturación DIAN' && (
-            <Link
-              href="/invoices"
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '6px 12px',
-                borderRadius: 8,
-                background: 'linear-gradient(135deg, #0284C7, #0369A1)',
-                color: '#fff',
-                fontSize: '0.78rem',
-                fontWeight: 700,
-                textDecoration: 'none'
-              }}
-            >
-              <ExternalLink size={13} />
-              <span>Ver Panel de Facturación DIAN</span>
-            </Link>
-          )}
+      <div className="neu-card" style={{ padding: '20px 22px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid var(--border-color)' }}>
+          <CurrentSectionIcon size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+          <h2 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{currentSection.title}</h2>
         </div>
-
-        <div className="divider" style={{ margin: '6px 0 14px' }} />
 
         {currentSection.isModules ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Activa o desactiva los módulos según el modelo operativo de tu empresa. Los módulos habilitados aparecerán automáticamente en tu menú lateral y en el Punto de Venta.
+              Activa o desactiva las funcionalidades que tu negocio necesita. Al activar un módulo, aparecerá instantáneamente en tu barra de navegación izquierda.
             </p>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
               {SYSTEM_MODULES.map(m => {
-                const isEnabled = !!enabledModules[m.id]
                 const IconComponent = m.icon
+                const isEnabled = !!enabledModules[m.id]
                 return (
                   <div
                     key={m.id}
                     onClick={() => setEnabledModules(prev => ({ ...prev, [m.id]: !prev[m.id] }))}
                     className="neu-card"
                     style={{
-                      padding: 16,
+                      padding: 14,
                       cursor: 'pointer',
                       display: 'flex',
-                      alignItems: 'flex-start',
+                      alignItems: 'center',
                       justifyContent: 'space-between',
                       gap: 12,
-                      border: isEnabled ? `2px solid ${m.color}` : '1px solid var(--border-color)',
-                      background: isEnabled ? 'var(--bg-deep)' : 'var(--bg)',
+                      border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
+                      background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
                       transition: '0.15s ease'
                     }}
                   >
@@ -367,36 +350,36 @@ export default function SettingsPage() {
                       <div style={{
                         width: 36,
                         height: 36,
-                        borderRadius: 10,
-                        background: isEnabled ? `${m.color}15` : 'var(--bg-deep)',
-                        color: isEnabled ? m.color : 'var(--text-muted)',
+                        borderRadius: 8,
+                        background: 'var(--bg-deep)',
+                        color: 'var(--text-primary)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         flexShrink: 0
                       }}>
-                        <IconComponent size={19} />
+                        <IconComponent size={18} strokeWidth={2} />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)', marginBottom: 2 }}>{m.name}</div>
+                        <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)', marginBottom: 2 }}>{m.name}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{m.desc}</div>
                       </div>
                     </div>
 
                     {/* Toggle Switch */}
                     <div style={{
-                      width: 38,
-                      height: 22,
-                      borderRadius: 12,
-                      background: isEnabled ? m.color : 'var(--border-color)',
+                      width: 36,
+                      height: 20,
+                      borderRadius: 10,
+                      background: isEnabled ? 'var(--text-primary)' : 'var(--border-color)',
                       position: 'relative',
                       flexShrink: 0,
                       marginTop: 2,
                       transition: '0.2s'
                     }}>
                       <div style={{
-                        width: 16,
-                        height: 16,
+                        width: 14,
+                        height: 14,
                         borderRadius: '50%',
                         background: '#fff',
                         position: 'absolute',

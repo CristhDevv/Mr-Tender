@@ -6,11 +6,7 @@ import {
   Plus,
   ArrowLeft,
   RefreshCw,
-  Trash2,
-  Edit,
-  Check,
-  Percent,
-  DollarSign
+  Trash2
 } from 'lucide-react'
 
 interface Coupon {
@@ -31,7 +27,6 @@ export default function CouponsAdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Dedicated View: 'list' | 'new' | 'edit'
   const [view, setView] = useState<'list' | 'new' | 'edit'>('list')
   const [newCode, setNewCode] = useState('')
   const [newDesc, setNewDesc] = useState('')
@@ -39,7 +34,6 @@ export default function CouponsAdminPage() {
   const [newValue, setNewValue] = useState('')
   const [newMaxUses, setNewMaxUses] = useState('100')
 
-  // Edit State
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null)
   const [editDesc, setEditDesc] = useState('')
   const [editValue, setEditValue] = useState('')
@@ -134,27 +128,27 @@ export default function CouponsAdminPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>🏷️</span>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            <Tag size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Cupones de Descuento
             </h1>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '2px 0 0' }}>
-            Códigos promocionales para adquisición y fidelización de comercios (Sin modales).
+            Códigos promocionales para adquisición y fidelización de comercios.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetchCoupons} className="btn-neu btn-ghost" title="Recargar" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           {view === 'list' ? (
             <button
               onClick={() => setView('new')}
               className="btn-neu btn-primary"
-              style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <Plus size={16} strokeWidth={2.5} />
+              <Plus size={16} strokeWidth={2} />
               <span>Crear Cupón</span>
             </button>
           ) : (
@@ -163,7 +157,7 @@ export default function CouponsAdminPage() {
               className="btn-neu btn-ghost"
               style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={16} strokeWidth={2} />
               <span>Volver a Cupones</span>
             </button>
           )}
@@ -171,8 +165,8 @@ export default function CouponsAdminPage() {
       </div>
 
       {error && (
-        <div className="neu-card" style={{ padding: 12, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-          <span style={{ color: 'var(--accent-coral)', fontSize: '0.82rem', fontWeight: 600 }}>⚠️ {error}</span>
+        <div className="neu-card" style={{ padding: 12, border: '1px solid var(--border-color)' }}>
+          <span style={{ color: 'var(--text-primary)', fontSize: '0.82rem', fontWeight: 600 }}>{error}</span>
         </div>
       )}
 
@@ -180,8 +174,8 @@ export default function CouponsAdminPage() {
       {view === 'new' && (
         <div className="neu-card animate-scale-in" style={{ padding: 26, maxWidth: 600, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
-              + Crear Cupón de Descuento
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              Crear Cupón de Descuento
             </h2>
           </div>
 
@@ -197,7 +191,7 @@ export default function CouponsAdminPage() {
                 value={newCode}
                 onChange={e => setNewCode(e.target.value.toUpperCase())}
                 required
-                style={{ width: '100%', fontSize: '0.9rem', fontWeight: 800, fontFamily: 'monospace' }}
+                style={{ width: '100%', fontSize: '0.9rem', fontWeight: 700, fontFamily: 'monospace' }}
               />
             </div>
 
@@ -273,7 +267,7 @@ export default function CouponsAdminPage() {
                 type="submit"
                 disabled={saving}
                 className="btn-neu btn-primary"
-                style={{ padding: '8px 24px', fontWeight: 800 }}
+                style={{ padding: '8px 24px', fontWeight: 700 }}
               >
                 {saving ? 'Guardando...' : 'Crear Cupón'}
               </button>
@@ -286,8 +280,8 @@ export default function CouponsAdminPage() {
       {view === 'edit' && editingCoupon && (
         <div className="neu-card animate-scale-in" style={{ padding: 26, maxWidth: 600, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
-              ✎ Editar Cupón: {editingCoupon.code}
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              Editar Cupón: {editingCoupon.code}
             </h2>
           </div>
 
@@ -346,7 +340,7 @@ export default function CouponsAdminPage() {
                 type="submit"
                 disabled={saving}
                 className="btn-neu btn-primary"
-                style={{ padding: '8px 24px', fontWeight: 800 }}
+                style={{ padding: '8px 24px', fontWeight: 700 }}
               >
                 {saving ? 'Guardando...' : 'Guardar Cambios'}
               </button>
@@ -362,17 +356,17 @@ export default function CouponsAdminPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
             <div className="neu-card" style={{ padding: '12px 16px' }}>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Cupones</div>
-              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-blue)' }}>{coupons.length}</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>{coupons.length}</div>
             </div>
 
             <div className="neu-card" style={{ padding: '12px 16px' }}>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Activos</div>
-              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-green)' }}>{activeCoupons}</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>{activeCoupons}</div>
             </div>
 
             <div className="neu-card" style={{ padding: '12px 16px' }}>
               <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Usos</div>
-              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-purple)' }}>{totalUses}</div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>{totalUses}</div>
             </div>
           </div>
 
@@ -383,10 +377,10 @@ export default function CouponsAdminPage() {
             </div>
           ) : coupons.length === 0 ? (
             <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>🏷️</div>
-              <h3 style={{ fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay cupones creados</h3>
+              <Tag size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+              <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay cupones creados</h3>
               <button onClick={() => setView('new')} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.82rem', marginTop: 10 }}>
-                + Crear primer cupón
+                Crear primer cupón
               </button>
             </div>
           ) : (
@@ -394,24 +388,24 @@ export default function CouponsAdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Código</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Descripción</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Descuento</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Usos</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Estado</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700 }}>Acciones</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Código</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Descripción</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Descuento</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Usos</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Estado</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600 }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {coupons.map(c => (
                     <tr key={c.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                      <td style={{ padding: '12px 16px', fontWeight: 800, fontFamily: 'monospace', color: 'var(--accent-purple)' }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 700, fontFamily: 'monospace', color: 'var(--text-primary)' }}>
                         {c.code}
                       </td>
                       <td style={{ padding: '12px 16px', color: 'var(--text-secondary)' }}>
                         {c.description}
                       </td>
-                      <td style={{ padding: '12px 16px', fontWeight: 700 }}>
+                      <td style={{ padding: '12px 16px', fontWeight: 600 }}>
                         {c.discount_type === 'percentage' ? `${c.discount_value}%` : `$${c.discount_value}`}
                       </td>
                       <td style={{ padding: '12px 16px' }}>
@@ -422,11 +416,12 @@ export default function CouponsAdminPage() {
                           padding: '3px 8px',
                           borderRadius: 6,
                           fontSize: '0.7rem',
-                          fontWeight: 800,
-                          background: c.is_active ? 'rgba(74,186,134,0.15)' : 'var(--border-color)',
-                          color: c.is_active ? 'var(--accent-green)' : 'var(--text-muted)'
+                          fontWeight: 600,
+                          background: 'var(--bg-deep)',
+                          color: 'var(--text-primary)',
+                          border: '1px solid var(--border-color)'
                         }}>
-                          {c.is_active ? '🟢 Activo' : '⏸ Pausado'}
+                          {c.is_active ? 'Activo' : 'Pausado'}
                         </span>
                       </td>
                       <td style={{ padding: '12px 16px', textAlign: 'right' }}>
@@ -436,21 +431,21 @@ export default function CouponsAdminPage() {
                             className="btn-neu btn-ghost"
                             style={{ padding: '4px 8px', fontSize: '0.72rem' }}
                           >
-                            ✎ Editar
+                            Editar
                           </button>
                           <button
                             onClick={() => toggleActive(c.id, c.is_active)}
                             className="btn-neu btn-ghost"
-                            style={{ padding: '4px 8px', fontSize: '0.72rem', color: c.is_active ? 'var(--accent-coral)' : 'var(--accent-green)' }}
+                            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
                           >
                             {c.is_active ? 'Pausar' : 'Activar'}
                           </button>
                           <button
                             onClick={() => handleDelete(c.id, c.code)}
                             className="btn-neu btn-ghost"
-                            style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}
+                            style={{ padding: '4px 8px', fontSize: '0.72rem' }}
                           >
-                            <Trash2 size={13} />
+                            <Trash2 size={13} strokeWidth={2} />
                           </button>
                         </div>
                       </td>

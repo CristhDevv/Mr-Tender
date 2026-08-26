@@ -634,7 +634,7 @@ export default function GymPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>🏋️</span>
+            <Dumbbell size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Gimnasio, Fitness & Crossfit
             </h1>
@@ -646,80 +646,92 @@ export default function GymPage() {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={loadGymData} className="btn-neu btn-ghost" title="Actualizar datos" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           {members.length === 0 && (
-            <button onClick={handleSeedGymDemo} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', color: 'var(--accent-coral)', fontWeight: 700 }}>
-              ✨ Cargar Datos Demo de Gimnasio
+            <button onClick={handleSeedGymDemo} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 600 }}>
+              Cargar Datos Demo de Gimnasio
             </button>
           )}
           {activeTab === 'members' && (
             <button onClick={() => setShowMemberModal(true)} className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2} />
               <span>Inscribir Afiliado</span>
             </button>
           )}
           {activeTab === 'classes' && (
             <button onClick={() => setShowClassModal(true)} className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2} />
               <span>Nueva Clase Grupal</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Monochrome */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-green)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Afiliados Activos
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Afiliados Activos
+            </span>
+            <Users size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-green)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {activeMembersCount}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Membresías vigentes
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-blue)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Check-Ins de Hoy
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Check-Ins de Hoy
+            </span>
+            <QrCode size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-blue)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {checkinsTodayCount}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Ingresos por torniquete
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-amber)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Por Vencer (≤ 7 Días)
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Por Vencer (≤ 7 Días)
+            </span>
+            <Clock size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-amber)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {expiringSoonCount}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Listos para WhatsApp
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-coral)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Recaudación Membresías
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Recaudación Membresías
+            </span>
+            <DollarSign size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-coral)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {formatCurrency(totalRevenue)}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Ingresos por planes
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* Tabs Navigation - Monochrome */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>
         <button
           onClick={() => setActiveTab('checkin')}
@@ -727,15 +739,15 @@ export default function GymPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'checkin' ? 800 : 500,
-            background: activeTab === 'checkin' ? 'var(--accent-coral)' : 'var(--bg)',
-            color: activeTab === 'checkin' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'checkin' ? 700 : 500,
+            background: activeTab === 'checkin' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'checkin' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <QrCode size={15} />
+          <QrCode size={15} strokeWidth={2} />
           <span>Torniquete & Check-In Rápido</span>
         </button>
 
@@ -745,15 +757,15 @@ export default function GymPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'members' ? 800 : 500,
-            background: activeTab === 'members' ? 'var(--accent-coral)' : 'var(--bg)',
-            color: activeTab === 'members' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'members' ? 700 : 500,
+            background: activeTab === 'members' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'members' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Users size={15} />
+          <Users size={15} strokeWidth={2} />
           <span>Directorio de Afiliados ({members.length})</span>
         </button>
 
@@ -763,15 +775,15 @@ export default function GymPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'classes' ? 800 : 500,
-            background: activeTab === 'classes' ? 'var(--accent-coral)' : 'var(--bg)',
-            color: activeTab === 'classes' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'classes' ? 700 : 500,
+            background: activeTab === 'classes' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'classes' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Flame size={15} />
+          <Calendar size={15} strokeWidth={2} />
           <span>Clases Grupales & Aforo ({classes.length})</span>
         </button>
 
@@ -781,16 +793,16 @@ export default function GymPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'assessments' ? 800 : 500,
-            background: activeTab === 'assessments' ? 'var(--accent-coral)' : 'var(--bg)',
-            color: activeTab === 'assessments' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'assessments' ? 700 : 500,
+            background: activeTab === 'assessments' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'assessments' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Activity size={15} />
-          <span>Valoración Física & Antropometría</span>
+          <Activity size={15} strokeWidth={2} />
+          <span>Valoración Antropométrica ({assessments.length})</span>
         </button>
       </div>
 

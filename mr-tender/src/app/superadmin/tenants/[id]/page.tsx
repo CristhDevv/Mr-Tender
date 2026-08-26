@@ -3,30 +3,21 @@ import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { formatDate, formatDateTime, formatCurrency } from '@/lib/utils'
-import { ALL_SYSTEM_MODULES } from '@/lib/constants/modules'
+import { formatDate } from '@/lib/utils'
+import { ALL_SYSTEM_MODULES, getModuleIcon } from '@/lib/constants/modules'
 import {
   ArrowLeft,
   Store,
-  User,
-  ShieldCheck,
   CheckCircle2,
   AlertCircle,
-  Key,
   Layers,
-  Sparkles,
-  Globe,
-  ToggleLeft,
-  ToggleRight,
   Check,
   RefreshCw,
   Trash2,
-  Lock,
-  Calendar,
-  CreditCard,
   Users,
-  Activity,
-  AlertTriangle
+  ShieldCheck,
+  AlertTriangle,
+  ArrowUpRight
 } from 'lucide-react'
 
 interface Tenant {
@@ -50,6 +41,13 @@ interface TenantUser {
   created_at: string
 }
 
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activo',
+  suspended: 'Suspendido',
+  trial: 'En Prueba',
+  cancelled: 'Cancelado',
+}
+
 export default function TenantDetailPage() {
   const params = useParams()
   const router = useRouter()
@@ -60,7 +58,7 @@ export default function TenantDetailPage() {
   const [saving, setSaving] = useState(false)
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
-  const [activeTab, setActiveTab] = useState<'info' | 'modules' | 'subscription' | 'users' | 'danger'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'modules' | 'users' | 'danger'>('info')
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Tenant Edit Form
@@ -148,7 +146,6 @@ export default function TenantDetailPage() {
 
       if (error) throw error
 
-      // Also update status if changed
       if (tenant && tenant.status !== form.status) {
         await supabase.rpc('superadmin_update_tenant_status', {
           p_tenant_id: tenantId,
@@ -273,7 +270,7 @@ export default function TenantDetailPage() {
           className="btn-neu btn-ghost"
           style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={16} strokeWidth={2} />
           <span>Volver al Listado</span>
         </Link>
 
@@ -283,20 +280,21 @@ export default function TenantDetailPage() {
             href={`https://${tenant.slug}.mrtender.com`}
             target="_blank"
             rel="noreferrer"
-            style={{ fontSize: '0.8rem', color: 'var(--accent-blue)', fontWeight: 700, fontFamily: 'monospace' }}
+            style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600, fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}
           >
-            {tenant.slug}.mrtender.com ↗
+            <span>{tenant.slug}.mrtender.com</span>
+            <ArrowUpRight size={12} strokeWidth={2} />
           </a>
         </div>
       </div>
 
-      {/* Tenant Header Card */}
-      <div className="neu-card" style={{ padding: 22, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+      {/* Tenant Header Card - Minimalist */}
+      <div className="neu-card" style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: '1.6rem' }}>🏪</span>
+            <Store size={22} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             <div>
-              <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
+              <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                 {tenant.name}
               </h1>
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
@@ -308,14 +306,15 @@ export default function TenantDetailPage() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{
-            padding: '5px 12px',
-            borderRadius: 8,
-            fontSize: '0.78rem',
-            fontWeight: 800,
-            background: tenant.status === 'active' ? 'rgba(74, 186, 134, 0.15)' : tenant.status === 'trial' ? 'rgba(242, 193, 78, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-            color: tenant.status === 'active' ? 'var(--accent-green)' : tenant.status === 'trial' ? 'var(--accent-amber)' : 'var(--accent-coral)'
+            padding: '4px 10px',
+            borderRadius: 6,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            background: 'var(--bg-deep)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-color)'
           }}>
-            {tenant.status === 'active' ? '🟢 Activo' : tenant.status === 'trial' ? '🟡 En Prueba' : '🔴 Suspendido'}
+            {STATUS_LABEL[tenant.status] || tenant.status}
           </span>
         </div>
       </div>
@@ -324,20 +323,19 @@ export default function TenantDetailPage() {
       {message && (
         <div className="neu-card animate-scale-in" style={{
           padding: 12,
-          background: message.type === 'success' ? 'rgba(74, 186, 134, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-          border: `1px solid ${message.type === 'success' ? 'var(--accent-green)' : 'var(--accent-coral)'}`,
+          border: '1px solid var(--border-color)',
           display: 'flex',
           alignItems: 'center',
           gap: 8
         }}>
-          {message.type === 'success' ? <CheckCircle2 size={16} color="var(--accent-green)" /> : <AlertCircle size={16} color="var(--accent-coral)" />}
-          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: message.type === 'success' ? 'var(--accent-green)' : 'var(--accent-coral)' }}>
+          {message.type === 'success' ? <CheckCircle2 size={16} strokeWidth={2} /> : <AlertCircle size={16} strokeWidth={2} />}
+          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
             {message.text}
           </span>
         </div>
       )}
 
-      {/* Dedicated Navigation Tabs */}
+      {/* Dedicated Navigation Tabs - Monochrome */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>
         <button
           onClick={() => setActiveTab('info')}
@@ -345,15 +343,15 @@ export default function TenantDetailPage() {
           style={{
             padding: '8px 16px',
             fontSize: '0.82rem',
-            fontWeight: activeTab === 'info' ? 800 : 500,
-            background: activeTab === 'info' ? 'var(--accent-purple)' : 'var(--bg)',
-            color: activeTab === 'info' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'info' ? 700 : 500,
+            background: activeTab === 'info' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'info' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Store size={15} />
+          <Store size={15} strokeWidth={2} />
           <span>Configuración & Datos</span>
         </button>
 
@@ -363,15 +361,15 @@ export default function TenantDetailPage() {
           style={{
             padding: '8px 16px',
             fontSize: '0.82rem',
-            fontWeight: activeTab === 'modules' ? 800 : 500,
-            background: activeTab === 'modules' ? 'var(--accent-purple)' : 'var(--bg)',
-            color: activeTab === 'modules' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'modules' ? 700 : 500,
+            background: activeTab === 'modules' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'modules' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Layers size={15} />
+          <Layers size={15} strokeWidth={2} />
           <span>Módulos del Sistema ({activeModulesCount}/{ALL_SYSTEM_MODULES.length})</span>
         </button>
 
@@ -381,15 +379,15 @@ export default function TenantDetailPage() {
           style={{
             padding: '8px 16px',
             fontSize: '0.82rem',
-            fontWeight: activeTab === 'users' ? 800 : 500,
-            background: activeTab === 'users' ? 'var(--accent-purple)' : 'var(--bg)',
-            color: activeTab === 'users' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'users' ? 700 : 500,
+            background: activeTab === 'users' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'users' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Users size={15} />
+          <Users size={15} strokeWidth={2} />
           <span>Personal & Usuarios ({tenantUsers.length})</span>
         </button>
 
@@ -399,15 +397,15 @@ export default function TenantDetailPage() {
           style={{
             padding: '8px 16px',
             fontSize: '0.82rem',
-            fontWeight: activeTab === 'danger' ? 800 : 500,
-            background: activeTab === 'danger' ? 'var(--accent-coral)' : 'var(--bg)',
-            color: activeTab === 'danger' ? '#fff' : 'var(--accent-coral)',
+            fontWeight: activeTab === 'danger' ? 700 : 500,
+            background: activeTab === 'danger' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'danger' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <ShieldCheck size={15} />
+          <ShieldCheck size={15} strokeWidth={2} />
           <span>Zona de Seguridad</span>
         </button>
       </div>
@@ -418,7 +416,7 @@ export default function TenantDetailPage() {
           
           {/* Edit Tenant Form */}
           <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Editar Datos del Comercio</h3>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Editar Datos del Comercio</h3>
             
             <form onSubmit={handleSaveGeneralInfo} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div>
@@ -487,9 +485,9 @@ export default function TenantDetailPage() {
                     onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
                     style={{ width: '100%', fontSize: '0.8rem' }}
                   >
-                    <option value="active">🟢 Activo</option>
-                    <option value="trial">🟡 En Prueba</option>
-                    <option value="suspended">🔴 Suspendido</option>
+                    <option value="active">Activo</option>
+                    <option value="trial">En Prueba</option>
+                    <option value="suspended">Suspendido</option>
                   </select>
                 </div>
                 <div>
@@ -519,7 +517,7 @@ export default function TenantDetailPage() {
 
           {/* Reset Password Card */}
           <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>Restablecer Contraseña de Administrador</h3>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Restablecer Contraseña de Administrador</h3>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
               Genera o asigna una nueva contraseña para el correo principal ({form.owner_email}).
             </p>
@@ -544,7 +542,7 @@ export default function TenantDetailPage() {
                 type="submit"
                 disabled={saving || !newPassword}
                 className="btn-neu"
-                style={{ padding: '9px 18px', fontSize: '0.82rem', background: 'var(--bg)', color: 'var(--accent-purple)', fontWeight: 800 }}
+                style={{ padding: '9px 18px', fontSize: '0.82rem', fontWeight: 700 }}
               >
                 Actualizar Contraseña
               </button>
@@ -554,16 +552,16 @@ export default function TenantDetailPage() {
         </div>
       )}
 
-      {/* ── TAB 2: GESTIÓN INTEGRAL DE 21 MÓDULOS ── */}
+      {/* ── TAB 2: GESTIÓN DE 21 MÓDULOS MONOCHROME ── */}
       {activeTab === 'modules' && (
         <div className="neu-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900 }}>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>
                 Control Modular en Tiempo Real ({activeModulesCount}/{ALL_SYSTEM_MODULES.length} Activos)
               </h3>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                Cada interruptor modifica directamente la visibilidad de los módulos en el menú y la base de datos del cliente.
+                Cada interruptor activa o desactiva de forma inmediata el acceso a los módulos.
               </p>
             </div>
 
@@ -571,23 +569,24 @@ export default function TenantDetailPage() {
               onClick={handleSaveAllModules}
               disabled={saving}
               className="btn-neu btn-primary"
-              style={{ padding: '8px 20px', fontSize: '0.82rem', fontWeight: 800 }}
+              style={{ padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700 }}
             >
               {saving ? 'Guardando...' : 'Sincronizar Módulos'}
             </button>
           </div>
 
-          {/* Grid of 21 Modules */}
+          {/* Grid of 21 Modules with Monochrome Lucide Icons */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
             {ALL_SYSTEM_MODULES.map(m => {
               const isEnabled = !!modules[m.id]
+              const IconComponent = getModuleIcon(m.id)
               return (
                 <div
                   key={m.id}
                   onClick={() => handleToggleModule(m.id)}
                   style={{
-                    background: isEnabled ? 'rgba(74, 186, 134, 0.08)' : 'var(--bg-deep)',
-                    border: isEnabled ? '2px solid var(--accent-green)' : '1px solid var(--border-color)',
+                    background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
+                    border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
                     borderRadius: 10,
                     padding: '14px 16px',
                     cursor: 'pointer',
@@ -599,9 +598,9 @@ export default function TenantDetailPage() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ fontSize: '1.4rem' }}>{m.icon}</span>
+                    <IconComponent size={20} strokeWidth={2} style={{ color: 'var(--text-primary)', flexShrink: 0 }} />
                     <div>
-                      <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)' }}>
                         {m.name}
                       </div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.2, marginTop: 2 }}>
@@ -611,18 +610,18 @@ export default function TenantDetailPage() {
                   </div>
 
                   <div style={{
-                    width: 24,
-                    height: 24,
-                    borderRadius: 6,
-                    background: isEnabled ? 'var(--accent-green)' : 'var(--bg)',
-                    border: isEnabled ? 'none' : '2px solid var(--border-color)',
+                    width: 22,
+                    height: 22,
+                    borderRadius: 4,
+                    background: isEnabled ? 'var(--text-primary)' : 'var(--bg)',
+                    border: isEnabled ? 'none' : '1.5px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#fff',
+                    color: 'var(--bg)',
                     flexShrink: 0
                   }}>
-                    {isEnabled && <Check size={16} strokeWidth={3} />}
+                    {isEnabled && <Check size={14} strokeWidth={3} />}
                   </div>
                 </div>
               )
@@ -634,7 +633,7 @@ export default function TenantDetailPage() {
       {/* ── TAB 3: PERSONAL & USUARIOS DEL NEGOCIO ── */}
       {activeTab === 'users' && (
         <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
             Usuarios y Colaboradores Registrados ({tenantUsers.length})
           </h3>
 
@@ -656,10 +655,10 @@ export default function TenantDetailPage() {
                 <tbody>
                   {tenantUsers.map(u => (
                     <tr key={u.id} style={{ borderBottom: '1px dashed var(--border-color)' }}>
-                      <td style={{ padding: 8, fontWeight: 700 }}>{u.full_name || 'Sin nombre'}</td>
+                      <td style={{ padding: 8, fontWeight: 600 }}>{u.full_name || 'Sin nombre'}</td>
                       <td style={{ padding: 8 }}>{u.email}</td>
                       <td style={{ padding: 8 }}>
-                        <span style={{ padding: '2px 6px', borderRadius: 4, background: 'var(--bg-deep)', color: 'var(--accent-purple)', fontWeight: 800 }}>
+                        <span style={{ padding: '2px 6px', borderRadius: 4, background: 'var(--bg-deep)', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {u.role}
                         </span>
                       </td>
@@ -673,27 +672,27 @@ export default function TenantDetailPage() {
         </div>
       )}
 
-      {/* ── TAB 4: ZONA DE SEGURIDAD & PELIGRO ── */}
+      {/* ── TAB 4: ZONA DE SEGURIDAD ── */}
       {activeTab === 'danger' && (
-        <div className="neu-card" style={{ padding: 24, border: '2px solid var(--accent-coral)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="neu-card" style={{ padding: 24, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <AlertTriangle size={24} color="var(--accent-coral)" />
+            <ShieldCheck size={22} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             <div>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: 'var(--accent-coral)' }}>
-                Zona de Alto Riesgo / Eliminación de Comercio
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                Zona de Seguridad / Baja de Comercio
               </h3>
               <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                Acciones irreversibles que afectan la disponibilidad de datos de este inquilino.
+                Acciones permanentes que afectan la disponibilidad de datos de este inquilino.
               </p>
             </div>
           </div>
 
-          <div style={{ background: 'rgba(239, 68, 68, 0.08)', padding: 16, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ background: 'var(--bg-deep)', padding: 16, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div>
-              <div style={{ fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
                 Eliminar Inquilino Permanentemente
               </div>
-              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                 Borra la base de datos, ventas, inventario, productos y usuarios asociados a este negocio.
               </div>
             </div>
@@ -702,7 +701,7 @@ export default function TenantDetailPage() {
               onClick={handleDeleteTenant}
               disabled={saving}
               className="btn-neu"
-              style={{ padding: '8px 18px', fontSize: '0.82rem', background: 'var(--accent-coral)', color: '#fff', fontWeight: 800 }}
+              style={{ padding: '8px 18px', fontSize: '0.82rem', fontWeight: 700 }}
             >
               Eliminar Comercio
             </button>

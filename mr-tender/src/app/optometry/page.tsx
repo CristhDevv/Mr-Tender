@@ -599,7 +599,7 @@ export default function OptometryPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>👓</span>
+            <Glasses size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Óptica & Consultorio Visual
             </h1>
@@ -611,16 +611,16 @@ export default function OptometryPage() {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={loadOptometryData} className="btn-neu btn-ghost" title="Actualizar datos" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           {patients.length === 0 && (
-            <button onClick={handleSeedOptometryDemo} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', color: 'var(--accent-blue)', fontWeight: 700 }}>
-              ✨ Cargar Datos Demo de Óptica
+            <button onClick={handleSeedOptometryDemo} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 600 }}>
+              Cargar Datos Demo de Óptica
             </button>
           )}
           {activeTab === 'patients' && (
             <button onClick={() => setShowPatientModal(true)} className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2} />
               <span>Registrar Paciente</span>
             </button>
           )}
@@ -634,71 +634,83 @@ export default function OptometryPage() {
               className="btn-neu btn-primary"
               style={{ padding: '8px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2} />
               <span>Nuevo Examen Visual</span>
             </button>
           )}
           {activeTab === 'frames' && (
             <button onClick={() => setShowFrameModal(true)} className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2} />
               <span>Registrar Montura</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Monochrome */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-blue)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Pacientes Registrados
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Pacientes Registrados
+            </span>
+            <Users size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-blue)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {patients.length}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             {prescriptions.length} refracciones realizadas
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-amber)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            En Laboratorio (Tallado)
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              En Laboratorio
+            </span>
+            <Activity size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-amber)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {ordersInLabCount}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Gafas en proceso técnico
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-green)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Listas para Entrega
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Listas para Entrega
+            </span>
+            <CheckCircle2 size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-green)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {ordersReadyCount}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Avisar por WhatsApp
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-coral)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Controles Anuales Pendientes
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Controles Pendientes
+            </span>
+            <Clock size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-coral)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {overdueCheckupsCount}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Fidelización & chequeos
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* Tabs Navigation - Monochrome */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>
         <button
           onClick={() => setActiveTab('prescriptions')}
@@ -706,15 +718,15 @@ export default function OptometryPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'prescriptions' ? 800 : 500,
-            background: activeTab === 'prescriptions' ? 'var(--accent-blue)' : 'var(--bg)',
-            color: activeTab === 'prescriptions' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'prescriptions' ? 700 : 500,
+            background: activeTab === 'prescriptions' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'prescriptions' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Eye size={15} />
+          <Eye size={15} strokeWidth={2} />
           <span>Fórmulas & Exámenes Visuales ({prescriptions.length})</span>
         </button>
 
@@ -724,15 +736,15 @@ export default function OptometryPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'lab_orders' ? 800 : 500,
-            background: activeTab === 'lab_orders' ? 'var(--accent-blue)' : 'var(--bg)',
-            color: activeTab === 'lab_orders' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'lab_orders' ? 700 : 500,
+            background: activeTab === 'lab_orders' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'lab_orders' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Activity size={15} />
+          <Activity size={15} strokeWidth={2} />
           <span>Órdenes de Laboratorio & Taller ({labOrders.length})</span>
         </button>
 
@@ -742,15 +754,15 @@ export default function OptometryPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'patients' ? 800 : 500,
-            background: activeTab === 'patients' ? 'var(--accent-blue)' : 'var(--bg)',
-            color: activeTab === 'patients' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'patients' ? 700 : 500,
+            background: activeTab === 'patients' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'patients' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Users size={15} />
+          <Users size={15} strokeWidth={2} />
           <span>Directorio de Pacientes ({patients.length})</span>
         </button>
 
@@ -760,15 +772,15 @@ export default function OptometryPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'frames' ? 800 : 500,
-            background: activeTab === 'frames' ? 'var(--accent-blue)' : 'var(--bg)',
-            color: activeTab === 'frames' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'frames' ? 700 : 500,
+            background: activeTab === 'frames' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'frames' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Glasses size={15} />
+          <Glasses size={15} strokeWidth={2} />
           <span>Catálogo de Monturas ({frames.length})</span>
         </button>
       </div>
@@ -790,8 +802,8 @@ export default function OptometryPage() {
 
           {filteredPrescriptions.length === 0 ? (
             <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>👁️</div>
-              <h3 style={{ fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay fórmulas visuales registradas</h3>
+              <Eye size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+              <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay fórmulas visuales registradas</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: '0 0 16px' }}>
                 Realiza el primer examen optométrico para emitir la fórmula clínica.
               </p>
@@ -904,8 +916,8 @@ export default function OptometryPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {labOrders.length === 0 ? (
             <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>🔬</div>
-              <h3 style={{ fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay órdenes en laboratorio</h3>
+              <Activity size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+              <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay órdenes en laboratorio</h3>
               <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0 }}>
                 Envía órdenes de tallado y biselado desde las fórmulas oftalmológicas.
               </p>
@@ -915,24 +927,31 @@ export default function OptometryPage() {
               {labOrders.map(order => {
                 const isReady = order.status === 'ready_for_pickup'
                 const isDelivered = order.status === 'delivered'
-                const statusColor = isDelivered ? 'var(--accent-purple)' : isReady ? 'var(--accent-green)' : 'var(--accent-amber)'
-                const statusText = isDelivered ? '👓 Entregado' : isReady ? '✨ Listo para Entrega' : '🔬 En Laboratorio / Tallado'
+                const statusText = isDelivered ? 'Entregado' : isReady ? 'Listo para Entrega' : 'En Laboratorio'
                 const pendingBalance = Number(order.total_price) - Number(order.advance_payment)
 
                 return (
-                  <div key={order.id} className="neu-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12, borderTop: `4px solid ${statusColor}` }}>
+                  <div key={order.id} className="neu-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <strong style={{ fontSize: '1rem', color: 'var(--text-primary)' }}>{order.order_number}</strong>
+                          <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{order.order_number}</strong>
                           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>({order.lab_name})</span>
                         </div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 2 }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginTop: 2 }}>
                           {order.optometry_patients?.full_name}
                         </div>
                       </div>
 
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: statusColor }}>
+                      <span style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        padding: '2px 8px',
+                        borderRadius: 4,
+                        background: 'var(--bg-deep)',
+                        border: '1px solid var(--border-color)',
+                        color: 'var(--text-primary)'
+                      }}>
                         {statusText}
                       </span>
                     </div>
@@ -947,8 +966,8 @@ export default function OptometryPage() {
                         <span style={{ color: 'var(--text-muted)' }}>Lentes: </span>
                         <span>{order.lens_material} • {order.treatments}</span>
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--accent-blue)', marginTop: 2 }}>
-                        📅 Entrega Prometida: {formatDate(order.promised_delivery_date)}
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                        Entrega Prometida: {formatDate(order.promised_delivery_date)}
                       </div>
                     </div>
 
@@ -960,11 +979,11 @@ export default function OptometryPage() {
                       </div>
                       <div>
                         <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem' }}>Abono</span>
-                        <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>{formatCurrency(Number(order.advance_payment))}</span>
+                        <span style={{ fontWeight: 600 }}>{formatCurrency(Number(order.advance_payment))}</span>
                       </div>
                       <div>
                         <span style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.68rem' }}>Saldo</span>
-                        <strong style={{ color: pendingBalance > 0 ? 'var(--accent-coral)' : 'var(--text-secondary)' }}>
+                        <strong style={{ color: 'var(--text-primary)' }}>
                           {formatCurrency(pendingBalance)}
                         </strong>
                       </div>
@@ -997,19 +1016,19 @@ export default function OptometryPage() {
                               href={getWhatsAppReadyUrl(order)}
                               target="_blank"
                               rel="noreferrer"
-                              className="btn-neu"
+                              className="btn-neu btn-ghost"
                               title="Avisar por WhatsApp que sus gafas están listas"
-                              style={{ padding: '7px 10px', background: '#16A34A', color: '#fff' }}
+                              style={{ padding: '7px 10px' }}
                             >
-                              <MessageSquare size={14} />
+                              <MessageSquare size={14} strokeWidth={2} />
                             </a>
                           )}
                         </>
                       )}
 
                       {order.status === 'delivered' && (
-                        <div style={{ width: '100%', textAlign: 'center', fontSize: '0.72rem', color: 'var(--accent-purple)', fontWeight: 700 }}>
-                          ✅ Entregado satisfactoriamente
+                        <div style={{ width: '100%', textAlign: 'center', fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                          Entregado satisfactoriamente
                         </div>
                       )}
                     </div>
@@ -1026,10 +1045,10 @@ export default function OptometryPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {patients.length === 0 ? (
             <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>👥</div>
-              <h3 style={{ fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay pacientes registrados</h3>
+              <Users size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+              <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>No hay pacientes registrados</h3>
               <button onClick={() => setShowPatientModal(true)} className="btn-neu btn-primary" style={{ padding: '9px 20px', fontSize: '0.82rem', marginTop: 10 }}>
-                + Registrar primer paciente
+                Registrar primer paciente
               </button>
             </div>
           ) : (

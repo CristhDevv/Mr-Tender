@@ -29,7 +29,8 @@ import {
   Sparkle,
   Grid,
   Filter,
-  Eye
+  Eye,
+  Shirt
 } from 'lucide-react'
 
 interface ApparelProduct {
@@ -489,7 +490,7 @@ export default function ApparelPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>👗</span>
+            <Shirt size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Boutique, Ropa & Calzado
             </h1>
@@ -501,80 +502,92 @@ export default function ApparelPage() {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={loadApparelData} className="btn-neu btn-ghost" title="Actualizar datos" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           {products.length === 0 && (
-            <button onClick={handleSeedApparelDemo} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', color: 'var(--accent-purple)', fontWeight: 700 }}>
-              ✨ Cargar Datos Demo de Moda
+            <button onClick={handleSeedApparelDemo} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 600 }}>
+              Cargar Datos Demo de Moda
             </button>
           )}
           {activeTab === 'matrix' && (
             <button onClick={() => setShowProductModal(true)} className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2} />
               <span>Nueva Prenda / Calzado</span>
             </button>
           )}
           {activeTab === 'outfits' && (
             <button onClick={() => setShowLookbookModal(true)} className="btn-neu btn-primary" style={{ padding: '8px 16px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={15} strokeWidth={2.5} />
+              <Plus size={15} strokeWidth={2} />
               <span>Nuevo Lookbook / Outfit</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* KPI Cards */}
+      {/* KPI Cards - Monochrome */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-purple)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Referencias de Moda
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Referencias de Moda
+            </span>
+            <Shirt size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-purple)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {products.length}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             {totalVariantsCount} variantes (tallas/colores)
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-blue)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Stock Total Unidades
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Stock Total Unidades
+            </span>
+            <Package size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-blue)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {totalStockUnits}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Prendas y pares disponibles
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-amber)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Probadores en Uso
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Probadores en Uso
+            </span>
+            <Clock size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-amber)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {occupiedFittingRoomsCount} / {fittingRooms.length}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Clientes probándose prendas
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '14px 16px', borderLeft: '4px solid var(--accent-green)' }}>
-          <div style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Valor de Inventario (Costo)
+        <div className="neu-card" style={{ padding: '14px 16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Valor Inventario (Costo)
+            </span>
+            <DollarSign size={15} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--accent-green)' }}>
+          <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {formatCurrency(inventoryAssetValue)}
           </div>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-            Activo en bodega y mostrador
+          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: 2 }}>
+            Activo en mostrador
           </div>
         </div>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* Tabs Navigation - Monochrome */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>
         <button
           onClick={() => setActiveTab('matrix')}
@@ -582,15 +595,15 @@ export default function ApparelPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'matrix' ? 800 : 500,
-            background: activeTab === 'matrix' ? 'var(--accent-purple)' : 'var(--bg)',
-            color: activeTab === 'matrix' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'matrix' ? 700 : 500,
+            background: activeTab === 'matrix' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'matrix' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Grid size={15} />
+          <Grid size={15} strokeWidth={2} />
           <span>Matriz de Tallas & Colores ({products.length})</span>
         </button>
 
@@ -600,16 +613,16 @@ export default function ApparelPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'fitting' ? 800 : 500,
-            background: activeTab === 'fitting' ? 'var(--accent-purple)' : 'var(--bg)',
-            color: activeTab === 'fitting' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'fitting' ? 700 : 500,
+            background: activeTab === 'fitting' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'fitting' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <Sparkles size={15} />
-          <span>Control de Probadores ({fittingRooms.length})</span>
+          <Clock size={15} strokeWidth={2} />
+          <span>Probadores & Vestidores ({fittingRooms.length})</span>
         </button>
 
         <button
@@ -618,16 +631,16 @@ export default function ApparelPage() {
           style={{
             padding: '8px 14px',
             fontSize: '0.8rem',
-            fontWeight: activeTab === 'outfits' ? 800 : 500,
-            background: activeTab === 'outfits' ? 'var(--accent-purple)' : 'var(--bg)',
-            color: activeTab === 'outfits' ? '#fff' : 'var(--text-secondary)',
+            fontWeight: activeTab === 'outfits' ? 700 : 500,
+            background: activeTab === 'outfits' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'outfits' ? 'var(--bg)' : 'var(--text-secondary)',
             display: 'flex',
             alignItems: 'center',
             gap: 6
           }}
         >
-          <ShoppingBag size={15} />
-          <span>Lookbooks & Combos de Moda ({lookbooks.length})</span>
+          <ShoppingBag size={15} strokeWidth={2} />
+          <span>Lookbooks & Outfits ({lookbooks.length})</span>
         </button>
 
         <button

@@ -624,7 +624,7 @@ export default function HardwarePage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>🔩</span>
+            <Wrench size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Ferretería & Construcción
             </h1>

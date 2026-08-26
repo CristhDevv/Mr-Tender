@@ -502,7 +502,7 @@ export default function EstancoPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>🍷</span>
+            <Wine size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Licorera, Estanco & Cigarrería
             </h1>
@@ -514,11 +514,11 @@ export default function EstancoPage() {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={loadEstancoData} className="btn-neu btn-ghost" title="Actualizar datos" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           {bottles.length === 0 && containers.length === 0 && (
-            <button onClick={handleSeedDemoEstanco} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', color: 'var(--accent-coral)', fontWeight: 700 }}>
-              ✨ Cargar Datos Demo de Licorera
+            <button onClick={handleSeedDemoEstanco} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 600 }}>
+              Cargar Datos Demo de Licorera
             </button>
           )}
           {activeTab === 'bar' && (

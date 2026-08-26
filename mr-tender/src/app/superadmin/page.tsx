@@ -2,21 +2,18 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 import {
   Store,
   CreditCard,
   Layers,
-  Users,
-  ShieldCheck,
-  TrendingUp,
   Tag,
-  Headphones,
-  FileText,
   ArrowRight,
   Plus,
   Zap,
-  Globe
+  Activity,
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react'
 import { ALL_SYSTEM_MODULES } from '@/lib/constants/modules'
 
@@ -72,13 +69,13 @@ export default function SuperadminDashboard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.5rem' }}>⚡</span>
-            <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            <Activity size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Panel de Control Superadmin
             </h1>
           </div>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '3px 0 0' }}>
-            Gestión global, monitoreo multi-inquilino y control modular de Mr Tender.
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '3px 0 0' }}>
+            Gestión global, monitoreo multi-inquilino y control modular de la plataforma.
           </p>
         </div>
 
@@ -86,61 +83,73 @@ export default function SuperadminDashboard() {
           <Link
             href="/superadmin/tenants/new"
             className="btn-neu btn-primary"
-            style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            <Plus size={16} strokeWidth={2.5} />
+            <Plus size={16} strokeWidth={2} />
             <span>Crear Negocio</span>
           </Link>
         </div>
       </div>
 
-      {/* Primary KPI Cards */}
+      {/* Primary KPI Cards - Monochrome & Minimalist */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 14 }}>
-        <div className="neu-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--accent-purple)' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Inquilinos Totales
+        <div className="neu-card" style={{ padding: '16px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Inquilinos Totales
+            </span>
+            <Store size={16} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-purple)' }}>
+          <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {tenants.length}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
             {activeTenantsCount} activos • {trialTenantsCount} en prueba
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--accent-blue)' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Suscripciones Activas
+        <div className="neu-card" style={{ padding: '16px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Suscripciones
+            </span>
+            <CreditCard size={16} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-blue)' }}>
+          <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {subscriptionsCount || tenants.length}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
             Ciclos de facturación
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--accent-coral)' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Módulos del Sistema
+        <div className="neu-card" style={{ padding: '16px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Módulos del Sistema
+            </span>
+            <Layers size={16} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-coral)' }}>
+          <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {ALL_SYSTEM_MODULES.length}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-            10 Base + 11 Giros Especializados
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+            10 Base + 11 Verticales
           </div>
         </div>
 
-        <div className="neu-card" style={{ padding: '16px 20px', borderLeft: '4px solid var(--accent-green)' }}>
-          <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 4 }}>
-            Cupones & Promociones
+        <div className="neu-card" style={{ padding: '16px 20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Cupones Activos
+            </span>
+            <Tag size={16} strokeWidth={2} style={{ color: 'var(--text-secondary)' }} />
           </div>
-          <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-green)' }}>
+          <div style={{ fontSize: '1.7rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
             {couponsCount}
           </div>
-          <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: 2 }}>
-            Campañas activas
+          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+            Campañas promocionales
           </div>
         </div>
       </div>
@@ -150,31 +159,31 @@ export default function SuperadminDashboard() {
         <Link
           href="/superadmin/tenants"
           className="neu-card"
-          style={{ textDecoration: 'none', padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: '0.2s ease' }}
+          style={{ textDecoration: 'none', padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: '0.15s ease' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Store size={20} color="var(--accent-purple)" />
-              <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Gestión de Negocios</strong>
+              <Store size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>Gestión de Negocios</strong>
             </div>
-            <ArrowRight size={16} color="var(--text-muted)" />
+            <ArrowRight size={15} style={{ color: 'var(--text-muted)' }} />
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-            Administra comercios, asigna 21 módulos, credenciales y estados.
+            Administra comercios, asigna módulos, credenciales y estados.
           </p>
         </Link>
 
         <Link
           href="/superadmin/plans"
           className="neu-card"
-          style={{ textDecoration: 'none', padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: '0.2s ease' }}
+          style={{ textDecoration: 'none', padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: '0.15s ease' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Zap size={20} color="var(--accent-blue)" />
-              <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Planes de Suscripción</strong>
+              <Zap size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>Planes de Suscripción</strong>
             </div>
-            <ArrowRight size={16} color="var(--text-muted)" />
+            <ArrowRight size={15} style={{ color: 'var(--text-muted)' }} />
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
             Configura tarifas, límites de usuarios y capacidades de servicio.
@@ -184,31 +193,31 @@ export default function SuperadminDashboard() {
         <Link
           href="/superadmin/subscriptions"
           className="neu-card"
-          style={{ textDecoration: 'none', padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: '0.2s ease' }}
+          style={{ textDecoration: 'none', padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: '0.15s ease' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <CreditCard size={20} color="var(--accent-green)" />
-              <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Suscripciones</strong>
+              <CreditCard size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>Suscripciones</strong>
             </div>
-            <ArrowRight size={16} color="var(--text-muted)" />
+            <ArrowRight size={15} style={{ color: 'var(--text-muted)' }} />
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
-            Control de vigencias, renovaciones y prórrogas de prueba.
+            Control de vigencias, renovaciones y períodos de prueba.
           </p>
         </Link>
 
         <Link
           href="/superadmin/coupons"
           className="neu-card"
-          style={{ textDecoration: 'none', padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: '0.2s ease' }}
+          style={{ textDecoration: 'none', padding: 18, display: 'flex', flexDirection: 'column', gap: 8, transition: '0.15s ease' }}
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Tag size={20} color="var(--accent-coral)" />
-              <strong style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>Cupones</strong>
+              <Tag size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+              <strong style={{ fontSize: '0.92rem', color: 'var(--text-primary)' }}>Cupones</strong>
             </div>
-            <ArrowRight size={16} color="var(--text-muted)" />
+            <ArrowRight size={15} style={{ color: 'var(--text-muted)' }} />
           </div>
           <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: 0 }}>
             Generador de códigos con descuento en porcentaje o monto fijo.
@@ -218,12 +227,12 @@ export default function SuperadminDashboard() {
 
       {/* Recent Tenants Table */}
       <div className="neu-card" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)' }}>
-          <div style={{ fontWeight: 800, fontSize: '0.95rem', color: 'var(--text-primary)' }}>
+        <div style={{ padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)' }}>
+          <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)' }}>
             Últimos Comercios Registrados
           </div>
-          <Link href="/superadmin/tenants" style={{ fontSize: '0.78rem', color: 'var(--accent-purple)', fontWeight: 700, textDecoration: 'none' }}>
-            Ver todos los negocios →
+          <Link href="/superadmin/tenants" style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600, textDecoration: 'none' }}>
+            Ver todos →
           </Link>
         </div>
 
@@ -231,22 +240,22 @@ export default function SuperadminDashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ background: 'var(--bg-deep)', color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)' }}>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700 }}>Comercio</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700 }}>Propietario</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700 }}>Giro</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700 }}>País</th>
-                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 700 }}>Estado</th>
-                <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 700 }}>Gestión</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600 }}>Comercio</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600 }}>Propietario</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600 }}>Giro</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600 }}>País</th>
+                <th style={{ padding: '10px 16px', textAlign: 'left', fontWeight: 600 }}>Estado</th>
+                <th style={{ padding: '10px 16px', textAlign: 'right', fontWeight: 600 }}>Gestión</th>
               </tr>
             </thead>
             <tbody>
               {tenants.map(t => (
                 <tr key={t.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                  <td style={{ padding: '12px 16px', fontWeight: 800 }}>
+                  <td style={{ padding: '12px 16px', fontWeight: 700 }}>
                     <Link href={`/superadmin/tenants/${t.id}`} style={{ textDecoration: 'none', color: 'var(--text-primary)' }}>
                       {t.name}
                     </Link>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--accent-blue)', fontFamily: 'monospace' }}>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontFamily: 'monospace' }}>
                       {t.slug}.mrtender.com
                     </div>
                   </td>
@@ -255,7 +264,7 @@ export default function SuperadminDashboard() {
                     <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{t.owner_email}</div>
                   </td>
                   <td style={{ padding: '12px 16px' }}>
-                    <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: 'var(--bg-deep)', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.75rem', padding: '2px 6px', borderRadius: 4, background: 'var(--bg-deep)', fontWeight: 600, color: 'var(--text-secondary)' }}>
                       {t.business_type || 'General'}
                     </span>
                   </td>
@@ -267,18 +276,18 @@ export default function SuperadminDashboard() {
                       padding: '3px 8px',
                       borderRadius: 6,
                       fontSize: '0.7rem',
-                      fontWeight: 800,
-                      background: t.status === 'active' ? 'rgba(74, 186, 134, 0.15)' : t.status === 'trial' ? 'rgba(242, 193, 78, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                      color: t.status === 'active' ? 'var(--accent-green)' : t.status === 'trial' ? 'var(--accent-amber)' : 'var(--accent-coral)'
+                      fontWeight: 600,
+                      background: 'var(--bg-deep)',
+                      color: 'var(--text-primary)'
                     }}>
-                      {t.status === 'active' ? '🟢 Activo' : t.status === 'trial' ? '🟡 En Prueba' : '🔴 Suspendido'}
+                      {t.status === 'active' ? 'Activo' : t.status === 'trial' ? 'En Prueba' : 'Suspendido'}
                     </span>
                   </td>
                   <td style={{ padding: '12px 16px', textAlign: 'right' }}>
                     <Link
                       href={`/superadmin/tenants/${t.id}`}
                       className="btn-neu"
-                      style={{ padding: '5px 12px', fontSize: '0.75rem', fontWeight: 800, display: 'inline-flex', background: 'var(--bg)', color: 'var(--accent-purple)' }}
+                      style={{ padding: '4px 10px', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', background: 'var(--bg)', color: 'var(--text-primary)' }}
                     >
                       Gestionar
                     </Link>

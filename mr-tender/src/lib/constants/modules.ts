@@ -1,11 +1,66 @@
+import React from 'react'
+import {
+  ShoppingCart,
+  Boxes,
+  DollarSign,
+  Users,
+  Truck,
+  ShoppingBag,
+  Clock,
+  BarChart3,
+  BookOpen,
+  Globe,
+  Glasses,
+  Footprints,
+  Dumbbell,
+  Shirt,
+  Car,
+  Dog,
+  Scissors,
+  UtensilsCrossed,
+  Wine,
+  Pill,
+  Wrench,
+  Layers,
+  LucideIcon
+} from 'lucide-react'
+
 export interface SystemModule {
   id: string
   name: string
-  icon: string
+  iconName: string
   group: 'base' | 'vertical'
   categoryName: string
   description: string
   defaultEnabled: boolean
+}
+
+export const MODULE_ICONS: Record<string, LucideIcon> = {
+  pos: ShoppingCart,
+  inventory: Boxes,
+  cash: DollarSign,
+  customers: Users,
+  suppliers: Truck,
+  purchases: ShoppingBag,
+  employees: Clock,
+  reports: BarChart3,
+  accounting: BookOpen,
+  ecommerce: Globe,
+  optometry: Glasses,
+  apparel: Shirt,
+  gym: Dumbbell,
+  laundry: Footprints,
+  automotive: Car,
+  veterinary: Dog,
+  beauty_salon: Scissors,
+  restaurant: UtensilsCrossed,
+  liquor_tobacco: Wine,
+  pharmacy: Pill,
+  hardware: Wrench,
+}
+
+export function getModuleIcon(id: string): LucideIcon {
+  return MODULE_ICONS[id] || Layers
 }
 
 export const ALL_SYSTEM_MODULES: SystemModule[] = [
@@ -13,7 +68,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'pos',
     name: 'Punto de Venta (POS)',
-    icon: '🛒',
+    iconName: 'ShoppingCart',
     group: 'base',
     categoryName: 'Operaciones Comerciales',
     description: 'Venta rápida, caja, tickets térmicos, lectura de código de barras y facturación',
@@ -22,7 +77,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'inventory',
     name: 'Inventario, Bodegas & Kardex',
-    icon: '📦',
+    iconName: 'Boxes',
     group: 'base',
     categoryName: 'Operaciones Comerciales',
     description: 'Control de existencias, Kardex, traslados entre bodegas y alertas de stock bajo',
@@ -31,7 +86,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'cash',
     name: 'Caja, Turnos & Arqueos',
-    icon: '💵',
+    iconName: 'DollarSign',
     group: 'base',
     categoryName: 'Operaciones Comerciales',
     description: 'Aperturas de caja, control de efectivo, arqueos y cierres de turno ciegos',
@@ -40,7 +95,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'customers',
     name: 'Clientes & Cuentas x Cobrar',
-    icon: '👥',
+    iconName: 'Users',
     group: 'base',
     categoryName: 'Operaciones Comerciales',
     description: 'Directorio de clientes, libreta de fiados con límite de crédito y recordatorios WhatsApp',
@@ -49,7 +104,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'suppliers',
     name: 'Proveedores & Contactos',
-    icon: '🚚',
+    iconName: 'Truck',
     group: 'base',
     categoryName: 'Abastecimiento',
     description: 'Directorio de proveedores, cuentas por pagar y condiciones comerciales',
@@ -58,7 +113,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'purchases',
     name: 'Compras & Abastecimiento',
-    icon: '🛍️',
+    iconName: 'ShoppingBag',
     group: 'base',
     categoryName: 'Abastecimiento',
     description: 'Registro de facturas de compra, recepción de mercancía y actualización de costo',
@@ -67,7 +122,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'employees',
     name: 'Personal, Turnos & Asistencia',
-    icon: '⏰',
+    iconName: 'Clock',
     group: 'base',
     categoryName: 'Administración',
     description: 'Gestión de colaboradores, permisos por rol y control de horario/fichajes',
@@ -76,7 +131,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'reports',
     name: 'Reportes & Analítica',
-    icon: '📊',
+    iconName: 'BarChart3',
     group: 'base',
     categoryName: 'Finanzas & Analítica',
     description: 'Reportes de ventas, utilidades, productos más vendidos y exportación Excel/PDF',
@@ -85,7 +140,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'accounting',
     name: 'Contabilidad Automatizada (PUC)',
-    icon: '📈',
+    iconName: 'BookOpen',
     group: 'base',
     categoryName: 'Finanzas & Analítica',
     description: 'Plan único de cuentas contables, balance general y generación automática de asientos',
@@ -94,7 +149,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'ecommerce',
     name: 'E-commerce & Tienda Web',
-    icon: '🌐',
+    iconName: 'Globe',
     group: 'base',
     categoryName: 'Ventas Digitales',
     description: 'Catálogo web público con subdominio propio y pedidos directos a WhatsApp',
@@ -105,7 +160,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'optometry',
     name: 'Óptica & Consultorio Visual',
-    icon: '👓',
+    iconName: 'Glasses',
     group: 'vertical',
     categoryName: 'Salud & Bienestar',
     description: 'Fórmulas oftalmológicas OD/OI, órdenes de laboratorio de biselado, monturas y WhatsApp',
@@ -114,7 +169,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'apparel',
     name: 'Boutique, Ropa & Calzado',
-    icon: '👠',
+    iconName: 'Shirt',
     group: 'vertical',
     categoryName: 'Moda & Retail',
     description: 'Matriz de talla/color, códigos de barras por variante, control de probadores y lookbooks',
@@ -123,7 +178,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'gym',
     name: 'Gimnasio, Fitness & Crossfit',
-    icon: '🏋️',
+    iconName: 'Dumbbell',
     group: 'vertical',
     categoryName: 'Deportes & Bienestar',
     description: 'Torniquete y check-in QR, membresías con WhatsApp, aforo de clases y antropometría',
@@ -132,7 +187,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'laundry',
     name: 'Lavandería & Tintorería',
-    icon: '🧺',
+    iconName: 'Footprints',
     group: 'vertical',
     categoryName: 'Servicios',
     description: 'Tickets por prenda/kilo, control visual de percheros, lavado en seco y domicilios',
@@ -141,7 +196,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'automotive',
     name: 'Taller Mecánico & Autolavado',
-    icon: '🚗',
+    iconName: 'Car',
     group: 'vertical',
     categoryName: 'Automotriz',
     description: 'Órdenes de trabajo por placa, checklist de recepción, repuestos y cola de lavado',
@@ -150,7 +205,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'veterinary',
     name: 'Veterinaria & Pet Shop',
-    icon: '🐾',
+    iconName: 'Dog',
     group: 'vertical',
     categoryName: 'Mascotas & Salud',
     description: 'Historias clínicas, carnet de vacunas con WhatsApp, peluquería canina y alimento a granel',
@@ -159,7 +214,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'beauty_salon',
     name: 'Salón de Belleza, Barbería & Spa',
-    icon: '💇',
+    iconName: 'Scissors',
     group: 'vertical',
     categoryName: 'Belleza & Cuidado',
     description: 'Agenda de citas con WhatsApp, liquidación de comisiones y fichas técnicas capilares',
@@ -168,7 +223,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'restaurant',
     name: 'Restaurante, Café & Bar',
-    icon: '🍽️',
+    iconName: 'UtensilsCrossed',
     group: 'vertical',
     categoryName: 'Gastronomía',
     description: 'Mapa de mesas, comandas digitales KDS a cocina/barra, split bill y recetas',
@@ -177,7 +232,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'liquor_tobacco',
     name: 'Licorera, Estanco & Cigarrería',
-    icon: '🍷',
+    iconName: 'Wine',
     group: 'vertical',
     categoryName: 'Bebidas & Ocio',
     description: 'Control de botellas y copeo en barra, envases retornables, combos y tabaco (+18)',
@@ -186,7 +241,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'pharmacy',
     name: 'Droguería & Farmacia',
-    icon: '💊',
+    iconName: 'Pill',
     group: 'vertical',
     categoryName: 'Salud & Farma',
     description: 'Catálogo INVIMA, genéricos, semáforo de lotes FEFO, termohigrometría y controlados',
@@ -195,7 +250,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   {
     id: 'hardware',
     name: 'Ferretería & Construcción',
-    icon: '🔩',
+    iconName: 'Wrench',
     group: 'vertical',
     categoryName: 'Construcción & Ferretería',
     description: 'Cotizaciones en PDF A4, venta fraccionada (metros/kilos) y alquiler de herramientas',
@@ -206,7 +261,6 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
 export function getDefaultModulesForBusinessType(businessType: string): Record<string, boolean> {
   const mods: Record<string, boolean> = {}
   ALL_SYSTEM_MODULES.forEach(m => {
-    // Base modules default to true
     if (m.group === 'base') {
       mods[m.id] = true
     } else {
@@ -214,7 +268,6 @@ export function getDefaultModulesForBusinessType(businessType: string): Record<s
     }
   })
 
-  // Activate specific vertical based on business type
   if (businessType === 'hardware') mods.hardware = true
   if (businessType === 'pharmacy') mods.pharmacy = true
   if (businessType === 'liquor_tobacco') mods.liquor_tobacco = true

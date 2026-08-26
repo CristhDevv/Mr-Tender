@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ALL_SYSTEM_MODULES, getDefaultModulesForBusinessType } from '@/lib/constants/modules'
+import { ALL_SYSTEM_MODULES, getDefaultModulesForBusinessType, getModuleIcon } from '@/lib/constants/modules'
 import {
   ArrowLeft,
   Store,
@@ -13,27 +13,24 @@ import {
   AlertCircle,
   Key,
   Layers,
-  Sparkles,
   Globe,
-  ToggleLeft,
-  ToggleRight,
   Check,
   RefreshCw
 } from 'lucide-react'
 
 const BUSINESS_TYPES = [
   { value: 'retail', label: 'Comercio General / Minimercado' },
-  { value: 'optometry', label: '👓 Óptica, Consultorio Visual & Lentes' },
-  { value: 'apparel', label: '👗 Boutique, Tienda de Ropa & Calzado' },
-  { value: 'gym', label: '🏋️ Gimnasio, Centro Fitness & Crossfit' },
-  { value: 'laundry', label: '🧺 Lavandería, Tintorería & Planchado' },
-  { value: 'automotive', label: '🚗 Taller Mecánico, Serviteca & Autolavado' },
-  { value: 'veterinary', label: '🐾 Veterinaria, Pet Shop & Grooming' },
-  { value: 'beauty_salon', label: '💇 Salón de Belleza, Barbería & Spa' },
-  { value: 'restaurant', label: '🍽️ Restaurante, Cafetería & Bar' },
-  { value: 'liquor_tobacco', label: '🍷 Licorera, Estanco & Cigarrería' },
-  { value: 'pharmacy', label: '💊 Droguería y Farmacia' },
-  { value: 'hardware', label: '🔩 Ferretería & Construcción' },
+  { value: 'optometry', label: 'Óptica, Consultorio Visual & Lentes' },
+  { value: 'apparel', label: 'Boutique, Tienda de Ropa & Calzado' },
+  { value: 'gym', label: 'Gimnasio, Centro Fitness & Crossfit' },
+  { value: 'laundry', label: 'Lavandería, Tintorería & Planchado' },
+  { value: 'automotive', label: 'Taller Mecánico, Serviteca & Autolavado' },
+  { value: 'veterinary', label: 'Veterinaria, Pet Shop & Grooming' },
+  { value: 'beauty_salon', label: 'Salón de Belleza, Barbería & Spa' },
+  { value: 'restaurant', label: 'Restaurante, Cafetería & Bar' },
+  { value: 'liquor_tobacco', label: 'Licorera, Estanco & Cigarrería' },
+  { value: 'pharmacy', label: 'Droguería y Farmacia' },
+  { value: 'hardware', label: 'Ferretería & Construcción' },
   { value: 'services', label: 'Prestador de Servicios' },
   { value: 'wholesale', label: 'Mayorista / Distribuidor' },
 ]
@@ -57,7 +54,6 @@ export default function NewTenantPage() {
     password: 'Password2026*'
   })
 
-  // 21 Modules initial state
   const [modules, setModules] = useState<Record<string, boolean>>(() =>
     getDefaultModulesForBusinessType('retail')
   )
@@ -117,7 +113,6 @@ export default function NewTenantPage() {
     setError(null)
 
     try {
-      // 1. Create Tenant in Supabase platform
       const { data: tenantId, error: createErr } = await supabase.rpc('superadmin_create_tenant', {
         p_name: form.name.trim(),
         p_slug: form.slug.toLowerCase().replace(/\s+/g, '-').trim(),
@@ -132,7 +127,6 @@ export default function NewTenantPage() {
 
       if (createErr) throw createErr
 
-      // 2. Fetch created tenant to guarantee ID and apply modules
       const { data: tenantData } = await supabase
         .from('platform_tenants')
         .select('id')
@@ -142,7 +136,6 @@ export default function NewTenantPage() {
       const finalTenantId = tenantId || tenantData?.id
 
       if (finalTenantId) {
-        // Save tenant settings with all assigned modules
         await supabase.from('tenant_settings').upsert({
           tenant_id: finalTenantId,
           enabled_modules: modules
@@ -172,7 +165,7 @@ export default function NewTenantPage() {
           className="btn-neu btn-ghost"
           style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
         >
-          <ArrowLeft size={16} />
+          <ArrowLeft size={16} strokeWidth={2} />
           <span>Volver al Listado de Negocios</span>
         </Link>
 
@@ -183,28 +176,28 @@ export default function NewTenantPage() {
 
       {/* Page Title */}
       <div>
-        <h1 style={{ fontSize: '1.5rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
+        <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, letterSpacing: '-0.02em' }}>
           Crear Nuevo Negocio en la Plataforma
         </h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: '4px 0 0' }}>
-          Configura los datos del comercio, credenciales del administrador y selecciona los módulos que tendrá habilitados.
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '4px 0 0' }}>
+          Configura los datos del comercio, credenciales del administrador y asigna los módulos que tendrá habilitados.
         </p>
       </div>
 
       {/* Error Alert */}
       {error && (
-        <div className="neu-card" style={{ padding: 14, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <AlertCircle size={18} color="var(--accent-coral)" />
-          <span style={{ color: 'var(--accent-coral)', fontSize: '0.85rem', fontWeight: 600 }}>{error}</span>
+        <div className="neu-card" style={{ padding: 14, border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <AlertCircle size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+          <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600 }}>{error}</span>
         </div>
       )}
 
       {/* Success View */}
       {successInfo ? (
         <div className="neu-card animate-scale-in" style={{ padding: 32, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-          <div style={{ fontSize: '3rem' }}>🎉</div>
-          <h2 style={{ fontSize: '1.3rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
-            ¡Negocio Creado Exitosamente!
+          <CheckCircle2 size={40} strokeWidth={1.5} style={{ color: 'var(--text-primary)' }} />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+            Negocio Creado Exitosamente
           </h2>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', maxWidth: 500, margin: 0 }}>
             El comercio ha sido registrado con sus módulos activados y su usuario administrador listo para operar.
@@ -213,7 +206,7 @@ export default function NewTenantPage() {
           <div style={{ background: 'var(--bg-deep)', padding: 18, borderRadius: 12, width: '100%', maxWidth: 450, textAlign: 'left', fontSize: '0.82rem', display: 'flex', flexDirection: 'column', gap: 8 }}>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>Subdominio: </span>
-              <strong style={{ color: 'var(--accent-blue)', fontFamily: 'monospace' }}>{successInfo.slug}.mrtender.com</strong>
+              <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{successInfo.slug}.mrtender.com</strong>
             </div>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>Usuario Administrador: </span>
@@ -221,7 +214,7 @@ export default function NewTenantPage() {
             </div>
             <div>
               <span style={{ color: 'var(--text-muted)' }}>Contraseña Inicial: </span>
-              <strong style={{ color: 'var(--accent-coral)', fontFamily: 'monospace' }}>{successInfo.pass}</strong>
+              <strong style={{ color: 'var(--text-primary)', fontFamily: 'monospace' }}>{successInfo.pass}</strong>
             </div>
           </div>
 
@@ -240,8 +233,8 @@ export default function NewTenantPage() {
             {/* Card 1: Business Details */}
             <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
-                <Store size={18} color="var(--accent-purple)" />
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Información del Comercio</h3>
+                <Store size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Información del Comercio</h3>
               </div>
 
               <div>
@@ -304,11 +297,11 @@ export default function NewTenantPage() {
                     onChange={e => setForm(f => ({ ...f, country: e.target.value }))}
                     style={{ width: '100%', fontSize: '0.8rem' }}
                   >
-                    <option value="Colombia">🇨🇴 Colombia (COP $)</option>
-                    <option value="México">🇲🇽 México (MXN $)</option>
-                    <option value="Perú">🇵🇪 Perú (PEN S/.)</option>
-                    <option value="Chile">🇨🇱 Chile (CLP $)</option>
-                    <option value="Estados Unidos">🇺🇸 USA (USD $)</option>
+                    <option value="Colombia">Colombia (COP $)</option>
+                    <option value="México">México (MXN $)</option>
+                    <option value="Perú">Perú (PEN S/.)</option>
+                    <option value="Chile">Chile (CLP $)</option>
+                    <option value="Estados Unidos">USA (USD $)</option>
                   </select>
                 </div>
               </div>
@@ -323,8 +316,8 @@ export default function NewTenantPage() {
                   onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
                   style={{ width: '100%', fontSize: '0.8rem' }}
                 >
-                  <option value="active">🟢 Activo (Producción)</option>
-                  <option value="trial">🟡 Período de Prueba (Trial)</option>
+                  <option value="active">Activo (Producción)</option>
+                  <option value="trial">Período de Prueba (Trial)</option>
                 </select>
               </div>
             </div>
@@ -332,8 +325,8 @@ export default function NewTenantPage() {
             {/* Card 2: Administrator Credentials */}
             <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
-                <User size={18} color="var(--accent-blue)" />
-                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800 }}>Propietario / Administrador Principal</h3>
+                <User size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+                <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Propietario / Administrador Principal</h3>
               </div>
 
               <div>
@@ -388,9 +381,9 @@ export default function NewTenantPage() {
                     type="button"
                     onClick={generateRandomPassword}
                     className="btn-neu btn-ghost"
-                    style={{ padding: '2px 6px', fontSize: '0.68rem', color: 'var(--accent-blue)' }}
+                    style={{ padding: '2px 6px', fontSize: '0.68rem' }}
                   >
-                    🎲 Generar Segura
+                    Generar Segura
                   </button>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -416,13 +409,13 @@ export default function NewTenantPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Layers size={20} color="var(--accent-coral)" />
-                  <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900 }}>
-                    Asignación Integral de Módulos ({Object.values(modules).filter(Boolean).length} / {ALL_SYSTEM_MODULES.length} Activos)
+                  <Layers size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>
+                    Asignación de Módulos ({Object.values(modules).filter(Boolean).length} / {ALL_SYSTEM_MODULES.length} Activos)
                   </h3>
                 </div>
                 <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                  Enciende o apaga las funcionalidades y giros de negocio que este inquilino tendrá disponibles.
+                  Selecciona las funcionalidades que este comercio tendrá habilitadas.
                 </p>
               </div>
 
@@ -448,24 +441,25 @@ export default function NewTenantPage() {
                   type="button"
                   onClick={() => applyPreset('all')}
                   className="btn-neu btn-ghost"
-                  style={{ padding: '6px 10px', fontSize: '0.72rem', color: 'var(--accent-purple)', fontWeight: 700 }}
+                  style={{ padding: '6px 10px', fontSize: '0.72rem', fontWeight: 700 }}
                 >
-                  ✨ Activar Todos (21)
+                  Activar Todos (21)
                 </button>
               </div>
             </div>
 
-            {/* Modules Grid */}
+            {/* Modules Grid - Monochrome Lucide Icons */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
               {ALL_SYSTEM_MODULES.map(m => {
                 const isEnabled = !!modules[m.id]
+                const IconComponent = getModuleIcon(m.id)
                 return (
                   <div
                     key={m.id}
                     onClick={() => toggleModule(m.id)}
                     style={{
-                      background: isEnabled ? 'rgba(74, 186, 134, 0.08)' : 'var(--bg-deep)',
-                      border: isEnabled ? '2px solid var(--accent-green)' : '1px solid var(--border-color)',
+                      background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
+                      border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
                       borderRadius: 10,
                       padding: '12px 14px',
                       cursor: 'pointer',
@@ -477,9 +471,9 @@ export default function NewTenantPage() {
                     }}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <span style={{ fontSize: '1.3rem' }}>{m.icon}</span>
+                      <IconComponent size={18} strokeWidth={2} style={{ color: 'var(--text-primary)', flexShrink: 0 }} />
                       <div>
-                        <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                        <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>
                           {m.name}
                         </div>
                         <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.2, marginTop: 2 }}>
@@ -489,18 +483,18 @@ export default function NewTenantPage() {
                     </div>
 
                     <div style={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: 6,
-                      background: isEnabled ? 'var(--accent-green)' : 'var(--bg)',
-                      border: isEnabled ? 'none' : '2px solid var(--border-color)',
+                      width: 20,
+                      height: 20,
+                      borderRadius: 4,
+                      background: isEnabled ? 'var(--text-primary)' : 'var(--bg)',
+                      border: isEnabled ? 'none' : '1.5px solid var(--border-color)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: '#fff',
+                      color: 'var(--bg)',
                       flexShrink: 0
                     }}>
-                      {isEnabled && <Check size={14} strokeWidth={3} />}
+                      {isEnabled && <Check size={13} strokeWidth={3} />}
                     </div>
                   </div>
                 )
@@ -517,9 +511,9 @@ export default function NewTenantPage() {
               type="submit"
               disabled={saving}
               className="btn-neu btn-primary"
-              style={{ padding: '10px 30px', fontSize: '0.9rem', fontWeight: 800 }}
+              style={{ padding: '10px 30px', fontSize: '0.88rem', fontWeight: 700 }}
             >
-              {saving ? 'Creando Negocio & Asignando Módulos...' : '🚀 Crear Negocio y Activar Módulos'}
+              {saving ? 'Creando Negocio...' : 'Crear Negocio y Activar Módulos'}
             </button>
           </div>
         </form>

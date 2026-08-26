@@ -6,10 +6,7 @@ import {
   CreditCard,
   Plus,
   ArrowLeft,
-  RefreshCw,
-  Clock,
-  CheckCircle2,
-  AlertCircle
+  RefreshCw
 } from 'lucide-react'
 
 interface Subscription {
@@ -27,12 +24,12 @@ interface Subscription {
 interface Tenant { id: string; name: string }
 interface Plan { id: string; name: string }
 
-const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  active:    { bg: 'rgba(74,186,134,0.12)',  color: 'var(--accent-emerald)', label: 'Activa' },
-  trialing:  { bg: 'rgba(242,193,78,0.12)',  color: 'var(--accent-gold)',    label: 'En Prueba' },
-  past_due:  { bg: 'rgba(235,94,85,0.12)',   color: 'var(--accent-coral)',   label: 'Vencida' },
-  cancelled: { bg: 'var(--border-color)',    color: 'var(--text-muted)',     label: 'Cancelada' },
-  paused:    { bg: 'rgba(139,114,190,0.12)', color: 'var(--accent-purple)',  label: 'Pausada' },
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activa',
+  trialing: 'En Prueba',
+  past_due: 'Vencida',
+  cancelled: 'Cancelada',
+  paused: 'Pausada',
 }
 
 export default function SubscriptionsAdminPage() {
@@ -45,7 +42,6 @@ export default function SubscriptionsAdminPage() {
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
 
-  // Dedicated View: 'list' | 'new'
   const [view, setView] = useState<'list' | 'new'>('list')
   const [newTenantId, setNewTenantId] = useState('')
   const [newPlanId, setNewPlanId] = useState('')
@@ -108,27 +104,27 @@ export default function SubscriptionsAdminPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>💳</span>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            <CreditCard size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Suscripciones de Negocios
             </h1>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '2px 0 0' }}>
-            Ciclos de cobro, planes contratados y estados de facturación (Sin modales).
+            Ciclos de cobro, planes contratados y estados de facturación.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetchAll} className="btn-neu btn-ghost" title="Recargar" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           {view === 'list' ? (
             <button
               onClick={() => setView('new')}
               className="btn-neu btn-primary"
-              style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <Plus size={16} strokeWidth={2.5} />
+              <Plus size={16} strokeWidth={2} />
               <span>Nueva Suscripción</span>
             </button>
           ) : (
@@ -137,7 +133,7 @@ export default function SubscriptionsAdminPage() {
               className="btn-neu btn-ghost"
               style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={16} strokeWidth={2} />
               <span>Volver a Suscripciones</span>
             </button>
           )}
@@ -145,8 +141,8 @@ export default function SubscriptionsAdminPage() {
       </div>
 
       {error && (
-        <div className="neu-card" style={{ padding: 12, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-          <span style={{ color: 'var(--accent-coral)', fontSize: '0.82rem', fontWeight: 600 }}>⚠️ {error}</span>
+        <div className="neu-card" style={{ padding: 12, border: '1px solid var(--border-color)' }}>
+          <span style={{ color: 'var(--text-primary)', fontSize: '0.82rem', fontWeight: 600 }}>{error}</span>
         </div>
       )}
 
@@ -154,8 +150,8 @@ export default function SubscriptionsAdminPage() {
       {view === 'new' && (
         <div className="neu-card animate-scale-in" style={{ padding: 26, maxWidth: 600, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
-              + Asignar Nueva Suscripción
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              Asignar Nueva Suscripción
             </h2>
           </div>
 
@@ -206,9 +202,9 @@ export default function SubscriptionsAdminPage() {
                 onChange={e => setNewStatus(e.target.value)}
                 style={{ width: '100%', fontSize: '0.85rem' }}
               >
-                <option value="active">🟢 Activa</option>
-                <option value="trialing">🟡 En Período de Prueba</option>
-                <option value="past_due">🔴 Pendiente de Pago</option>
+                <option value="active">Activa</option>
+                <option value="trialing">En Período de Prueba</option>
+                <option value="past_due">Pendiente de Pago</option>
               </select>
             </div>
 
@@ -225,7 +221,7 @@ export default function SubscriptionsAdminPage() {
                 type="submit"
                 disabled={saving || !newTenantId || !newPlanId}
                 className="btn-neu btn-primary"
-                style={{ padding: '8px 24px', fontWeight: 800 }}
+                style={{ padding: '8px 24px', fontWeight: 700 }}
               >
                 {saving ? 'Guardando...' : 'Crear Suscripción'}
               </button>
@@ -239,15 +235,15 @@ export default function SubscriptionsAdminPage() {
         <>
           {/* Stats Ribbon */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
-            {Object.entries(STATUS_STYLE).map(([key, s]) => (
+            {Object.entries(STATUS_LABEL).map(([key, label]) => (
               <div
                 key={key}
                 className="neu-card"
-                style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === key ? `3px solid ${s.color}` : '3px solid transparent' }}
+                style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === key ? '2px solid var(--text-primary)' : '2px solid transparent' }}
                 onClick={() => setFilterStatus(filterStatus === key ? 'all' : key)}
               >
-                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{s.label}</div>
-                <div style={{ fontSize: '1.35rem', fontWeight: 900, color: s.color }}>
+                <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{label}</div>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   {subscriptions.filter(s2 => s2.status === key).length}
                 </div>
               </div>
@@ -261,10 +257,10 @@ export default function SubscriptionsAdminPage() {
             </div>
           ) : filtered.length === 0 ? (
             <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
-              <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>💳</div>
-              <h3 style={{ fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>Sin suscripciones en este filtro</h3>
+              <CreditCard size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+              <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>Sin suscripciones en este filtro</h3>
               <button onClick={() => setView('new')} className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.82rem', marginTop: 10 }}>
-                + Crear primera suscripción
+                Crear primera suscripción
               </button>
             </div>
           ) : (
@@ -272,35 +268,43 @@ export default function SubscriptionsAdminPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                 <thead>
                   <tr style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Negocio</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Plan</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Período</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Estado</th>
-                    <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700 }}>Acciones</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Negocio</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Plan</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Período</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Estado</th>
+                    <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600 }}>Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map(s => {
-                    const ss = STATUS_STYLE[s.status] || STATUS_STYLE.cancelled
+                    const statusLabel = STATUS_LABEL[s.status] || s.status
                     const daysLeft = s.current_period_end ? Math.ceil((new Date(s.current_period_end).getTime() - Date.now()) / 86400000) : null
                     return (
                       <tr key={s.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '12px 16px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--text-primary)' }}>
                           {(s as any).platform_tenants?.name || 'Desconocido'}
                         </td>
-                        <td style={{ padding: '12px 16px', fontWeight: 700, color: 'var(--accent-blue)' }}>
+                        <td style={{ padding: '12px 16px', fontWeight: 600, color: 'var(--text-primary)' }}>
                           {(s as any).platform_subscription_plans?.name || 'Desconocido'}
                         </td>
                         <td style={{ padding: '12px 16px', fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
                           <div>{formatDate(s.current_period_start)}</div>
-                          <div style={{ fontWeight: 700, color: daysLeft !== null && daysLeft < 5 ? 'var(--accent-coral)' : 'var(--text-primary)' }}>
+                          <div style={{ fontWeight: 600, color: 'var(--text-primary)' }}>
                             → {formatDate(s.current_period_end)}
                             {daysLeft !== null && <span style={{ marginLeft: 4, fontSize: '0.7rem', color: 'var(--text-muted)' }}>({daysLeft > 0 ? `${daysLeft}d` : 'Vencida'})</span>}
                           </div>
                         </td>
                         <td style={{ padding: '12px 16px' }}>
-                          <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, background: ss.bg, color: ss.color }}>
-                            {ss.label}
+                          <span style={{
+                            padding: '3px 8px',
+                            borderRadius: 6,
+                            fontSize: '0.7rem',
+                            fontWeight: 600,
+                            background: 'var(--bg-deep)',
+                            color: 'var(--text-primary)',
+                            border: '1px solid var(--border-color)'
+                          }}>
+                            {statusLabel}
                           </span>
                         </td>
                         <td style={{ padding: '12px 16px', textAlign: 'right' }}>
@@ -308,7 +312,7 @@ export default function SubscriptionsAdminPage() {
                             <button
                               onClick={() => handleCancel(s.id)}
                               className="btn-neu btn-ghost"
-                              style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--accent-coral)' }}
+                              style={{ padding: '4px 8px', fontSize: '0.72rem' }}
                             >
                               Cancelar
                             </button>

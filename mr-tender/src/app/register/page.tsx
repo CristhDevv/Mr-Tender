@@ -25,9 +25,9 @@ const BUSINESS_TYPES = [
 
 const PLANS = [
   { slug: 'free', name: 'Gratis', price: '$0', color: 'var(--text-secondary)' },
-  { slug: 'basic', name: 'Básico', price: '$29/mes', color: 'var(--accent-blue)' },
-  { slug: 'professional', name: 'Profesional', price: '$79/mes', color: 'var(--accent-purple)', popular: true },
-  { slug: 'enterprise', name: 'Empresarial', price: '$199/mes', color: 'var(--accent-amber)' },
+  { slug: 'basic', name: 'Básico', price: '$29/mes', color: 'var(--text-primary)' },
+  { slug: 'professional', name: 'Profesional', price: '$79/mes', color: 'var(--text-primary)', popular: true },
+  { slug: 'enterprise', name: 'Empresarial', price: '$199/mes', color: 'var(--text-primary)' },
 ]
 
 export default function RegisterPage() {

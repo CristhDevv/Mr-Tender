@@ -8,11 +8,7 @@ import {
   Plus,
   Search,
   RefreshCw,
-  ExternalLink,
   ChevronRight,
-  Shield,
-  Layers,
-  Settings,
   ArrowUpRight
 } from 'lucide-react'
 
@@ -29,11 +25,11 @@ interface Tenant {
   created_at: string
 }
 
-const STATUS_STYLE: Record<string, { bg: string; color: string; label: string }> = {
-  active:    { bg: 'rgba(74,186,134,0.12)',  color: 'var(--accent-emerald)', label: 'Activo' },
-  suspended: { bg: 'rgba(235,94,85,0.12)',   color: 'var(--accent-coral)',   label: 'Suspendido' },
-  trial:     { bg: 'rgba(242,193,78,0.12)',  color: 'var(--accent-gold)',    label: 'En Prueba' },
-  cancelled: { bg: 'var(--border-color)',    color: 'var(--text-muted)',     label: 'Cancelado' },
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activo',
+  suspended: 'Suspendido',
+  trial: 'En Prueba',
+  cancelled: 'Cancelado',
 }
 
 export default function TenantsAdminPage() {
@@ -78,7 +74,6 @@ export default function TenantsAdminPage() {
     return ms && mf && mt
   })
 
-  // Unique business types
   const uniqueTypes = Array.from(new Set(tenants.map(t => t.business_type).filter(Boolean)))
 
   return (
@@ -88,68 +83,68 @@ export default function TenantsAdminPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>🏪</span>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
-              Gestión Integral de Negocios
+            <Store size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+              Gestión de Negocios
             </h1>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '2px 0 0' }}>
-            Directorio maestro de comercios con gestión modular completa, credenciales y estados (Sin modales).
+            Directorio maestro de comercios con gestión modular completa, credenciales y estados.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetchTenants} className="btn-neu btn-ghost" title="Recargar" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           
           <Link
             href="/superadmin/tenants/new"
             className="btn-neu btn-primary"
-            style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}
+            style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            <Plus size={16} strokeWidth={2.5} />
+            <Plus size={16} strokeWidth={2} />
             <span>Crear Nuevo Negocio</span>
           </Link>
         </div>
       </div>
 
-      {/* Stats KPI Ribbon */}
+      {/* Stats KPI Ribbon - Monochrome */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}>
         <div
           className="neu-card"
-          style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === 'all' ? '3px solid var(--accent-purple)' : '3px solid transparent' }}
+          style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === 'all' ? '2px solid var(--text-primary)' : '2px solid transparent' }}
           onClick={() => setFilterStatus('all')}
         >
           <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total Inquilinos</div>
-          <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-purple)' }}>{tenants.length}</div>
+          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>{tenants.length}</div>
         </div>
 
         <div
           className="neu-card"
-          style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === 'active' ? '3px solid var(--accent-green)' : '3px solid transparent' }}
+          style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === 'active' ? '2px solid var(--text-primary)' : '2px solid transparent' }}
           onClick={() => setFilterStatus(filterStatus === 'active' ? 'all' : 'active')}
         >
           <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Activos</div>
-          <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-green)' }}>{tenants.filter(t => t.status === 'active').length}</div>
+          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>{tenants.filter(t => t.status === 'active').length}</div>
         </div>
 
         <div
           className="neu-card"
-          style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === 'trial' ? '3px solid var(--accent-amber)' : '3px solid transparent' }}
+          style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === 'trial' ? '2px solid var(--text-primary)' : '2px solid transparent' }}
           onClick={() => setFilterStatus(filterStatus === 'trial' ? 'all' : 'trial')}
         >
           <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>En Prueba</div>
-          <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-amber)' }}>{tenants.filter(t => t.status === 'trial').length}</div>
+          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>{tenants.filter(t => t.status === 'trial').length}</div>
         </div>
 
         <div
           className="neu-card"
-          style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === 'suspended' ? '3px solid var(--accent-coral)' : '3px solid transparent' }}
+          style={{ padding: '12px 16px', cursor: 'pointer', borderTop: filterStatus === 'suspended' ? '2px solid var(--text-primary)' : '2px solid transparent' }}
           onClick={() => setFilterStatus(filterStatus === 'suspended' ? 'all' : 'suspended')}
         >
           <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Suspendidos</div>
-          <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-coral)' }}>{tenants.filter(t => t.status === 'suspended').length}</div>
+          <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)' }}>{tenants.filter(t => t.status === 'suspended').length}</div>
         </div>
       </div>
 
@@ -182,20 +177,20 @@ export default function TenantsAdminPage() {
           <button
             className="btn-neu btn-ghost"
             onClick={() => { setFilterStatus('all'); setFilterType('all'); setSearch('') }}
-            style={{ padding: '6px 12px', fontSize: '0.78rem', color: 'var(--accent-coral)' }}
+            style={{ padding: '6px 12px', fontSize: '0.78rem' }}
           >
-            ✕ Limpiar Filtros
+            Limpiar Filtros
           </button>
         )}
       </div>
 
       {error && (
-        <div className="neu-card" style={{ padding: 12, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-          <span style={{ color: 'var(--accent-coral)', fontSize: '0.82rem', fontWeight: 600 }}>⚠️ {error}</span>
+        <div className="neu-card" style={{ padding: 12, border: '1px solid var(--border-color)' }}>
+          <span style={{ color: 'var(--text-primary)', fontSize: '0.82rem', fontWeight: 600 }}>{error}</span>
         </div>
       )}
 
-      {/* Tenants Full Table */}
+      {/* Tenants Table */}
       {loading ? (
         <div className="neu-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
           <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 8px' }} />
@@ -203,12 +198,12 @@ export default function TenantsAdminPage() {
         </div>
       ) : filtered.length === 0 ? (
         <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
-          <div style={{ fontSize: '2.5rem', marginBottom: 8 }}>🏪</div>
-          <h3 style={{ fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 6px' }}>
+          <Store size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
+          <h3 style={{ fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 6px' }}>
             {tenants.length === 0 ? 'No hay negocios registrados en la plataforma' : 'Sin coincidencias con la búsqueda'}
           </h3>
           <Link href="/superadmin/tenants/new" className="btn-neu btn-primary" style={{ padding: '8px 20px', fontSize: '0.82rem', marginTop: 10, display: 'inline-flex' }}>
-            + Crear primer negocio
+            Crear primer negocio
           </Link>
         </div>
       ) : (
@@ -216,17 +211,17 @@ export default function TenantsAdminPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
             <thead>
               <tr style={{ background: 'var(--bg-deep)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Comercio</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Propietario / Contacto</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Subdominio</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>País</th>
-                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 700 }}>Estado</th>
-                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 700 }}>Gestión 360°</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Comercio</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Propietario / Contacto</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Subdominio</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>País</th>
+                <th style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600 }}>Estado</th>
+                <th style={{ padding: '12px 16px', textAlign: 'right', fontWeight: 600 }}>Gestión</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(t => {
-                const ss = STATUS_STYLE[t.status] || STATUS_STYLE.cancelled
+                const statusLabel = STATUS_LABEL[t.status] || 'Desconocido'
                 return (
                   <tr
                     key={t.id}
@@ -237,7 +232,7 @@ export default function TenantsAdminPage() {
                     <td style={{ padding: '12px 16px' }}>
                       <Link
                         href={`/superadmin/tenants/${t.id}`}
-                        style={{ textDecoration: 'none', fontWeight: 800, color: 'var(--text-primary)', display: 'block' }}
+                        style={{ textDecoration: 'none', fontWeight: 700, color: 'var(--text-primary)', display: 'block' }}
                       >
                         {t.name}
                       </Link>
@@ -256,10 +251,10 @@ export default function TenantsAdminPage() {
                         href={`https://${t.slug}.mrtender.com`}
                         target="_blank"
                         rel="noreferrer"
-                        style={{ fontFamily: 'monospace', color: 'var(--accent-blue)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}
+                        style={{ fontFamily: 'monospace', color: 'var(--text-primary)', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 4 }}
                       >
                         <span>{t.slug}</span>
-                        <ArrowUpRight size={12} />
+                        <ArrowUpRight size={12} strokeWidth={2} />
                       </a>
                     </td>
 
@@ -269,8 +264,16 @@ export default function TenantsAdminPage() {
                     </td>
 
                     <td style={{ padding: '12px 16px' }}>
-                      <span style={{ padding: '3px 8px', borderRadius: 6, fontSize: '0.7rem', fontWeight: 800, background: ss.bg, color: ss.color }}>
-                        {ss.label}
+                      <span style={{
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        background: 'var(--bg-deep)',
+                        color: 'var(--text-primary)',
+                        border: '1px solid var(--border-color)'
+                      }}>
+                        {statusLabel}
                       </span>
                     </td>
 
@@ -279,16 +282,16 @@ export default function TenantsAdminPage() {
                         <button
                           onClick={e => toggleStatus(t.id, t.status, e)}
                           className="btn-neu btn-ghost"
-                          title={t.status === 'active' ? 'Pausar/Suspender negocio' : 'Reactivar negocio'}
-                          style={{ padding: '5px 8px', fontSize: '0.72rem', color: t.status === 'active' ? 'var(--accent-coral)' : 'var(--accent-emerald)' }}
+                          title={t.status === 'active' ? 'Pausar negocio' : 'Reactivar negocio'}
+                          style={{ padding: '5px 8px', fontSize: '0.72rem' }}
                         >
-                          {t.status === 'active' ? '⏸ Pausar' : '▶ Activar'}
+                          {t.status === 'active' ? 'Pausar' : 'Activar'}
                         </button>
 
                         <Link
                           href={`/superadmin/tenants/${t.id}`}
                           className="btn-neu"
-                          style={{ padding: '5px 12px', fontSize: '0.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg)', color: 'var(--accent-purple)' }}
+                          style={{ padding: '5px 12px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 4, background: 'var(--bg)', color: 'var(--text-primary)' }}
                         >
                           <span>Gestionar</span>
                           <ChevronRight size={13} />

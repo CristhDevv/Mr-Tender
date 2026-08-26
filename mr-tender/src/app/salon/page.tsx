@@ -581,7 +581,7 @@ export default function SalonPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>💇‍♀️</span>
+            <Scissors size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
             <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Salón de Belleza, Barbería & Spa
             </h1>
@@ -593,11 +593,11 @@ export default function SalonPage() {
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={loadSalonData} className="btn-neu btn-ghost" title="Actualizar datos" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           {professionals.length === 0 && (
-            <button onClick={handleSeedSalonDemo} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', color: 'var(--accent-purple)', fontWeight: 700 }}>
-              ✨ Cargar Datos Demo de Salón
+            <button onClick={handleSeedSalonDemo} disabled={submitting} className="btn-neu btn-ghost" style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 600 }}>
+              Cargar Datos Demo de Salón
             </button>
           )}
           {activeTab === 'agenda' && (

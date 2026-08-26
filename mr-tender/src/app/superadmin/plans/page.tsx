@@ -7,12 +7,8 @@ import {
   Plus,
   ArrowLeft,
   RefreshCw,
-  Check,
   Zap,
-  Globe,
-  Receipt,
-  BarChart3,
-  Code
+  Check
 } from 'lucide-react'
 
 interface Plan {
@@ -34,9 +30,6 @@ interface Plan {
   is_active: boolean
 }
 
-const PLAN_ICONS: Record<string, string> = { free: '🆓', basic: '⭐', professional: '🚀', enterprise: '🏢' }
-const PLAN_COLORS: Record<string, string> = { free: '#8B8B8B', basic: '#4A90D9', professional: '#8B72BE', enterprise: '#F2C14E' }
-
 const EMPTY_PLAN = {
   name: '',
   slug: '',
@@ -57,7 +50,6 @@ export default function PlansAdminPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  // Dedicated view: 'list' | 'new'
   const [view, setView] = useState<'list' | 'new'>('list')
   const [newPlan, setNewPlan] = useState(EMPTY_PLAN)
 
@@ -132,27 +124,27 @@ export default function PlansAdminPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: '1.4rem' }}>📋</span>
-            <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            <ClipboardList size={20} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+            <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
               Planes de Suscripción
             </h1>
           </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: '2px 0 0' }}>
-            Configuración de tarifas, límites y capacidades de servicio de la plataforma (Sin modales).
+            Configuración de tarifas, límites y capacidades de servicio de la plataforma.
           </p>
         </div>
 
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={fetchPlans} className="btn-neu btn-ghost" title="Recargar" style={{ padding: '8px 12px' }}>
-            <RefreshCw size={15} />
+            <RefreshCw size={15} strokeWidth={2} />
           </button>
           {view === 'list' ? (
             <button
               onClick={() => setView('new')}
               className="btn-neu btn-primary"
-              style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}
+              style={{ padding: '8px 18px', fontSize: '0.85rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <Plus size={16} strokeWidth={2.5} />
+              <Plus size={16} strokeWidth={2} />
               <span>Nuevo Plan</span>
             </button>
           ) : (
@@ -161,7 +153,7 @@ export default function PlansAdminPage() {
               className="btn-neu btn-ghost"
               style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
             >
-              <ArrowLeft size={16} />
+              <ArrowLeft size={16} strokeWidth={2} />
               <span>Volver a Planes</span>
             </button>
           )}
@@ -169,8 +161,8 @@ export default function PlansAdminPage() {
       </div>
 
       {error && (
-        <div className="neu-card" style={{ padding: 12, background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-          <span style={{ color: 'var(--accent-coral)', fontSize: '0.82rem', fontWeight: 600 }}>⚠️ {error}</span>
+        <div className="neu-card" style={{ padding: 12, border: '1px solid var(--border-color)' }}>
+          <span style={{ color: 'var(--text-primary)', fontSize: '0.82rem', fontWeight: 600 }}>{error}</span>
         </div>
       )}
 
@@ -178,8 +170,8 @@ export default function PlansAdminPage() {
       {view === 'new' ? (
         <div className="neu-card animate-scale-in" style={{ padding: 26, maxWidth: 800, margin: '0 auto', width: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
           <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
-            <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0 }}>
-              + Crear Nuevo Nivel de Suscripción
+            <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+              Crear Nuevo Nivel de Suscripción
             </h2>
             <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
               Define los límites de usuarios, productos, sucursales y tarifas del nuevo plan.
@@ -345,7 +337,7 @@ export default function PlansAdminPage() {
                 type="submit"
                 disabled={saving}
                 className="btn-neu btn-primary"
-                style={{ padding: '8px 24px', fontWeight: 800 }}
+                style={{ padding: '8px 24px', fontWeight: 700 }}
               >
                 {saving ? 'Creando...' : 'Crear Nivel de Plan'}
               </button>
@@ -363,8 +355,6 @@ export default function PlansAdminPage() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16 }}>
             {plans.map(p => {
               const isEditing = editingId === p.id
-              const icon = PLAN_ICONS[p.slug] || '📋'
-              const color = PLAN_COLORS[p.slug] || 'var(--accent-blue)'
 
               return (
                 <div
@@ -375,14 +365,13 @@ export default function PlansAdminPage() {
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 12,
-                    borderTop: `3px solid ${color}`,
                     opacity: p.is_active ? 1 : 0.65
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                      <span style={{ fontSize: '1.4rem' }}>{icon}</span>
-                      <h3 style={{ fontWeight: 900, fontSize: '1.1rem', color: 'var(--text-primary)', margin: 0 }}>
+                      <Zap size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+                      <h3 style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)', margin: 0 }}>
                         {p.name}
                       </h3>
                     </div>
@@ -390,17 +379,17 @@ export default function PlansAdminPage() {
                     <button
                       onClick={() => togglePlan(p.id, p.is_active)}
                       style={{
-                        border: 'none',
+                        border: '1px solid var(--border-color)',
                         cursor: 'pointer',
                         fontSize: '0.7rem',
-                        fontWeight: 800,
+                        fontWeight: 700,
                         padding: '3px 8px',
                         borderRadius: 6,
-                        background: p.is_active ? 'rgba(74,186,134,0.15)' : 'var(--border-color)',
-                        color: p.is_active ? 'var(--accent-emerald)' : 'var(--text-muted)'
+                        background: 'var(--bg-deep)',
+                        color: 'var(--text-primary)'
                       }}
                     >
-                      {p.is_active ? '🟢 Activo' : '⏸ Pausado'}
+                      {p.is_active ? 'Activo' : 'Pausado'}
                     </button>
                   </div>
 
@@ -421,7 +410,7 @@ export default function PlansAdminPage() {
                         />
                       </div>
                     ) : (
-                      <span style={{ fontSize: '1.6rem', fontWeight: 900, color, letterSpacing: '-0.02em' }}>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
                         {formatCurrency(p.price_monthly)}
                       </span>
                     )}
@@ -440,16 +429,16 @@ export default function PlansAdminPage() {
                           style={{ width: 60, padding: '2px 4px', textAlign: 'right' }}
                         />
                       ) : (
-                        <strong>{p.max_users < 0 ? '∞ Ilimitados' : p.max_users}</strong>
+                        <strong>{p.max_users < 0 ? 'Ilimitados' : p.max_users}</strong>
                       )}
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Productos:</span>
-                      <strong>{p.max_products < 0 ? '∞ Ilimitados' : p.max_products}</strong>
+                      <strong>{p.max_products < 0 ? 'Ilimitados' : p.max_products}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Sucursales:</span>
-                      <strong>{p.max_branches < 0 ? '∞ Ilimitadas' : p.max_branches}</strong>
+                      <strong>{p.max_branches < 0 ? 'Ilimitadas' : p.max_branches}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-muted)' }}>Prueba gratuita:</span>
@@ -466,7 +455,7 @@ export default function PlansAdminPage() {
                           disabled={saving}
                           style={{ flex: 1, padding: '7px', fontSize: '0.75rem' }}
                         >
-                          {saving ? '...' : '✓ Guardar'}
+                          {saving ? '...' : 'Guardar'}
                         </button>
                         <button
                           className="btn-neu btn-ghost"
@@ -482,7 +471,7 @@ export default function PlansAdminPage() {
                         onClick={() => { setEditingId(p.id); setEditPrice(p.price_monthly.toString()); setEditUsers(p.max_users) }}
                         style={{ width: '100%', padding: '7px', fontSize: '0.75rem' }}
                       >
-                        ✎ Modificar Precio y Usuarios
+                        Modificar Precio y Usuarios
                       </button>
                     )}
                   </div>

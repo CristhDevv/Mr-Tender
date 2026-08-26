@@ -206,7 +206,7 @@ export default function AccountingPage() {
             className={`btn-neu ${selectedWarehouseId === 'all' ? 'btn-primary' : 'btn-ghost'}`}
             style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: 700 }}
           >
-            🌐 Consolidado ({entries.length})
+            Consolidado ({entries.length})
           </button>
 
           {warehouses.map(wh => {
@@ -219,7 +219,7 @@ export default function AccountingPage() {
                 className={`btn-neu ${isSelected ? 'btn-primary' : 'btn-ghost'}`}
                 style={{ padding: '6px 12px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 5 }}
               >
-                <span>📦 {wh.name} {wh.is_main ? '(Principal)' : ''}</span>
+                <span>{wh.name} {wh.is_main ? '(Principal)' : ''}</span>
                 <span style={{ opacity: 0.8, fontSize: '0.68rem' }}>({count})</span>
               </button>
             )
