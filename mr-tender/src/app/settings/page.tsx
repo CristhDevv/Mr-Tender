@@ -23,7 +23,8 @@ import {
   Shirt,
   Dumbbell,
   Footprints,
-  Glasses
+  Glasses,
+  Croissant
 } from 'lucide-react'
 import Link from 'next/link'
 
@@ -265,6 +266,7 @@ export default function SettingsPage() {
     { id: 'liquor_tobacco', name: 'Licorera & Estanco', icon: Wine, desc: 'Control de botellas en barra / copeo, envases retornables, combos y tabaco' },
     { id: 'restaurant', name: 'Restaurante & Mesas', icon: UtensilsCrossed, desc: 'Mapa de mesas, comandas de cocina KDS, recetas y propinas' },
     { id: 'beauty_salon', name: 'Salón de Belleza & Spa', icon: Scissors, desc: 'Agenda de citas, turnos de estilistas, comisiones y fichas técnicas capilares' },
+    { id: 'bakery', name: 'Panadería & Pastelería', icon: Croissant, desc: 'Fichas técnicas/gramaje, horneadas del día, tortas personalizadas y encargos' },
     { id: 'ecommerce', name: 'E-commerce & Tienda Web', icon: Globe, desc: 'Catálogo público en línea con pedidos directos a WhatsApp' },
     { id: 'purchases', name: 'Compras & Proveedores', icon: ShoppingCart, desc: 'Registro de facturas de compra, abastecimiento y proveedores' },
     { id: 'accounting', name: 'Contabilidad Automatizada', icon: DollarSign, desc: 'Plan de cuentas, balance general y generación de asientos contables' },

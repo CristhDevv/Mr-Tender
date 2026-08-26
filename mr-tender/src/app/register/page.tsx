@@ -15,6 +15,7 @@ const BUSINESS_TYPES = [
   { value: 'gym', label: 'Gimnasio, Fitness & Crossfit' },
   { value: 'liquor_tobacco', label: 'Licorera, Estanco & Cigarrería' },
   { value: 'restaurant', label: 'Restaurante / Cafetería' },
+  { value: 'bakery', label: 'Panadería, Pastelería & Repostería' },
   { value: 'beauty_salon', label: 'Salón de Belleza, Barbería & Spa' },
   { value: 'clothing', label: 'Ropa, Calzado & Moda' },
   { value: 'services', label: 'Servicios' },

@@ -21,6 +21,7 @@ import {
   Wine,
   Pill,
   Wrench,
+  Croissant,
   Layers,
   LucideIcon
 } from 'lucide-react'
@@ -57,6 +58,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
   liquor_tobacco: Wine,
   pharmacy: Pill,
   hardware: Wrench,
+  bakery: Croissant,
 }
 
 export function getModuleIcon(id: string): LucideIcon {
@@ -255,6 +257,15 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     categoryName: 'Construcción & Ferretería',
     description: 'Cotizaciones en PDF A4, venta fraccionada (metros/kilos) y alquiler de herramientas',
     defaultEnabled: false
+  },
+  {
+    id: 'bakery',
+    name: 'Panadería, Pastelería & Repostería',
+    iconName: 'Croissant',
+    group: 'vertical',
+    categoryName: 'Gastronomía & Panadería',
+    description: 'Recetas por gramaje/harina, horneadas del día, mermas, tortas personalizadas y encargos',
+    defaultEnabled: false
   }
 ]
 
@@ -279,6 +290,7 @@ export function getDefaultModulesForBusinessType(businessType: string): Record<s
   if (businessType === 'gym') mods.gym = true
   if (businessType === 'clothing' || businessType === 'apparel') mods.apparel = true
   if (businessType === 'optometry') mods.optometry = true
+  if (businessType === 'bakery') mods.bakery = true
 
   return mods
 }

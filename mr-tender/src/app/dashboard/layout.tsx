@@ -37,7 +37,8 @@ import {
   Shirt,
   Dumbbell,
   Footprints,
-  Glasses
+  Glasses,
+  Croissant
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -90,6 +91,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/hardware',   Icon: Wrench,    label: 'Ferretería',     moduleKey: 'hardware',     requiredPermission: 'products.view' },
       { href: '/pharmacy',   Icon: Pill,      label: 'Droguería',      moduleKey: 'pharmacy',     requiredPermission: 'products.view' },
       { href: '/veterinary', Icon: Dog,       label: 'Veterinaria & Pet', moduleKey: 'veterinary',  requiredPermission: 'products.view' },
+      { href: '/bakery',     Icon: Croissant, label: 'Panadería & Pasteles', moduleKey: 'bakery',   requiredPermission: 'products.view' },
       { href: '/estanco',    Icon: Wine,      label: 'Licorera & Estanco', moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
       { href: '/inventory',  Icon: Boxes,     label: 'Inventario',     moduleKey: 'inventory',    requiredPermission: 'inventory.view' },
       { href: '/warehouses', Icon: Building2, label: 'Bodegas',        moduleKey: 'inventory',    requiredPermission: 'inventory.view' }
