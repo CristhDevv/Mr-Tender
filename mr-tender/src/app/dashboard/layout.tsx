@@ -52,7 +52,11 @@ import {
   Calendar,
   Percent,
   Globe,
-  FileText
+  FileText,
+  RotateCcw,
+  GlassWater,
+  Stethoscope,
+  Syringe
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -86,7 +90,7 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Ventas & Mostrador',
     Icon: ShoppingCart,
     items: [
-      { href: '/pos',                  Icon: ShoppingCart,    label: 'Punto de Venta (POS)', moduleKey: 'pos',          requiredPermission: 'pos.view' },
+      { href: '/pos',                   Icon: ShoppingCart,    label: 'Punto de Venta (POS)',                           requiredPermission: 'pos.view' },
       { href: '/restaurant/tables',     Icon: UtensilsCrossed, label: 'Mesas & Salón',        moduleKey: 'restaurant',   requiredPermission: 'pos.view' },
       { href: '/cash',                 Icon: DollarSign,      label: 'Caja & Turnos',        moduleKey: 'cash',         requiredPermission: 'cash.view' },
       { href: '/invoices',             Icon: Receipt,         label: 'Facturación DIAN',                                requiredPermission: 'pos.view' },
@@ -97,6 +101,8 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/automotive/orders',     Icon: Car,             label: 'Órdenes de Taller',    moduleKey: 'automotive',   requiredPermission: 'pos.view' },
       { href: '/bakery/custom-orders',  Icon: Croissant,       label: 'Encargos & Tortas',    moduleKey: 'bakery',       requiredPermission: 'pos.view' },
       { href: '/gym/classes',           Icon: Users,           label: 'Clases & Aforo',       moduleKey: 'gym',          requiredPermission: 'pos.view' },
+      { href: '/estanco/combos',        Icon: Sparkles,        label: 'Combos & Happy Hour',  moduleKey: 'liquor_tobacco', requiredPermission: 'pos.view' },
+      { href: '/apparel/lookbooks',     Icon: Sparkles,        label: 'Outfits & Lookbooks',  moduleKey: 'apparel',      requiredPermission: 'pos.view' },
       { href: '/ecommerce',             Icon: Globe,           label: 'Tienda Online Web',    moduleKey: 'ecommerce',    requiredPermission: 'settings.view' }
     ]
   },
@@ -107,13 +113,16 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Operaciones & Planta',
     Icon: ChefHat,
     items: [
-      { href: '/restaurant/kds',       Icon: Flame,      label: 'Comandera Cocina KDS', moduleKey: 'restaurant', requiredPermission: 'pos.view' },
-      { href: '/bakery/production',    Icon: Clock,      label: 'Horneadas & Mermas',   moduleKey: 'bakery',     requiredPermission: 'inventory.view' },
-      { href: '/gym/checkin',          Icon: Activity,   label: 'Terminal Check-in QR', moduleKey: 'gym',        requiredPermission: 'pos.view' },
-      { href: '/automotive/wash',      Icon: Sparkles,   label: 'Cola de Autolavado',   moduleKey: 'automotive', requiredPermission: 'pos.view' },
-      { href: '/laundry/rack',         Icon: Boxes,      label: 'Planta & Percheros',   moduleKey: 'laundry',    requiredPermission: 'inventory.view' },
-      { href: '/optometry/lab',        Icon: Glasses,    label: 'Laboratorio Biselado', moduleKey: 'optometry',  requiredPermission: 'inventory.view' },
-      { href: '/hardware/rentals',     Icon: Wrench,     label: 'Alquiler Herramientas',moduleKey: 'hardware',   requiredPermission: 'inventory.view' }
+      { href: '/restaurant/kds',       Icon: Flame,      label: 'Comandera Cocina KDS', moduleKey: 'restaurant',     requiredPermission: 'pos.view' },
+      { href: '/bakery/production',    Icon: Clock,      label: 'Horneadas & Mermas',   moduleKey: 'bakery',         requiredPermission: 'inventory.view' },
+      { href: '/gym/checkin',          Icon: Activity,   label: 'Terminal Check-in QR', moduleKey: 'gym',            requiredPermission: 'pos.view' },
+      { href: '/automotive/wash',      Icon: Sparkles,   label: 'Cola de Autolavado',   moduleKey: 'automotive',     requiredPermission: 'pos.view' },
+      { href: '/laundry/rack',         Icon: Boxes,      label: 'Planta & Percheros',   moduleKey: 'laundry',        requiredPermission: 'inventory.view' },
+      { href: '/optometry/lab',        Icon: Glasses,    label: 'Laboratorio Biselado', moduleKey: 'optometry',      requiredPermission: 'inventory.view' },
+      { href: '/hardware/rentals',     Icon: Wrench,     label: 'Alquiler Herramientas',moduleKey: 'hardware',       requiredPermission: 'inventory.view' },
+      { href: '/estanco/bar',          Icon: GlassWater, label: 'Barra & Copeo',        moduleKey: 'liquor_tobacco', requiredPermission: 'inventory.view' },
+      { href: '/apparel/fitting-rooms',Icon: Footprints, label: 'Probadores & Cabinas', moduleKey: 'apparel',        requiredPermission: 'pos.view' },
+      { href: '/veterinary/grooming',  Icon: Scissors,   label: 'Peluquería & Spa Pet', moduleKey: 'veterinary',     requiredPermission: 'pos.view' }
     ]
   },
 
@@ -128,8 +137,8 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/pharmacy/lots',        Icon: Clock,           label: 'Control Lotes & FEFO',  moduleKey: 'pharmacy',   requiredPermission: 'inventory.view' },
       { href: '/restaurant/recipes',   Icon: UtensilsCrossed, label: 'Recetas & Escandallo',  moduleKey: 'restaurant', requiredPermission: 'products.view' },
       { href: '/bakery/recipes',       Icon: Croissant,       label: 'Fichas de Panadería',   moduleKey: 'bakery',     requiredPermission: 'products.view' },
-      { href: '/apparel',              Icon: Footprints,      label: 'Variantes Talla/Color', moduleKey: 'apparel',    requiredPermission: 'products.view' },
-      { href: '/estanco',              Icon: Wine,            label: 'Copeo & Retornables',   moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
+      { href: '/apparel/matrix',       Icon: Shirt,           label: 'Matriz Talla / Color',  moduleKey: 'apparel',    requiredPermission: 'products.view' },
+      { href: '/estanco/returns',      Icon: RotateCcw,       label: 'Envases Retornables',   moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' },
       { href: '/inventory',            Icon: Boxes,           label: 'Inventario & Kardex',   moduleKey: 'inventory',  requiredPermission: 'inventory.view' },
       { href: '/warehouses',           Icon: Building2,       label: 'Bodegas & Almacenes',   moduleKey: 'inventory',  requiredPermission: 'inventory.view' }
     ]
@@ -141,10 +150,11 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Clientes & Pacientes',
     Icon: Users,
     items: [
-      { href: '/customers',            Icon: Users,     label: 'Directorio & Fiaos',       moduleKey: 'customers',  requiredPermission: 'customers.view' },
-      { href: '/gym/members',          Icon: Dumbbell,  label: 'Socios & Membresías',      moduleKey: 'gym',        requiredPermission: 'customers.view' },
-      { href: '/veterinary/pets',      Icon: Dog,       label: 'Pacientes & Vacunas Pet',  moduleKey: 'veterinary', requiredPermission: 'customers.view' },
-      { href: '/optometry/patients',   Icon: Glasses,   label: 'Consultorio & Fórmulas OD',moduleKey: 'optometry',  requiredPermission: 'customers.view' }
+      { href: '/customers',            Icon: Users,       label: 'Directorio & Fiaos',       moduleKey: 'customers',  requiredPermission: 'customers.view' },
+      { href: '/gym/members',          Icon: Dumbbell,    label: 'Socios & Membresías',      moduleKey: 'gym',        requiredPermission: 'customers.view' },
+      { href: '/veterinary/pets',      Icon: Dog,         label: 'Pacientes Mascotas',       moduleKey: 'veterinary', requiredPermission: 'customers.view' },
+      { href: '/veterinary/clinical',  Icon: Stethoscope, label: 'Consultas Médicas Vet',    moduleKey: 'veterinary', requiredPermission: 'customers.view' },
+      { href: '/optometry/patients',   Icon: Glasses,     label: 'Consultorio & Fórmulas OD',moduleKey: 'optometry',  requiredPermission: 'customers.view' }
     ]
   },
 
@@ -179,7 +189,8 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Calidad & Normativa',
     Icon: ShieldCheck,
     items: [
-      { href: '/pharmacy/temperature', Icon: Thermometer, label: 'Termohigrometría & Salud', moduleKey: 'pharmacy', requiredPermission: 'inventory.view' }
+      { href: '/pharmacy/temperature', Icon: Thermometer, label: 'Termohigrometría & Salud', moduleKey: 'pharmacy',   requiredPermission: 'inventory.view' },
+      { href: '/veterinary/vaccines',  Icon: Syringe,     label: 'Carnet Vacunación Pet',   moduleKey: 'veterinary', requiredPermission: 'customers.view' }
     ]
   },
 
