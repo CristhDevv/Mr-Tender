@@ -4,7 +4,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
-import { ALL_SYSTEM_MODULES, getModuleIcon } from '@/lib/constants/modules'
+import { ALL_SYSTEM_MODULES, getModuleIcon, getDefaultModulesForBusinessType, resolveModuleToggle, getModuleById } from '@/lib/constants/modules'
 import {
   ArrowLeft,
   Store,
@@ -17,7 +17,10 @@ import {
   Users,
   ShieldCheck,
   AlertTriangle,
-  ArrowUpRight
+  ArrowUpRight,
+  Sparkles,
+  SlidersHorizontal,
+  Info
 } from 'lucide-react'
 
 interface Tenant {
@@ -76,8 +79,10 @@ export default function TenantDetailPage() {
   // Password reset
   const [newPassword, setNewPassword] = useState('')
 
-  // 21 Modules Map
+  // Modules State & Filter
   const [modules, setModules] = useState<Record<string, boolean>>({})
+  const [moduleFilter, setModuleFilter] = useState<'all' | 'base' | 'vertical'>('all')
+  const [dependencyNotice, setDependencyNotice] = useState<string | null>(null)
 
   useEffect(() => {
     if (tenantId) {
@@ -187,18 +192,66 @@ export default function TenantDetailPage() {
     }
   }
 
-  // Toggle and Save Single Module
+  // Toggle and Save Single Module with Dependency Auto-Resolution
   async function handleToggleModule(modId: string) {
-    const nextModules = { ...modules, [modId]: !modules[modId] }
-    setModules(nextModules)
+    const currentState = !!modules[modId]
+    const targetState = !currentState
+    const result = resolveModuleToggle(modId, targetState, modules)
+
+    if (!targetState && result.blockedBy.length > 0) {
+      const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+      setDependencyNotice(`⚠️ No puedes desactivar "${getModuleById(modId)?.name}" porque es requerido por: ${blockedNames}. Desactiva primero esos módulos.`)
+      setTimeout(() => setDependencyNotice(null), 6000)
+      return
+    }
+
+    if (targetState && result.autoEnabled.length > 0) {
+      const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+      setDependencyNotice(`ℹ️ Prerrequisitos activados automáticamente: ${autoNames}`)
+      setTimeout(() => setDependencyNotice(null), 4000)
+    } else {
+      setDependencyNotice(null)
+    }
+
+    setModules(result.updatedModules)
 
     try {
       await supabase.from('tenant_settings').upsert({
         tenant_id: tenantId,
-        enabled_modules: nextModules
+        enabled_modules: result.updatedModules
       }, { onConflict: 'tenant_id' })
     } catch (err: any) {
       console.error('Error auto-saving module:', err)
+    }
+  }
+
+  // Quick Presets
+  async function handleApplyPreset(preset: 'base_only' | 'industry' | 'all' | 'clean') {
+    let next: Record<string, boolean> = {}
+    if (preset === 'base_only') {
+      ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = m.group === 'base' })
+      setDependencyNotice('✅ Se activaron los 13 módulos base indispensables y se apagaron los verticales.')
+    } else if (preset === 'industry') {
+      next = getDefaultModulesForBusinessType(tenant?.business_type || 'retail')
+      setDependencyNotice(`✅ Se aplicó la configuración óptima para el giro "${tenant?.business_type}".`)
+    } else if (preset === 'all') {
+      ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = true })
+      setDependencyNotice('⚡ Se activaron todos los 25 módulos del sistema.')
+    } else if (preset === 'clean') {
+      ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = false })
+      setDependencyNotice('🧹 Se desactivaron todos los módulos.')
+    }
+
+    setModules(next)
+    setTimeout(() => setDependencyNotice(null), 5000)
+
+    try {
+      await supabase.from('tenant_settings').upsert({
+        tenant_id: tenantId,
+        enabled_modules: next
+      }, { onConflict: 'tenant_id' })
+    } catch (err: any) {
+      console.error('Error auto-saving preset:', err)
     }
   }
 
@@ -258,7 +311,96 @@ export default function TenantDetailPage() {
     )
   }
 
+  const baseModules = ALL_SYSTEM_MODULES.filter(m => m.group === 'base')
+  const verticalModules = ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical')
+  const baseActiveCount = baseModules.filter(m => modules[m.id]).length
+  const verticalActiveCount = verticalModules.filter(m => modules[m.id]).length
   const activeModulesCount = Object.values(modules).filter(Boolean).length
+
+  function renderModuleCard(m: any) {
+    const isEnabled = !!modules[m.id]
+    const IconComponent = getModuleIcon(m.id)
+    const requiresNames = m.requires?.map((reqId: string) => getModuleById(reqId)?.name.split('(')[0].trim() || reqId) || []
+
+    return (
+      <div
+        key={m.id}
+        onClick={() => handleToggleModule(m.id)}
+        style={{
+          background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
+          border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
+          borderRadius: 10,
+          padding: '12px 14px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          transition: 'all 0.15s ease'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 0 }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 7,
+            background: isEnabled ? 'var(--bg-deep)' : 'var(--bg)',
+            border: '1px solid var(--border-color)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: 'var(--text-primary)',
+            marginTop: 1
+          }}>
+            <IconComponent size={16} strokeWidth={2} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>
+                {m.name}
+              </span>
+              <span style={{
+                fontSize: '0.62rem',
+                padding: '1px 6px',
+                borderRadius: 4,
+                fontWeight: 700,
+                background: m.group === 'base' ? 'var(--bg-deep)' : 'var(--accent-purple-lt, rgba(168,85,247,0.12))',
+                color: m.group === 'base' ? 'var(--text-secondary)' : 'var(--accent-purple, #9333ea)',
+                border: '1px solid var(--border-color)'
+              }}>
+                {m.group === 'base' ? 'BASE' : m.categoryName}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.25, marginTop: 2 }}>
+              {m.description}
+            </div>
+            {requiresNames.length > 0 && (
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span>🔗 Requiere:</span>
+                <span style={{ fontWeight: 600 }}>{requiresNames.join(', ')}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{
+          width: 20,
+          height: 20,
+          borderRadius: 4,
+          background: isEnabled ? 'var(--text-primary)' : 'var(--bg)',
+          border: isEnabled ? 'none' : '1.5px solid var(--border-color)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--bg)',
+          flexShrink: 0
+        }}>
+          {isEnabled && <Check size={13} strokeWidth={3} />}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1100, margin: '0 auto' }}>
@@ -552,81 +694,278 @@ export default function TenantDetailPage() {
         </div>
       )}
 
-      {/* ── TAB 2: GESTIÓN DE 21 MÓDULOS MONOCHROME ── */}
+      {/* ── TAB 2: GESTIÓN MODULAR ESTRATÉGICA (BASE vs VERTICALES) ── */}
       {activeTab === 'modules' && (
-        <div className="neu-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800 }}>
-                Control Modular en Tiempo Real ({activeModulesCount}/{ALL_SYSTEM_MODULES.length} Activos)
-              </h3>
-              <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                Cada interruptor activa o desactiva de forma inmediata el acceso a los módulos.
-              </p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          
+          {/* Top Control Header Card */}
+          <div className="neu-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  Control Modular del Sistema
+                </h3>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>Activos en este negocio: <strong>{activeModulesCount}/{ALL_SYSTEM_MODULES.length}</strong></span>
+                  <span>•</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>🟢 Base: {baseActiveCount}/13</span>
+                  <span>•</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>🟣 Verticales: {verticalActiveCount}/12</span>
+                </div>
+              </div>
+
+              {/* Presets and Save Buttons */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('base_only')}
+                  className="btn-neu btn-ghost"
+                  title="Activa los 13 módulos base y desactiva todas las verticales"
+                  style={{ padding: '7px 12px', fontSize: '0.75rem', fontWeight: 600 }}
+                >
+                  🟢 Solo Base (13)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('industry')}
+                  className="btn-neu btn-ghost"
+                  title={`Aplica los módulos base + la vertical recomendada para ${tenant.business_type}`}
+                  style={{ padding: '7px 12px', fontSize: '0.75rem', fontWeight: 600 }}
+                >
+                  🎯 Según Giro ({tenant.business_type})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('all')}
+                  className="btn-neu btn-ghost"
+                  style={{ padding: '7px 12px', fontSize: '0.75rem' }}
+                >
+                  Activar Todos (25)
+                </button>
+
+                <button
+                  onClick={handleSaveAllModules}
+                  disabled={saving}
+                  className="btn-neu btn-primary"
+                  style={{ padding: '8px 18px', fontSize: '0.8rem', fontWeight: 700 }}
+                >
+                  {saving ? 'Guardando...' : 'Sincronizar Módulos'}
+                </button>
+              </div>
             </div>
 
-            <button
-              onClick={handleSaveAllModules}
-              disabled={saving}
-              className="btn-neu btn-primary"
-              style={{ padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700 }}
-            >
-              {saving ? 'Guardando...' : 'Sincronizar Módulos'}
-            </button>
+            {/* Segmented Filter Control */}
+            <div style={{ display: 'flex', gap: 6, borderTop: '1px solid var(--border-color)', paddingTop: 12, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setModuleFilter('all')}
+                className="btn-neu"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: moduleFilter === 'all' ? 700 : 500,
+                  background: moduleFilter === 'all' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'all' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                Todos los Módulos ({activeModulesCount}/25)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModuleFilter('base')}
+                className="btn-neu"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: moduleFilter === 'base' ? 700 : 500,
+                  background: moduleFilter === 'base' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'base' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                🟢 Módulos Base / Indispensables ({baseActiveCount}/13)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModuleFilter('vertical')}
+                className="btn-neu"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: moduleFilter === 'vertical' ? 700 : 500,
+                  background: moduleFilter === 'vertical' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'vertical' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                🟣 Módulos Verticales / Por Industria ({verticalActiveCount}/12)
+              </button>
+            </div>
+
+            {/* Dependency Notice Toast */}
+            {dependencyNotice && (
+              <div style={{
+                background: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
+                border: '1px solid var(--border-color)',
+                padding: '10px 14px',
+                borderRadius: 8,
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <Info size={16} strokeWidth={2} style={{ flexShrink: 0 }} />
+                <span>{dependencyNotice}</span>
+              </div>
+            )}
           </div>
 
-          {/* Grid of 21 Modules with Monochrome Lucide Icons */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: 12 }}>
-            {ALL_SYSTEM_MODULES.map(m => {
-              const isEnabled = !!modules[m.id]
-              const IconComponent = getModuleIcon(m.id)
-              return (
-                <div
-                  key={m.id}
-                  onClick={() => handleToggleModule(m.id)}
-                  style={{
-                    background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
-                    border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
-                    borderRadius: 10,
-                    padding: '14px 16px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <IconComponent size={20} strokeWidth={2} style={{ color: 'var(--text-primary)', flexShrink: 0 }} />
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)' }}>
-                        {m.name}
+          {/* 🟢 SECCIÓN 1: MÓDULOS BASE / INDISPENSABLES */}
+          {(moduleFilter === 'all' || moduleFilter === 'base') && (
+            <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1.1rem' }}>🟢</span>
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>
+                    Módulos Base & Operativos ({baseActiveCount}/13 Activos)
+                  </h3>
+                  <span style={{ fontSize: '0.68rem', background: 'var(--bg-deep)', border: '1px solid var(--border-color)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                    INDISPENSABLES
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Núcleo funcional transversal para cualquier comercio (Ventas POS, Caja, Inventario, Compras, Facturación DIAN, Clientes, Personal y Finanzas).
+                </p>
+              </div>
+
+              {/* Functional Subgroups for Base Modules */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[
+                  {
+                    title: '🛒 Ventas & Mostrador',
+                    desc: 'Operación comercial rápida, caja de efectivo, CRM y tienda online',
+                    ids: ['pos', 'cash', 'crm', 'ecommerce']
+                  },
+                  {
+                    title: '📦 Inventario & Logística',
+                    desc: 'Existencias generales, bodegas y control de Kardex',
+                    ids: ['inventory']
+                  },
+                  {
+                    title: '🚚 Abastecimiento & Compras',
+                    desc: 'Facturas de compra a proveedores y directorio de contactos',
+                    ids: ['purchases', 'suppliers']
+                  },
+                  {
+                    title: '👥 Clientes & Cartera',
+                    desc: 'Directorio de clientes, libreta de fiados y cuentas por cobrar',
+                    ids: ['customers']
+                  },
+                  {
+                    title: '👔 Recursos Humanos & Nómina',
+                    desc: 'Personal, turnos, asistencia y emisión de nómina electrónica DIAN',
+                    ids: ['employees', 'payroll']
+                  },
+                  {
+                    title: '📈 Finanzas & Contabilidad',
+                    desc: 'Flujo de caja bancario, asientos contables PUC y reportes P&L',
+                    ids: ['reports', 'treasury', 'accounting']
+                  }
+                ].map(group => {
+                  const groupMods = group.ids.map(id => getModuleById(id)).filter(Boolean) as any[]
+                  return (
+                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>{group.title}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>— {group.desc}</span>
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.2, marginTop: 2 }}>
-                        {m.description}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                        {groupMods.map(m => renderModuleCard(m))}
                       </div>
                     </div>
-                  </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
-                  <div style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 4,
-                    background: isEnabled ? 'var(--text-primary)' : 'var(--bg)',
-                    border: isEnabled ? 'none' : '1.5px solid var(--border-color)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'var(--bg)',
-                    flexShrink: 0
-                  }}>
-                    {isEnabled && <Check size={14} strokeWidth={3} />}
-                  </div>
+          {/* 🟣 SECCIÓN 2: MÓDULOS VERTICALES / ESPECIALIZADOS POR INDUSTRIA */}
+          {(moduleFilter === 'all' || moduleFilter === 'vertical') && (
+            <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1.1rem' }}>🟣</span>
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>
+                    Módulos Verticales & Especializados ({verticalActiveCount}/12 Activos)
+                  </h3>
+                  <span style={{ fontSize: '0.68rem', background: 'var(--accent-purple-lt, rgba(168,85,247,0.12))', color: 'var(--accent-purple, #9333ea)', border: '1px solid var(--border-color)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                    POR NICHO / GIRO
+                  </span>
                 </div>
-              )
-            })}
-          </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Pantallas y herramientas específicas de cada industria. <strong>Activa únicamente el vertical que coincida con el giro de este negocio</strong> para mantener su menú optimizado.
+                </p>
+              </div>
+
+              {/* Functional Subgroups for Vertical Modules */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[
+                  {
+                    title: '🍽️ Gastronomía, Panadería & Cafeterías',
+                    desc: 'Mesas, comandera KDS, recetas gastronómicas y horneadas de pan',
+                    ids: ['restaurant', 'bakery']
+                  },
+                  {
+                    title: '💊 Salud, Droguerías & Ópticas',
+                    desc: 'Medicamentos INVIMA, semáforo FEFO, fórmulas OD/OI y temperatura',
+                    ids: ['pharmacy', 'optometry']
+                  },
+                  {
+                    title: '👗 Moda, Boutiques & Calzado',
+                    desc: 'Matriz talla/color, probadores de ropa y lookbooks',
+                    ids: ['apparel']
+                  },
+                  {
+                    title: '🏋️ Deportes, Gimnasios & Belleza',
+                    desc: 'Check-in QR, membresías fitness, agenda de citas y comisiones',
+                    ids: ['gym', 'beauty_salon']
+                  },
+                  {
+                    title: '🚗 Servicios Técnicos, Talleres & Lavanderías',
+                    desc: 'Órdenes por placa, autolavado, percheros y alquiler de herramientas',
+                    ids: ['automotive', 'laundry', 'hardware']
+                  },
+                  {
+                    title: '🐾 Mascotas & Comercio Especializado',
+                    desc: 'Consultas médicas veterinarias, carnet vacunas, botellas y copeo',
+                    ids: ['veterinary', 'liquor_tobacco']
+                  }
+                ].map(group => {
+                  const groupMods = group.ids.map(id => getModuleById(id)).filter(Boolean) as any[]
+                  return (
+                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>{group.title}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>— {group.desc}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                        {groupMods.map(m => renderModuleCard(m))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 

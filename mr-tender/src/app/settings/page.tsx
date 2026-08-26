@@ -41,6 +41,7 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [dependencyNotice, setDependencyNotice] = useState<string | null>(null)
+  const [moduleFilter, setModuleFilter] = useState<'all' | 'base' | 'vertical'>('all')
   const [tenantId, setTenantId] = useState('')
   const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>(() => {
     const defaultMods: Record<string, boolean> = {}
@@ -319,15 +320,75 @@ export default function SettingsPage() {
         </div>
 
         {currentSection.isModules ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Activa o desactiva las funcionalidades que tu negocio necesita. Al activar un módulo, aparecerá instantáneamente en tu barra de navegación izquierda.
-            </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Header & Segmented Filter */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div>
+                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
+                    Activa o desactiva las funcionalidades de tu negocio. Los cambios se reflejarán inmediatamente en tu menú lateral.
+                  </p>
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <span>🟢 Base: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && enabledModules[m.id]).length}/13</strong></span>
+                  <span style={{ margin: '0 6px' }}>•</span>
+                  <span>🟣 Verticales: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && enabledModules[m.id]).length}/12</strong></span>
+                </div>
+              </div>
+
+              {/* Segmented Filter */}
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setModuleFilter('all')}
+                  className="btn-neu"
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '0.78rem',
+                    fontWeight: moduleFilter === 'all' ? 700 : 500,
+                    background: moduleFilter === 'all' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                    color: moduleFilter === 'all' ? 'var(--bg)' : 'var(--text-secondary)'
+                  }}
+                >
+                  Todos ({Object.values(enabledModules).filter(Boolean).length}/25)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModuleFilter('base')}
+                  className="btn-neu"
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '0.78rem',
+                    fontWeight: moduleFilter === 'base' ? 700 : 500,
+                    background: moduleFilter === 'base' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                    color: moduleFilter === 'base' ? 'var(--bg)' : 'var(--text-secondary)'
+                  }}
+                >
+                  🟢 Módulos Base / Indispensables ({ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && enabledModules[m.id]).length}/13)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setModuleFilter('vertical')}
+                  className="btn-neu"
+                  style={{
+                    padding: '6px 14px',
+                    fontSize: '0.78rem',
+                    fontWeight: moduleFilter === 'vertical' ? 700 : 500,
+                    background: moduleFilter === 'vertical' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                    color: moduleFilter === 'vertical' ? 'var(--bg)' : 'var(--text-secondary)'
+                  }}
+                >
+                  🟣 Módulos Verticales / Especializados ({ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && enabledModules[m.id]).length}/12)
+                </button>
+              </div>
+            </div>
 
             {dependencyNotice && (
               <div style={{
-                background: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral-lt)' : 'var(--accent-blue-lt)',
-                color: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral)' : 'var(--accent-blue)',
+                background: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
+                color: 'var(--text-primary)',
                 padding: '10px 14px',
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '0.82rem',
@@ -335,117 +396,255 @@ export default function SettingsPage() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                border: `1px solid ${dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral)' : 'var(--accent-blue)'}`
+                border: '1px solid var(--border-color)'
               }}>
                 <span>{dependencyNotice}</span>
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-              {ALL_SYSTEM_MODULES.map(m => {
-                const IconComponent = getModuleIcon(m.id)
-                const isEnabled = !!enabledModules[m.id]
-                const requiresNames = m.requires?.map(reqId => getModuleById(reqId)?.name.split('(')[0].trim() || reqId) || []
-
-                return (
-                  <div
-                    key={m.id}
-                    onClick={() => {
-                      const currentState = !!enabledModules[m.id]
-                      const targetState = !currentState
-                      const result = resolveModuleToggle(m.id, targetState, enabledModules)
-
-                      if (!targetState && result.blockedBy.length > 0) {
-                        const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-                        setDependencyNotice(`⚠️ No puedes desactivar "${m.name}" porque es requerido por los siguientes módulos activos: ${blockedNames}. Desactiva primero esos módulos.`)
-                        setTimeout(() => setDependencyNotice(null), 6000)
-                        return
-                      }
-
-                      if (targetState && result.autoEnabled.length > 0) {
-                        const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-                        setDependencyNotice(`ℹ️ Se activaron automáticamente los prerrequisitos: ${autoNames}`)
-                        setTimeout(() => setDependencyNotice(null), 5000)
-                      } else {
-                        setDependencyNotice(null)
-                      }
-
-                      setEnabledModules(result.updatedModules)
-                    }}
-                    className="neu-card"
-                    style={{
-                      padding: 14,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 12,
-                      border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
-                      background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
-                      transition: '0.15s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', flex: 1 }}>
-                      <div style={{
-                        width: 36,
-                        height: 36,
-                        borderRadius: 8,
-                        background: 'var(--bg-deep)',
-                        color: 'var(--text-primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        <IconComponent size={18} strokeWidth={2} />
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
-                          <span style={{ fontWeight: 700, fontSize: '0.86rem', color: 'var(--text-primary)' }}>{m.name}</span>
-                          {m.group === 'vertical' && (
-                            <span style={{ fontSize: '0.65rem', background: 'var(--accent-blue-lt)', color: 'var(--accent-blue)', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>
-                              VERTICAL
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', lineHeight: 1.3, marginBottom: requiresNames.length > 0 ? 4 : 0 }}>
-                          {m.description}
-                        </div>
-                        {requiresNames.length > 0 && (
-                          <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                            <span>🔗 Requiere:</span>
-                            <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{requiresNames.join(', ')}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Toggle Switch */}
-                    <div style={{
-                      width: 36,
-                      height: 20,
-                      borderRadius: 10,
-                      background: isEnabled ? 'var(--text-primary)' : 'var(--border-color)',
-                      position: 'relative',
-                      flexShrink: 0,
-                      marginTop: 2,
-                      transition: '0.2s'
-                    }}>
-                      <div style={{
-                        width: 14,
-                        height: 14,
-                        borderRadius: '50%',
-                        background: '#fff',
-                        position: 'absolute',
-                        top: 3,
-                        left: isEnabled ? 19 : 3,
-                        transition: '0.2s'
-                      }} />
-                    </div>
+            {/* 🟢 SECCIÓN 1: MÓDULOS BASE (INDISPENSABLES) */}
+            {(moduleFilter === 'all' || moduleFilter === 'base') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: '1rem' }}>🟢</span>
+                    <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                      Módulos Base & Operativos
+                    </span>
+                    <span style={{ fontSize: '0.65rem', background: 'var(--bg-deep)', border: '1px solid var(--border-color)', padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>
+                      INDISPENSABLES
+                    </span>
                   </div>
-                )
-              })}
-            </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                    Herramientas transversales necesarias para facturación, caja, control de existencias, compras, cartera y contabilidad.
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                  {ALL_SYSTEM_MODULES.filter(m => m.group === 'base').map(m => {
+                    const IconComponent = getModuleIcon(m.id)
+                    const isEnabled = !!enabledModules[m.id]
+                    const requiresNames = m.requires?.map(reqId => getModuleById(reqId)?.name.split('(')[0].trim() || reqId) || []
+
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => {
+                          const currentState = !!enabledModules[m.id]
+                          const targetState = !currentState
+                          const result = resolveModuleToggle(m.id, targetState, enabledModules)
+
+                          if (!targetState && result.blockedBy.length > 0) {
+                            const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+                            setDependencyNotice(`⚠️ No puedes desactivar "${m.name}" porque es requerido por: ${blockedNames}. Desactiva primero esos módulos.`)
+                            setTimeout(() => setDependencyNotice(null), 6000)
+                            return
+                          }
+
+                          if (targetState && result.autoEnabled.length > 0) {
+                            const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+                            setDependencyNotice(`ℹ️ Se activaron automáticamente los prerrequisitos: ${autoNames}`)
+                            setTimeout(() => setDependencyNotice(null), 5000)
+                          } else {
+                            setDependencyNotice(null)
+                          }
+
+                          setEnabledModules(result.updatedModules)
+                        }}
+                        className="neu-card"
+                        style={{
+                          padding: 12,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
+                          background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
+                          transition: '0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
+                          <div style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 6,
+                            background: 'var(--bg-deep)',
+                            color: 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <IconComponent size={16} strokeWidth={2} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>{m.name}</span>
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.25, marginBottom: requiresNames.length > 0 ? 4 : 0 }}>
+                              {m.description}
+                            </div>
+                            {requiresNames.length > 0 && (
+                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span>🔗 Requiere:</span>
+                                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{requiresNames.join(', ')}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Toggle Switch */}
+                        <div style={{
+                          width: 34,
+                          height: 18,
+                          borderRadius: 9,
+                          background: isEnabled ? 'var(--text-primary)' : 'var(--border-color)',
+                          position: 'relative',
+                          flexShrink: 0,
+                          transition: '0.2s'
+                        }}>
+                          <div style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            background: '#fff',
+                            position: 'absolute',
+                            top: 3,
+                            left: isEnabled ? 19 : 3,
+                            transition: '0.2s'
+                          }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* 🟣 SECCIÓN 2: MÓDULOS VERTICALES (ESPECIALIZADOS) */}
+            {(moduleFilter === 'all' || moduleFilter === 'vertical') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 6, marginTop: moduleFilter === 'all' ? 12 : 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: '1rem' }}>🟣</span>
+                    <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
+                      Módulos Verticales & Especializados por Giro
+                    </span>
+                    <span style={{ fontSize: '0.65rem', background: 'var(--accent-purple-lt, rgba(168,85,247,0.12))', color: 'var(--accent-purple, #9333ea)', border: '1px solid var(--border-color)', padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>
+                      POR INDUSTRIA
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
+                    Activa únicamente el vertical que pertenezca a la actividad económica de tu negocio.
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                  {ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical').map(m => {
+                    const IconComponent = getModuleIcon(m.id)
+                    const isEnabled = !!enabledModules[m.id]
+                    const requiresNames = m.requires?.map(reqId => getModuleById(reqId)?.name.split('(')[0].trim() || reqId) || []
+
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => {
+                          const currentState = !!enabledModules[m.id]
+                          const targetState = !currentState
+                          const result = resolveModuleToggle(m.id, targetState, enabledModules)
+
+                          if (!targetState && result.blockedBy.length > 0) {
+                            const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+                            setDependencyNotice(`⚠️ No puedes desactivar "${m.name}" porque es requerido por: ${blockedNames}. Desactiva primero esos módulos.`)
+                            setTimeout(() => setDependencyNotice(null), 6000)
+                            return
+                          }
+
+                          if (targetState && result.autoEnabled.length > 0) {
+                            const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+                            setDependencyNotice(`ℹ️ Se activaron automáticamente los prerrequisitos: ${autoNames}`)
+                            setTimeout(() => setDependencyNotice(null), 5000)
+                          } else {
+                            setDependencyNotice(null)
+                          }
+
+                          setEnabledModules(result.updatedModules)
+                        }}
+                        className="neu-card"
+                        style={{
+                          padding: 12,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
+                          background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
+                          transition: '0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
+                          <div style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 6,
+                            background: 'var(--bg-deep)',
+                            color: 'var(--text-primary)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0
+                          }}>
+                            <IconComponent size={16} strokeWidth={2} />
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>{m.name}</span>
+                              <span style={{ fontSize: '0.62rem', background: 'var(--accent-purple-lt, rgba(168,85,247,0.12))', color: 'var(--accent-purple, #9333ea)', padding: '1px 6px', borderRadius: 4, fontWeight: 700, border: '1px solid var(--border-color)' }}>
+                                {m.categoryName}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.25, marginBottom: requiresNames.length > 0 ? 4 : 0 }}>
+                              {m.description}
+                            </div>
+                            {requiresNames.length > 0 && (
+                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <span>🔗 Requiere:</span>
+                                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{requiresNames.join(', ')}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Toggle Switch */}
+                        <div style={{
+                          width: 34,
+                          height: 18,
+                          borderRadius: 9,
+                          background: isEnabled ? 'var(--text-primary)' : 'var(--border-color)',
+                          position: 'relative',
+                          flexShrink: 0,
+                          transition: '0.2s'
+                        }}>
+                          <div style={{
+                            width: 12,
+                            height: 12,
+                            borderRadius: '50%',
+                            background: '#fff',
+                            position: 'absolute',
+                            top: 3,
+                            left: isEnabled ? 19 : 3,
+                            transition: '0.2s'
+                          }} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>

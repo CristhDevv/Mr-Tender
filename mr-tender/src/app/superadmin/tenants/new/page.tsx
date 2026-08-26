@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
-import { ALL_SYSTEM_MODULES, getDefaultModulesForBusinessType, getModuleIcon } from '@/lib/constants/modules'
+import { ALL_SYSTEM_MODULES, getDefaultModulesForBusinessType, getModuleIcon, resolveModuleToggle, getModuleById } from '@/lib/constants/modules'
 import {
   ArrowLeft,
   Store,
@@ -57,6 +57,8 @@ export default function NewTenantPage() {
   const [modules, setModules] = useState<Record<string, boolean>>(() =>
     getDefaultModulesForBusinessType('retail')
   )
+  const [moduleFilter, setModuleFilter] = useState<'all' | 'base' | 'vertical'>('all')
+  const [dependencyNotice, setDependencyNotice] = useState<string | null>(null)
 
   function handleNameChange(name: string) {
     const autoSlug = name
@@ -77,7 +79,26 @@ export default function NewTenantPage() {
   }
 
   function toggleModule(modId: string) {
-    setModules(prev => ({ ...prev, [modId]: !prev[modId] }))
+    const currentState = !!modules[modId]
+    const targetState = !currentState
+    const result = resolveModuleToggle(modId, targetState, modules)
+
+    if (!targetState && result.blockedBy.length > 0) {
+      const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+      setDependencyNotice(`⚠️ No puedes desactivar "${getModuleById(modId)?.name}" porque es requerido por: ${blockedNames}.`)
+      setTimeout(() => setDependencyNotice(null), 5000)
+      return
+    }
+
+    if (targetState && result.autoEnabled.length > 0) {
+      const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+      setDependencyNotice(`ℹ️ Prerrequisitos activados: ${autoNames}`)
+      setTimeout(() => setDependencyNotice(null), 4000)
+    } else {
+      setDependencyNotice(null)
+    }
+
+    setModules(result.updatedModules)
   }
 
   function applyPreset(preset: 'all' | 'base_only' | 'default') {
@@ -85,13 +106,17 @@ export default function NewTenantPage() {
       const allTrue: Record<string, boolean> = {}
       ALL_SYSTEM_MODULES.forEach(m => { allTrue[m.id] = true })
       setModules(allTrue)
+      setDependencyNotice('⚡ Se activaron todos los 25 módulos del sistema.')
     } else if (preset === 'base_only') {
       const baseOnly: Record<string, boolean> = {}
       ALL_SYSTEM_MODULES.forEach(m => { baseOnly[m.id] = m.group === 'base' })
       setModules(baseOnly)
+      setDependencyNotice('✅ Se activaron los 13 módulos base y se desactivaron los verticales.')
     } else {
       setModules(getDefaultModulesForBusinessType(form.business_type))
+      setDependencyNotice(`✅ Se aplicó la configuración recomendada para ${form.business_type}.`)
     }
+    setTimeout(() => setDependencyNotice(null), 4000)
   }
 
   function generateRandomPassword() {
@@ -404,7 +429,7 @@ export default function NewTenantPage() {
 
           </div>
 
-          {/* Card 3: Full 21 System Modules Switcher */}
+          {/* Card 3: Modular Architecture (Base vs Verticales) */}
           <div className="neu-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12, borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
               <div>
@@ -414,28 +439,30 @@ export default function NewTenantPage() {
                     Asignación de Módulos ({Object.values(modules).filter(Boolean).length} / {ALL_SYSTEM_MODULES.length} Activos)
                   </h3>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                  Selecciona las funcionalidades que este comercio tendrá habilitadas.
-                </p>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span>🟢 Base: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && modules[m.id]).length}/13</strong></span>
+                  <span>•</span>
+                  <span>🟣 Verticales: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && modules[m.id]).length}/12</strong></span>
+                </div>
               </div>
 
               {/* Presets */}
-              <div style={{ display: 'flex', gap: 6 }}>
-                <button
-                  type="button"
-                  onClick={() => applyPreset('default')}
-                  className="btn-neu btn-ghost"
-                  style={{ padding: '6px 10px', fontSize: '0.72rem' }}
-                >
-                  Giro Actual
-                </button>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   onClick={() => applyPreset('base_only')}
                   className="btn-neu btn-ghost"
                   style={{ padding: '6px 10px', fontSize: '0.72rem' }}
                 >
-                  Solo Base POS
+                  🟢 Solo Base (13)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('default')}
+                  className="btn-neu btn-ghost"
+                  style={{ padding: '6px 10px', fontSize: '0.72rem' }}
+                >
+                  🎯 Según Giro ({form.business_type})
                 </button>
                 <button
                   type="button"
@@ -443,63 +470,204 @@ export default function NewTenantPage() {
                   className="btn-neu btn-ghost"
                   style={{ padding: '6px 10px', fontSize: '0.72rem', fontWeight: 700 }}
                 >
-                  Activar Todos (21)
+                  Activar Todos (25)
                 </button>
               </div>
             </div>
 
-            {/* Modules Grid - Monochrome Lucide Icons */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-              {ALL_SYSTEM_MODULES.map(m => {
-                const isEnabled = !!modules[m.id]
-                const IconComponent = getModuleIcon(m.id)
-                return (
-                  <div
-                    key={m.id}
-                    onClick={() => toggleModule(m.id)}
-                    style={{
-                      background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
-                      border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
-                      borderRadius: 10,
-                      padding: '12px 14px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      transition: 'all 0.15s ease'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <IconComponent size={18} strokeWidth={2} style={{ color: 'var(--text-primary)', flexShrink: 0 }} />
-                      <div>
-                        <div style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>
-                          {m.name}
+            {/* Segmented Filter */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setModuleFilter('all')}
+                className="btn-neu"
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '0.75rem',
+                  fontWeight: moduleFilter === 'all' ? 700 : 500,
+                  background: moduleFilter === 'all' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'all' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                Todos ({Object.values(modules).filter(Boolean).length}/25)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModuleFilter('base')}
+                className="btn-neu"
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '0.75rem',
+                  fontWeight: moduleFilter === 'base' ? 700 : 500,
+                  background: moduleFilter === 'base' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'base' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                🟢 Módulos Base / Indispensables ({ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && modules[m.id]).length}/13)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModuleFilter('vertical')}
+                className="btn-neu"
+                style={{
+                  padding: '5px 12px',
+                  fontSize: '0.75rem',
+                  fontWeight: moduleFilter === 'vertical' ? 700 : 500,
+                  background: moduleFilter === 'vertical' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'vertical' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                🟣 Módulos Verticales / Especializados ({ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && modules[m.id]).length}/12)
+              </button>
+            </div>
+
+            {dependencyNotice && (
+              <div style={{
+                background: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
+                border: '1px solid var(--border-color)',
+                padding: '8px 12px',
+                borderRadius: 6,
+                fontSize: '0.78rem',
+                fontWeight: 600,
+                color: 'var(--text-primary)'
+              }}>
+                {dependencyNotice}
+              </div>
+            )}
+
+            {/* 🟢 SECCIÓN BASE */}
+            {(moduleFilter === 'all' || moduleFilter === 'base') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-color)', paddingBottom: 4 }}>
+                  <span style={{ fontSize: '0.9rem' }}>🟢</span>
+                  <span style={{ fontWeight: 800, fontSize: '0.86rem', color: 'var(--text-primary)' }}>
+                    Módulos Base (Indispensables para Todo Comercio)
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                  {ALL_SYSTEM_MODULES.filter(m => m.group === 'base').map(m => {
+                    const isEnabled = !!modules[m.id]
+                    const IconComponent = getModuleIcon(m.id)
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => toggleModule(m.id)}
+                        style={{
+                          background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
+                          border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
+                          borderRadius: 8,
+                          padding: '10px 12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <IconComponent size={17} strokeWidth={2} style={{ color: 'var(--text-primary)', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                              {m.name}
+                            </div>
+                            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', lineHeight: 1.2, marginTop: 2 }}>
+                              {m.description}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', lineHeight: 1.2, marginTop: 2 }}>
-                          {m.description}
+
+                        <div style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 4,
+                          background: isEnabled ? 'var(--text-primary)' : 'var(--bg)',
+                          border: isEnabled ? 'none' : '1.5px solid var(--border-color)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--bg)',
+                          flexShrink: 0
+                        }}>
+                          {isEnabled && <Check size={12} strokeWidth={3} />}
                         </div>
                       </div>
-                    </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
 
-                    <div style={{
-                      width: 20,
-                      height: 20,
-                      borderRadius: 4,
-                      background: isEnabled ? 'var(--text-primary)' : 'var(--bg)',
-                      border: isEnabled ? 'none' : '1.5px solid var(--border-color)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: 'var(--bg)',
-                      flexShrink: 0
-                    }}>
-                      {isEnabled && <Check size={13} strokeWidth={3} />}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+            {/* 🟣 SECCIÓN VERTICAL */}
+            {(moduleFilter === 'all' || moduleFilter === 'vertical') && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: moduleFilter === 'all' ? 8 : 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-color)', paddingBottom: 4 }}>
+                  <span style={{ fontSize: '0.9rem' }}>🟣</span>
+                  <span style={{ fontWeight: 800, fontSize: '0.86rem', color: 'var(--text-primary)' }}>
+                    Módulos Verticales (Especializados por Giro)
+                  </span>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                  {ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical').map(m => {
+                    const isEnabled = !!modules[m.id]
+                    const IconComponent = getModuleIcon(m.id)
+                    return (
+                      <div
+                        key={m.id}
+                        onClick={() => toggleModule(m.id)}
+                        style={{
+                          background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
+                          border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
+                          borderRadius: 8,
+                          padding: '10px 12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <IconComponent size={17} strokeWidth={2} style={{ color: 'var(--text-primary)', flexShrink: 0 }} />
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontWeight: 700, fontSize: '0.82rem', color: 'var(--text-primary)' }}>
+                                {m.name}
+                              </span>
+                              <span style={{ fontSize: '0.6rem', background: 'var(--accent-purple-lt, rgba(168,85,247,0.12))', color: 'var(--accent-purple, #9333ea)', padding: '1px 5px', borderRadius: 4, fontWeight: 700, border: '1px solid var(--border-color)' }}>
+                                {m.categoryName}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', lineHeight: 1.2, marginTop: 2 }}>
+                              {m.description}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{
+                          width: 18,
+                          height: 18,
+                          borderRadius: 4,
+                          background: isEnabled ? 'var(--text-primary)' : 'var(--bg)',
+                          border: isEnabled ? 'none' : '1.5px solid var(--border-color)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: 'var(--bg)',
+                          flexShrink: 0
+                        }}>
+                          {isEnabled && <Check size={12} strokeWidth={3} />}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
           </div>
 
           {/* Bottom Action Submit */}
