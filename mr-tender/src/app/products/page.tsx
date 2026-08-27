@@ -22,6 +22,7 @@ import {
   Check,
   TrendingUp
 } from 'lucide-react'
+import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
 
 interface DBProduct {
   id: string
@@ -38,6 +39,7 @@ interface DBProduct {
 
 export default function ProductsPage() {
   const supabase = createClient()
+  const { t, verticalConfig } = useVerticalTerms()
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState('Todos')
   const [products, setProducts] = useState<DBProduct[]>([])
@@ -362,8 +364,12 @@ export default function ProductsPage() {
       {/* Header & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Catálogo de Productos</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2, margin: 0 }}>{products.length} productos registrados</p>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+            Catálogo de {t('productsPlural', 'Productos')}
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2, margin: 0 }}>
+            {products.length} {t('productsPlural', 'productos').toLowerCase()} registrados
+          </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button onClick={() => setShowTagsModal(true)} className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -376,7 +382,7 @@ export default function ProductsPage() {
           </button>
           <Link href="/products/new" className="btn-neu btn-primary" style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Plus size={15} strokeWidth={2.5} />
-            <span>Nuevo producto</span>
+            <span>Nuevo {t('products', 'producto').toLowerCase()}</span>
           </Link>
         </div>
       </div>

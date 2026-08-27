@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { validateTenantAccess, getSecureRole } from '@/lib/supabase/auth-helpers'
+import { getVerticalCopilotDirectives } from '@/lib/constants/vertical-copilot'
+import { resolveActiveVertical } from '@/lib/constants/vertical-terminology'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
 
@@ -198,8 +200,19 @@ export async function POST(req: NextRequest) {
       allowedPerms = empData?.permissions || ['pos.view', 'pos.create_sale']
     }
 
+    // Query tenant settings & business_type for vertical context
+    const [settingsRes, ptRes] = await Promise.all([
+      supabase.from('tenant_settings').select('enabled_modules').eq('tenant_id', tenant_id).limit(1),
+      supabase.from('platform_tenants').select('business_type').eq('id', tenant_id).limit(1)
+    ])
+
+    const activeVertical = resolveActiveVertical(settingsRes.data?.[0]?.enabled_modules, ptRes.data?.[0]?.business_type)
+    const verticalDirectives = getVerticalCopilotDirectives(activeVertical)
+
     const systemInstruction = `
-Eres Tender Copilot AI, el copiloto inteligente y asistente clínico-farmacéutico de Mr. Tender ERP para comercios y droguerías en Colombia.
+Eres Tender Copilot AI, el copiloto inteligente y asistente operacional de Mr. Tender ERP para empresas y comercios en Colombia y Latinoamérica.
+
+${verticalDirectives}
 
 👤 USUARIO ACTUAL:
 - Nombre: ${user_name || 'Usuario'}

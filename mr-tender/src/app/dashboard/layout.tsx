@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { usePermissions } from '@/lib/hooks/usePermissions'
+import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
 import CopilotWidget from '@/components/CopilotWidget'
 import { ALL_SYSTEM_MODULES } from '@/lib/constants/modules'
 import {
@@ -231,6 +232,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter()
   const supabase = createClient()
   const { roleName, color, isAdmin, hasPermission, loading: permsLoading } = usePermissions()
+  const { getSidebarLabel, verticalConfig, activeVertical } = useVerticalTerms()
   
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
@@ -375,8 +377,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <img src="/logo.png" alt="Mr Tender" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', flexShrink: 0 }} />
             <div className="sidebar-brand-text" style={{ minWidth: 0 }}>
-              <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-                Mr Tender
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+                  Mr Tender
+                </div>
+                {verticalConfig && (
+                  <span style={{
+                    fontSize: '0.58rem',
+                    padding: '1px 5px',
+                    borderRadius: 4,
+                    background: 'var(--bg-deep)',
+                    border: '1px solid var(--border-color)',
+                    fontWeight: 700,
+                    color: verticalConfig.accentColor,
+                    letterSpacing: '0.02em'
+                  }}>
+                    {verticalConfig.singleWordTitle}
+                  </span>
+                )}
               </div>
               <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
                 Gestión Empresarial
@@ -454,7 +472,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Link
                   key={section.id}
                   href={visibleSubItems[0].href}
-                  title={`${section.label} (${visibleSubItems.map(i => i.label).join(', ')})`}
+                  title={`${section.label} (${visibleSubItems.map(i => getSidebarLabel(i.href, i.label)).join(', ')})`}
                   className={`sidebar-nav-item ${hasActiveChild ? 'active' : ''}`}
                 >
                   <GroupIcon size={17} strokeWidth={2} style={{ flexShrink: 0, opacity: hasActiveChild ? 1 : 0.85 }} />
@@ -471,7 +489,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   className={`sidebar-group-header ${hasActiveChild ? 'has-active-child' : ''}`}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                    <GroupIcon size={16} strokeWidth={2} style={{ color: hasActiveChild ? 'var(--accent-blue)' : 'var(--text-secondary)' }} />
+                    <GroupIcon size={16} strokeWidth={2} style={{ color: hasActiveChild ? (verticalConfig?.accentColor || 'var(--accent-blue)') : 'var(--text-secondary)' }} />
                     <span>{section.label}</span>
                   </div>
                   <ChevronDown
@@ -486,6 +504,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     {visibleSubItems.map(subItem => {
                       const SubIcon = subItem.Icon
                       const isSubActive = pathname === subItem.href || (subItem.href !== '/dashboard' && pathname.startsWith(subItem.href))
+                      const dynamicLabel = getSidebarLabel(subItem.href, subItem.label)
                       return (
                         <Link
                           key={subItem.href}
@@ -494,7 +513,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           className={`sidebar-sub-item ${isSubActive ? 'active' : ''}`}
                         >
                           <SubIcon size={14} strokeWidth={2} style={{ opacity: isSubActive ? 1 : 0.75, flexShrink: 0 }} />
-                          <span>{subItem.label}</span>
+                          <span>{dynamicLabel}</span>
                         </Link>
                       )
                     })}

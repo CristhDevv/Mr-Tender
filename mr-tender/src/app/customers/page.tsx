@@ -18,6 +18,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react'
+import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
 
 interface DBCustomer {
   id: string
@@ -47,6 +48,7 @@ interface CustomerFiaoSale {
 
 export default function CustomersPage() {
   const supabase = createClient()
+  const { t, verticalConfig } = useVerticalTerms()
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<string | null>(null)
   const [customers, setCustomers] = useState<DBCustomer[]>([])
@@ -270,12 +272,16 @@ Fecha: ${new Date().toLocaleString('es-CO')}
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Clientes & Libreta de Fiao</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>{customers.length} clientes registrados</p>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            {t('customersPlural', 'Clientes')} & Cartera
+          </h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>
+            {customers.length} {t('customersPlural', 'clientes').toLowerCase()} registrados
+          </p>
         </div>
         <button className="btn-neu btn-primary" onClick={() => setShowNewModal(true)} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
           <Plus size={15} strokeWidth={2.5} />
-          <span>Nuevo cliente</span>
+          <span>Nuevo {t('customers', 'cliente').toLowerCase()}</span>
         </button>
       </div>
 

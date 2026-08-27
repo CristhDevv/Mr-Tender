@@ -18,8 +18,12 @@ import {
   AlertTriangle,
   CheckCircle2,
   Plus,
-  TrendingUp
+  TrendingUp,
+  Sparkles
 } from 'lucide-react'
+import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
+import VerticalDashboardWidgets from '@/components/VerticalDashboardWidgets'
+import OnboardingChecklist from '@/components/OnboardingChecklist'
 
 const COLORS = ['#4A90D9', '#5CB85C', '#E8A030', '#8B72BE', '#E8745A']
 
@@ -34,6 +38,7 @@ const QUICK_ACTIONS = [
 
 export default function DashboardPage() {
   const supabase = createClient()
+  const { t, verticalConfig, activeVertical } = useVerticalTerms()
   const [tenantName, setTenantName] = useState('Mi Negocio')
   const [loading, setLoading] = useState(true)
 
@@ -211,9 +216,18 @@ export default function DashboardPage() {
   const kpis = [
     { label: 'Ventas hoy', value: formatCurrency(stats.salesToday), Icon: DollarSign, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
     { label: 'Utilidad total', value: formatCurrency(stats.profitToday), Icon: TrendingUp, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
-    { label: 'Pedidos hoy', value: formatNumber(stats.ordersToday), Icon: ShoppingCart, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
+    { label: `${t('ordersPlural', 'Pedidos')} hoy`, value: formatNumber(stats.ordersToday), Icon: ShoppingCart, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
     { label: 'Margen bruto est.', value: `${stats.grossMargin.toFixed(1)}%`, Icon: BarChart3, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
-    { label: 'Fiados por cobrar', value: formatCurrency(stats.pendingCredit), Icon: Users, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+    { label: 'Cartera por cobrar', value: formatCurrency(stats.pendingCredit), Icon: Users, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+  ]
+
+  const dynamicQuickActions = [
+    { Icon: ShoppingCart, label: `Nuevo ${t('orders', 'Venta')}`, href: '/pos', color: 'var(--accent-blue)' },
+    { Icon: Package, label: `Nuevo ${t('products', 'Producto')}`, href: '/products/new', color: 'var(--accent-green)' },
+    { Icon: Users, label: `Nuevo ${t('customers', 'Cliente')}`, href: '/customers', color: 'var(--accent-purple)' },
+    { Icon: Truck, label: 'Orden de Compra', href: '/purchases', color: 'var(--accent-amber)' },
+    { Icon: DollarSign, label: 'Abrir Caja', href: '/cash', color: 'var(--accent-coral)' },
+    { Icon: BarChart3, label: 'Ver Reportes', href: '/reports', color: 'var(--text-secondary)' },
   ]
 
   if (loading) {
@@ -230,11 +244,27 @@ export default function DashboardPage() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
-            ¡Buen día!
-          </h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>
+              ¡Buen día!
+            </h1>
+            {verticalConfig && (
+              <span style={{
+                fontSize: '0.65rem',
+                padding: '2px 8px',
+                borderRadius: 4,
+                background: 'var(--bg-deep)',
+                border: '1px solid var(--border-color)',
+                fontWeight: 800,
+                color: verticalConfig.accentColor,
+                letterSpacing: '0.03em'
+              }}>
+                {verticalConfig.singleWordTitle}
+              </span>
+            )}
+          </div>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>
-            Panel gerencial para <strong>{tenantName}</strong>
+            Panel de control para <strong>{tenantName}</strong>
           </p>
         </div>
         <div className={`badge ${cajaStatus ? 'badge-green' : 'badge-coral'}`} style={{ padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -242,6 +272,12 @@ export default function DashboardPage() {
           <span>{cajaStatus ? 'Caja abierta' : 'Caja cerrada'}</span>
         </div>
       </div>
+
+      {/* Onboarding Welcome & Checklist Component */}
+      <OnboardingChecklist />
+
+      {/* Vertical Operational Contextual Widgets */}
+      <VerticalDashboardWidgets />
 
       {/* KPIs Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
@@ -321,7 +357,7 @@ export default function DashboardPage() {
         <div className="neu-card" style={{ padding: '16px', minWidth: 0 }}>
           <div style={{ fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-primary)', marginBottom: 10 }}>Acciones rápidas</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-            {QUICK_ACTIONS.map(a => {
+            {dynamicQuickActions.map(a => {
               const ActionIcon = a.Icon
               return (
                 <Link key={a.href} href={a.href} style={{ textDecoration: 'none' }}>
