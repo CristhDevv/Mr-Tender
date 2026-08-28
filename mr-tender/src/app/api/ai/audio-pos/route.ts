@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { createClient as createServerSupabase } from '@/lib/supabase/server'
+import { resolveActiveVertical, VERTICAL_TERMINOLOGY } from '@/lib/constants/vertical-terminology'
 
 interface ProductItem {
   id: string
@@ -21,7 +23,10 @@ const SPANISH_NUMBERS: Record<string, number> = {
   once: 11, doce: 12, trece: 13, catorce: 14, quince: 15,
   dieciseis: 16, diecisiete: 17, dieciocho: 18, diecinueve: 19, veinte: 20,
   media: 0.5, medio: 0.5, cuarto: 0.25, kilo: 1, libra: 1, paquete: 1,
-  caja: 1, tira: 1, blister: 1
+  caja: 1, tira: 1, blister: 1, frasco: 1, ampolla: 1,
+  plato: 1, porcion: 1, combo: 1, vaso: 1, copa: 1,
+  prenda: 1, par: 1, pase: 1, mes: 1,
+  bulto: 1, metro: 1, botella: 1, trago: 1, sixpack: 6
 }
 
 function normalize(text: string): string {
@@ -58,8 +63,6 @@ function computeMatchScore(spoken: string, productName: string): number {
   return coverage
 }
 
-import { createClient as createServerSupabase } from '@/lib/supabase/server'
-
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createServerSupabase()
@@ -68,10 +71,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
     }
 
+    let tenant_id = user.app_metadata?.tenant_id || user.user_metadata?.tenant_id
+    if (!tenant_id) {
+      const { data: ptData } = await supabase
+        .from('platform_tenants')
+        .select('id')
+        .eq('owner_email', user.email)
+        .limit(1)
+
+      if (ptData?.[0]?.id) {
+        tenant_id = ptData[0].id
+      }
+    }
+
+    // Resolve tenant's active vertical for contextual terminology
+    let activeVertical: string | null = null
+    if (tenant_id) {
+      const [settingsRes, ptRes] = await Promise.all([
+        supabase.from('tenant_settings').select('enabled_modules').eq('tenant_id', tenant_id).limit(1),
+        supabase.from('platform_tenants').select('business_type').eq('id', tenant_id).limit(1)
+      ])
+      activeVertical = resolveActiveVertical(settingsRes.data?.[0]?.enabled_modules, ptRes.data?.[0]?.business_type)
+    }
+
+    const verticalConfig = activeVertical ? VERTICAL_TERMINOLOGY[activeVertical] : null
+    const customerTerm = verticalConfig?.terms.customers || 'Cliente'
+    const productTerm = verticalConfig?.terms.products || 'Producto'
+
     const { transcript, products, customers } = (await req.json()) as {
       transcript: string
       products: ProductItem[]
       customers: CustomerItem[]
+      vertical?: string
     }
 
     if (!transcript || typeof transcript !== 'string') {
@@ -91,6 +122,7 @@ export async function POST(req: NextRequest) {
       requiresConfirmation: boolean
       confidence: number
       feedbackMessage: string
+      vertical: string | null
     } = {
       action: 'mixed',
       transcript,
@@ -102,17 +134,18 @@ export async function POST(req: NextRequest) {
       discountAmount: null,
       requiresConfirmation: false,
       confidence: 1.0,
-      feedbackMessage: ''
+      feedbackMessage: '',
+      vertical: activeVertical
     }
 
     // 1. Check for Cart Clear Intent
-    if (/(limpia|limpiar|borra|borrar|cancela|cancelar|vaciar)\s*(el\s*carrito|la\s*orden|todo)?/i.test(normText)) {
+    if (/(limpia|limpiar|borra|borrar|cancela|cancelar|vaciar)\s*(el\s*carrito|la\s*orden|la\s*comanda|todo)?/i.test(normText)) {
       result.action = 'clear_cart'
       result.feedbackMessage = 'Vaciar el carrito actual'
       return NextResponse.json(result)
     }
 
-    // 2. Check for Customer / Fiao Intent
+    // 2. Check for Customer / Fiao / Patient Intent
     if (customers && customers.length > 0) {
       for (const cust of customers) {
         const custNorm = normalize(cust.full_name)
@@ -172,9 +205,9 @@ export async function POST(req: NextRequest) {
 
         // Clean action words, numbers, and filler prepositions
         const cleanSeg = seg
-          .replace(/\b(vende|vender|venta|cobra|cobrar|factura|facturar|agrega|agregar|anota|anotale|pon|ponme|dame|lleva|llevar|pasame|sirveme|despacha|despachame|quiero|necesito|pedir)\b/gi, '')
+          .replace(/\b(vende|vender|venta|cobra|cobrar|factura|facturar|agrega|agregar|anota|anotale|pon|ponme|dame|lleva|llevar|pasame|sirveme|despacha|despachame|dispensar|marchar|quiero|necesito|pedir)\b/gi, '')
           .replace(/\b(un|uno|una|unos|unas|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|\d+)\b/gi, '')
-          .replace(/\b(kilo|kilos|libra|libras|paquete|paquetes|caja|cajas|de|la|el|los|las|por favor|fiale|a|al|favor)\b/gi, '')
+          .replace(/\b(kilo|kilos|libra|libras|paquete|paquetes|caja|cajas|blister|tira|frasco|porcion|combo|prenda|botella|trago|de|la|el|los|las|por favor|fiale|a|al|favor)\b/gi, '')
           .trim()
 
         if (cleanSeg.length < 2) continue
@@ -220,7 +253,7 @@ export async function POST(req: NextRequest) {
       feedbackParts.push(`${itemsList}`)
     }
     if (result.selectedCustomer) {
-      feedbackParts.push(`Cliente: ${result.selectedCustomer.full_name}`)
+      feedbackParts.push(`${customerTerm}: ${result.selectedCustomer.full_name}`)
     }
     if (result.paymentMethod) {
       feedbackParts.push(`Método: ${result.paymentMethod === 'fiao' ? 'Fiao (Crédito)' : result.paymentMethod === 'cash' ? 'Efectivo' : result.paymentMethod}`)
@@ -229,7 +262,7 @@ export async function POST(req: NextRequest) {
       feedbackParts.push(`Paga con: $${result.receivedAmount.toLocaleString('es-CO')}`)
     }
 
-    result.feedbackMessage = feedbackParts.join(' • ') || 'No se detectaron productos específicos'
+    result.feedbackMessage = feedbackParts.join(' • ') || `No se detectaron ${productTerm.toLowerCase()}s específicos`
 
     return NextResponse.json(result)
   } catch (err: any) {

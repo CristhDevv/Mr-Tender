@@ -426,7 +426,8 @@ export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
  */
 export function resolveActiveVertical(
   enabledModules?: Record<string, boolean> | null,
-  businessType?: string | null
+  businessType?: string | null,
+  primaryVertical?: string | null
 ): string | null {
   const VERTICAL_KEYS = [
     'pharmacy',
@@ -443,24 +444,39 @@ export function resolveActiveVertical(
     'laundry'
   ]
 
-  // 1. Check enabled modules explicitly
+  // 1. Explicit primary_vertical takes highest precedence if active
+  if (primaryVertical) {
+    const normPrimary = primaryVertical.toLowerCase().trim()
+    if (VERTICAL_KEYS.includes(normPrimary)) {
+      if (!enabledModules || enabledModules[normPrimary]) {
+        return normPrimary
+      }
+    }
+  }
+
+  // 2. Business type from tenant registration takes second precedence if active
+  if (businessType) {
+    const normalized = businessType.toLowerCase().trim()
+    const mapped =
+      normalized === 'clothing' ? 'apparel' :
+      normalized === 'workshop' ? 'automotive' :
+      normalized === 'salon' ? 'beauty_salon' :
+      normalized === 'estanco' ? 'liquor_tobacco' :
+      normalized
+
+    if (VERTICAL_KEYS.includes(mapped)) {
+      if (!enabledModules || enabledModules[mapped]) {
+        return mapped
+      }
+    }
+  }
+
+  // 3. Fallback: pick the first enabled vertical module deterministically
   if (enabledModules) {
     for (const key of VERTICAL_KEYS) {
       if (enabledModules[key]) {
         return key
       }
-    }
-  }
-
-  // 2. Check business type
-  if (businessType) {
-    const normalized = businessType.toLowerCase().trim()
-    if (normalized === 'clothing') return 'apparel'
-    if (normalized === 'workshop') return 'automotive'
-    if (normalized === 'salon') return 'beauty_salon'
-    if (normalized === 'estanco') return 'liquor_tobacco'
-    if (VERTICAL_KEYS.includes(normalized)) {
-      return normalized
     }
   }
 

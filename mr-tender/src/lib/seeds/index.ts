@@ -364,10 +364,294 @@ export const SEEDS_BY_VERTICAL: Record<string, SeedProduct[]> = {
     }
   ],
 
+  beauty_salon: [
+    {
+      name: 'Corte de Cabello Estilo & Cepillado Dama',
+      sku: 'SAL-COR-001',
+      price: 45000,
+      cost_price: 8000,
+      min_stock: 0,
+      initial_stock: 100,
+      category: 'Peluquería Dama',
+      description: 'Lavado con champú sin sal, corte de diseño, blower y sellado térmico.'
+    },
+    {
+      name: 'Corte Clásico Barba & Toalla Caliente Caballero',
+      sku: 'SAL-BAR-002',
+      price: 35000,
+      cost_price: 5000,
+      min_stock: 0,
+      initial_stock: 100,
+      category: 'Barbería Caballero',
+      description: 'Perfilado de barba con navaja desechable, aceites esenciales y toalla tibia.'
+    },
+    {
+      name: 'Manicure & Pedicure Spa Tradicional',
+      sku: 'SAL-SPA-003',
+      price: 40000,
+      cost_price: 7000,
+      min_stock: 0,
+      initial_stock: 100,
+      category: 'Uñas & Manos',
+      description: 'Exfoliación con sales marinas, hidratación profunda y esmaltado Masglo.'
+    },
+    {
+      name: 'Tratamiento Botox Capilar Reestructurante 500ml',
+      sku: 'SAL-BOT-004',
+      price: 120000,
+      cost_price: 45000,
+      min_stock: 3,
+      initial_stock: 10,
+      category: 'Tratamientos Capilares',
+      description: 'Relleno de hebra capilar con ácido hialurónico y colágeno.'
+    }
+  ],
+
+  hardware: [
+    {
+      name: 'Cemento Gris Portland Tipo 1 x 50kg (Argos)',
+      sku: 'FER-CEM-001',
+      barcode: '7701234005011',
+      price: 34500,
+      cost_price: 28000,
+      min_stock: 20,
+      initial_stock: 80,
+      category: 'Materiales Pesados',
+      unit_type: 'Bulto',
+      description: 'Cemento estructural para fundición de placas, columnas y mampostería.'
+    },
+    {
+      name: 'Varilla Corrugada 1/2 Pulgada x 6 Metros (Diaco)',
+      sku: 'FER-VAR-002',
+      price: 28000,
+      cost_price: 22500,
+      min_stock: 30,
+      initial_stock: 120,
+      category: 'Hierros & Acero',
+      unit_type: 'Unidad',
+      description: 'Acero de refuerzo sismorresistente Grado 60.'
+    },
+    {
+      name: 'Taladro Percutor 1/2 Pulgada 650W (DeWalt)',
+      sku: 'FER-TAL-003',
+      barcode: '7701234005035',
+      price: 245000,
+      cost_price: 175000,
+      min_stock: 2,
+      initial_stock: 6,
+      category: 'Herramientas Eléctricas',
+      unit_type: 'Caja',
+      description: 'Mandril de 13mm, velocidad variable reversible y selector de percusión.'
+    },
+    {
+      name: 'Pintura Vinilo Tipo 1 Blanco Galón (Pintuco)',
+      sku: 'FER-PIN-004',
+      barcode: '7701234005042',
+      price: 68000,
+      cost_price: 49000,
+      min_stock: 6,
+      initial_stock: 24,
+      category: 'Pinturas & Acabados',
+      unit_type: 'Galón',
+      description: 'Pintura plástica base agua superlavable de alto cubrimiento.'
+    }
+  ],
+
+  bakery: [
+    {
+      name: 'Pan Francés Tradicional (Bolsa x 5 Unidades)',
+      sku: 'PAN-FRA-001',
+      price: 4000,
+      cost_price: 1800,
+      min_stock: 15,
+      initial_stock: 50,
+      category: 'Panes Tradicionales',
+      unit_type: 'Paquete',
+      description: 'Corteza dorada y crocante con miga suave horneado diario.'
+    },
+    {
+      name: 'Pandebono Valluno Horneado Caliente',
+      sku: 'PAN-BON-002',
+      price: 2200,
+      cost_price: 900,
+      min_stock: 20,
+      initial_stock: 60,
+      category: 'Amasijos Típicos',
+      unit_type: 'Unidad',
+      description: 'Elaborado con queso costeño fresco, almidón de yuca y harina de maíz.'
+    },
+    {
+      name: 'Torta de Chocolate y Arequipe Artesanal (1 Libra)',
+      sku: 'PAN-TOR-003',
+      price: 48000,
+      cost_price: 21000,
+      min_stock: 2,
+      initial_stock: 6,
+      category: 'Repostería & Tortas',
+      unit_type: 'Unidad',
+      description: 'Bizcocho húmedo de cacao al 70% relleno con arequipe de leche de campo.'
+    },
+    {
+      name: 'Croissant Hojaldrado Mantequilla',
+      sku: 'PAN-CRO-004',
+      price: 3500,
+      cost_price: 1400,
+      min_stock: 12,
+      initial_stock: 36,
+      category: 'Hojaldres',
+      unit_type: 'Unidad',
+      description: '100% mantequilla pura con capas doradas crujientes.'
+    }
+  ],
+
+  liquor_tobacco: [
+    {
+      name: 'Aguardiente Antioqueño Tapa Azul 750ml (Sin Azúcar)',
+      sku: 'LIC-AGU-001',
+      barcode: '7702041001011',
+      price: 45000,
+      cost_price: 34000,
+      min_stock: 12,
+      initial_stock: 48,
+      category: 'Aguardientes & Anisados',
+      unit_type: 'Botella',
+      description: 'Licor tradicional anisado sin azúcar 29% Alc.'
+    },
+    {
+      name: 'Whisky Old Parr 12 Años 750ml',
+      sku: 'LIC-WHI-002',
+      barcode: '5000281014111',
+      price: 135000,
+      cost_price: 98000,
+      min_stock: 4,
+      initial_stock: 16,
+      category: 'Whiskies Importados',
+      unit_type: 'Botella',
+      description: 'Mezcla escocesa de maltas maduradas en barricas de roble.'
+    },
+    {
+      name: 'Ron Viejo de Caldas Juan de la Cruz 5 Años 750ml',
+      sku: 'LIC-RON-003',
+      barcode: '7702123001035',
+      price: 52000,
+      cost_price: 39000,
+      min_stock: 8,
+      initial_stock: 30,
+      category: 'Rones',
+      unit_type: 'Botella',
+      description: 'Añejado en barriles de roble blanco colombiano.'
+    },
+    {
+      name: 'Pack Cerveza Corona Extra 355ml x 6 Unidades',
+      sku: 'LIC-CER-004',
+      barcode: '7501064191312',
+      price: 28000,
+      cost_price: 19500,
+      min_stock: 10,
+      initial_stock: 36,
+      category: 'Cervezas & Sixpacks',
+      unit_type: 'Sixpack',
+      description: 'Cerveza tipo Pilsner clara mexicana 4.5% Alc.'
+    }
+  ],
+
+  optometry: [
+    {
+      name: 'Montura Oftálmica Acetato Ultraliviana (Ray-Ban)',
+      sku: 'OPT-MON-001',
+      price: 290000,
+      cost_price: 140000,
+      min_stock: 2,
+      initial_stock: 8,
+      category: 'Monturas Oftálmicas',
+      description: 'Diseño clásico rectangular con bisagras flexibles de resorte.'
+    },
+    {
+      name: 'Par de Lentes Antirreflejo Blue Protect (Filtro Azul)',
+      sku: 'OPT-LEN-002',
+      price: 160000,
+      cost_price: 65000,
+      min_stock: 0,
+      initial_stock: 50,
+      category: 'Lentes Oftálmicos',
+      description: 'Protección para pantallas digitales con capa hidrofóbica y antirrayas.'
+    },
+    {
+      name: 'Solución Multipropósito Limpieza Lentes de Contacto 360ml (Renu)',
+      sku: 'OPT-SOL-003',
+      barcode: '7703058001011',
+      price: 38000,
+      cost_price: 24000,
+      min_stock: 6,
+      initial_stock: 20,
+      category: 'Cuidado Visual & Soluciones',
+      unit_type: 'Frasco',
+      description: 'Desinfecta, limpia y humecta lentes de contacto blandos.'
+    },
+    {
+      name: 'Gafas de Sol Polarizadas UV400 Deportivas',
+      sku: 'OPT-SOL-004',
+      price: 180000,
+      cost_price: 85000,
+      min_stock: 3,
+      initial_stock: 12,
+      category: 'Gafas de Sol',
+      description: 'Lentes polarizados de alto contraste con protección 100% UVA/UVB.'
+    }
+  ],
+
+  laundry: [
+    {
+      name: 'Lavado y Secado de Ropa por Kilo (Carga Completa)',
+      sku: 'LAV-KIL-001',
+      price: 9000,
+      cost_price: 2200,
+      min_stock: 0,
+      initial_stock: 200,
+      category: 'Lavado por Kilo',
+      unit_type: 'Kilo',
+      description: 'Lavado con detergente biodegradable, suavizante y secado a temperatura controlada.'
+    },
+    {
+      name: 'Lavado en Seco & Planchado Traje Completo (2 Piezas)',
+      sku: 'LAV-SEC-002',
+      price: 32000,
+      cost_price: 6500,
+      min_stock: 0,
+      initial_stock: 100,
+      category: 'Tintorería & Seco',
+      unit_type: 'Servicio',
+      description: 'Tratamiento especial de desmanchado, lavado en seco y planchado al vapor.'
+    },
+    {
+      name: 'Lavado & Desinfección Edredón Térmico / Plumón King Size',
+      sku: 'LAV-EDR-003',
+      price: 28000,
+      cost_price: 5500,
+      min_stock: 0,
+      initial_stock: 50,
+      category: 'Hogar & Lencería',
+      unit_type: 'Servicio',
+      description: 'Ciclo profundo antiácaros con desinfección y secado esponjado.'
+    },
+    {
+      name: 'Planchado al Vapor por Prenda Individual',
+      sku: 'LAV-PLA-004',
+      price: 4500,
+      cost_price: 800,
+      min_stock: 0,
+      initial_stock: 150,
+      category: 'Planchado',
+      unit_type: 'Prenda',
+      description: 'Planchado profesional vertical para camisas, pantalones o vestidos.'
+    }
+  ],
+
   general: [
     {
       name: 'Arroz Blanco Prémium 1000g (Diana)',
       sku: 'GEN-ARR-001',
+      barcode: '7701234567890',
       price: 4200,
       cost_price: 3100,
       min_stock: 20,
@@ -378,6 +662,7 @@ export const SEEDS_BY_VERTICAL: Record<string, SeedProduct[]> = {
     {
       name: 'Aceite Vegetal de Girasol 900ml (Premier)',
       sku: 'GEN-ACE-002',
+      barcode: '7705556667770',
       price: 11500,
       cost_price: 8800,
       min_stock: 12,
@@ -388,6 +673,7 @@ export const SEEDS_BY_VERTICAL: Record<string, SeedProduct[]> = {
     {
       name: 'Leche Entera Larga Vida 1000ml (Alquería)',
       sku: 'GEN-LEC-003',
+      barcode: '7709876543210',
       price: 4600,
       cost_price: 3500,
       min_stock: 18,
@@ -398,6 +684,7 @@ export const SEEDS_BY_VERTICAL: Record<string, SeedProduct[]> = {
     {
       name: 'Café Molido Tostado Colombiano 500g (Sello Rojo)',
       sku: 'GEN-CAF-004',
+      barcode: '7701020304050',
       price: 16800,
       cost_price: 12400,
       min_stock: 10,
@@ -408,6 +695,7 @@ export const SEEDS_BY_VERTICAL: Record<string, SeedProduct[]> = {
     {
       name: 'Detergente en Polvo Multiusos 1000g (Ariel)',
       sku: 'GEN-DET-005',
+      barcode: '7707080901020',
       price: 13500,
       cost_price: 9800,
       min_stock: 8,

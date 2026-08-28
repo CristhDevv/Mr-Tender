@@ -216,6 +216,173 @@ export const VERTICAL_ONBOARDINGS: Record<string, VerticalOnboardingConfig> = {
     ]
   },
 
+  beauty_salon: {
+    title: 'Tu Salón de Belleza está listo para agendar',
+    subtitle: 'Habilitamos agenda de turnos por profesional, catálogo de servicios y liquidación de comisiones.',
+    badgeText: 'ESTÉTICA',
+    checklist: [
+      {
+        id: 'salon_services',
+        label: 'Configura Servicios y Tratamientos',
+        description: 'Registra corte, tintura, blower, spa de uñas y porcentaje de comisión.',
+        href: '/products',
+        buttonText: 'Crear Servicios'
+      },
+      {
+        id: 'salon_agenda',
+        label: 'Revisa la Agenda de Citas',
+        description: 'Organiza turnos de clientes por estilista y horario disponible.',
+        href: '/salon/agenda',
+        buttonText: 'Ver Agenda'
+      },
+      {
+        id: 'salon_commissions',
+        label: 'Configura Comisiones de Personal',
+        description: 'Establece porcentajes de ganancia para tus profesionales de estética.',
+        href: '/salon/commissions',
+        buttonText: 'Ver Comisiones'
+      }
+    ]
+  },
+
+  hardware: {
+    title: 'Tu Ferretería está lista para cotizar y despachar',
+    subtitle: 'Habilitamos cotizaciones formales A4, control de herramientas en alquiler y patio de bodega.',
+    badgeText: 'FERRETERÍA',
+    checklist: [
+      {
+        id: 'hw_products',
+        label: 'Carga Materiales y Herramientas',
+        description: 'Registra bultos de cemento, varillas, PVC, pinturas y herramientas.',
+        href: '/products',
+        buttonText: 'Cargar Materiales'
+      },
+      {
+        id: 'hw_quotes',
+        label: 'Genera tu primera Cotización A4',
+        description: 'Emite presupuestos en PDF descargables para maestros de obra y constructoras.',
+        href: '/hardware/quotes',
+        buttonText: 'Crear Cotización'
+      },
+      {
+        id: 'hw_rentals',
+        label: 'Registra Maquinaria en Alquiler',
+        description: 'Controla herramientas rentadas, depósitos en garantía y fechas de retorno.',
+        href: '/hardware/rentals',
+        buttonText: 'Ver Alquileres'
+      }
+    ]
+  },
+
+  bakery: {
+    title: 'Tu Panadería está lista para hornear',
+    subtitle: 'Habilitamos control de horneadas del día, registro de mermas y encargos de tortas.',
+    badgeText: 'PANADERÍA',
+    checklist: [
+      {
+        id: 'bakery_recipes',
+        label: 'Estructura Fichas Técnicas de Pan',
+        description: 'Define gramaje de harina, levadura, mantequilla y costo por unidad horneada.',
+        href: '/bakery/recipes',
+        buttonText: 'Ver Fichas'
+      },
+      {
+        id: 'bakery_orders',
+        label: 'Gestiona Encargos de Tortas',
+        description: 'Agenda pedidos de repostería personalizados con fecha y hora de entrega.',
+        href: '/bakery/custom-orders',
+        buttonText: 'Ver Encargos'
+      },
+      {
+        id: 'bakery_prod',
+        label: 'Registra Horneadas del Turno',
+        description: 'Controla cuántos panes salieron del horno y registra mermas de vitrina.',
+        href: '/bakery/production',
+        buttonText: 'Ver Producción'
+      }
+    ]
+  },
+
+  liquor_tobacco: {
+    title: 'Tu Licorera y Estanco están listos para la noche',
+    subtitle: 'Habilitamos control de botellas en barra para copeo, combos de fiesta y envases retornables.',
+    badgeText: 'LICORERA',
+    checklist: [
+      {
+        id: 'estanco_bar',
+        label: 'Abre Botellas para Servicio en Barra',
+        description: 'Controla el trago a trago de botellas abiertas en mostrador.',
+        href: '/estanco/bar',
+        buttonText: 'Ver Barra'
+      },
+      {
+        id: 'estanco_combos',
+        label: 'Crea Combos y Promociones',
+        description: 'Configura paquetes de licor + pasabocas + hielo para eventos.',
+        href: '/estanco/combos',
+        buttonText: 'Crear Combos'
+      },
+      {
+        id: 'estanco_returns',
+        label: 'Controla Envases Retornables',
+        description: 'Registra préstamos y devoluciones de canastas y cascos de cerveza.',
+        href: '/estanco/returns',
+        buttonText: 'Ver Retornables'
+      }
+    ]
+  },
+
+  optometry: {
+    title: 'Tu Óptica está lista para consultas visuales',
+    subtitle: 'Habilitamos historias clínicas de refracción OD/OI y trazabilidad en laboratorio de biselado.',
+    badgeText: 'ÓPTICA',
+    checklist: [
+      {
+        id: 'opt_frames',
+        label: 'Carga Catálogo de Monturas',
+        description: 'Registra monturas oftálmicas, gafas de sol y lentes de contacto.',
+        href: '/products',
+        buttonText: 'Cargar Monturas'
+      },
+      {
+        id: 'opt_patients',
+        label: 'Registra Exámenes Visuales',
+        description: 'Ingresa fórmulas de refracción con esfera, cilindro, eje y adición.',
+        href: '/optometry/patients',
+        buttonText: 'Ver Fórmulas'
+      },
+      {
+        id: 'opt_lab',
+        label: 'Envía Órdenes a Taller de Biselado',
+        description: 'Haz seguimiento al montaje y tallado de lentes graduados.',
+        href: '/optometry/lab',
+        buttonText: 'Ver Laboratorio'
+      }
+    ]
+  },
+
+  laundry: {
+    title: 'Tu Lavandería está lista para recibir prendas',
+    subtitle: 'Habilitamos tickets por prenda/kilo, control de lavado en seco y ubicación en percheros.',
+    badgeText: 'LAVANDERÍA',
+    checklist: [
+      {
+        id: 'laundry_orders',
+        label: 'Emite tu primer Ticket de Recepción',
+        description: 'Pesa la ropa o clasifica trajes y entrega comprobante al cliente.',
+        href: '/laundry/orders',
+        buttonText: 'Recepción Ropa'
+      },
+      {
+        id: 'laundry_rack',
+        label: 'Ubica Prendas en Percheros',
+        description: 'Organiza pedidos listos por número de gancho para entrega ágil.',
+        href: '/laundry/rack',
+        buttonText: 'Ver Percheros'
+      }
+    ]
+  },
+
   general: {
     title: 'Tu Comercio está listo para vender',
     subtitle: 'Configuramos inventario, compras, cuentas por cobrar y facturación rápida en caja.',
