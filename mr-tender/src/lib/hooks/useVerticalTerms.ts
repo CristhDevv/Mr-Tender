@@ -40,11 +40,11 @@ export function useVerticalTerms(): UseVerticalTermsResult {
           return
         }
 
-        // Fetch enabled_modules and business_type
+        // Fetch enabled_modules, primary_vertical and business_type
         const [settingsRes, tenantRes] = await Promise.all([
           supabase
             .from('tenant_settings')
-            .select('enabled_modules')
+            .select('enabled_modules, primary_vertical')
             .eq('tenant_id', tenant_id)
             .limit(1),
           supabase
@@ -55,9 +55,10 @@ export function useVerticalTerms(): UseVerticalTermsResult {
         ])
 
         const enabledMods = settingsRes.data?.[0]?.enabled_modules || null
+        const primaryVert = settingsRes.data?.[0]?.primary_vertical || null
         const businessType = tenantRes.data?.[0]?.business_type || null
 
-        const resolved = resolveActiveVertical(enabledMods, businessType)
+        const resolved = resolveActiveVertical(enabledMods, businessType, primaryVert)
         setActiveVertical(resolved)
       } catch (err) {
         console.error('Error loading vertical terms:', err)

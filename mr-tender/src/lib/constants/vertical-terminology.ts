@@ -471,12 +471,19 @@ export function resolveActiveVertical(
     }
   }
 
-  // 3. Fallback: pick the first enabled vertical module deterministically
+  // 3. Fallback when businessType does not match any active vertical:
   if (enabledModules) {
-    for (const key of VERTICAL_KEYS) {
-      if (enabledModules[key]) {
-        return key
-      }
+    const activeVerticals = VERTICAL_KEYS.filter(key => Boolean(enabledModules[key]))
+    
+    // If exactly 1 vertical is enabled, use it naturally
+    if (activeVerticals.length === 1) {
+      return activeVerticals[0]
+    }
+
+    // If multiple verticals are active and no primary is specified, degrade root terms to clean neutral base (null)
+    // to avoid collision or arbitrary favoritism on shared views
+    if (activeVerticals.length > 1) {
+      return null
     }
   }
 

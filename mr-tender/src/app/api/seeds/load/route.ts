@@ -69,64 +69,83 @@ export async function POST(req: NextRequest) {
     let insertedCount = 0
     let alreadyExistingCount = 0
 
+    // Database-level Atomic UPSERT with ON CONFLICT (tenant_id, sku) DO NOTHING
     for (const item of seedItems) {
-      // Check if product with same name or SKU already exists for this tenant
-      let query = supabase
+      const skuVal = item.sku || `SKU-${Math.floor(1000 + Math.random() * 9000)}`
+
+      // 1. Atomic upsert for Product with DB Unique Constraint
+      const { data: upsertedProduct, error: prodErr } = await supabase
         .from('products')
+        .upsert(
+          {
+            tenant_id,
+            name: item.name,
+            sku: skuVal,
+            barcode: item.barcode || skuVal,
+            sale_price: item.price,
+            cost_price: item.cost_price,
+            product_type: 'product',
+            is_active: true
+          },
+          {
+            onConflict: 'tenant_id,sku',
+            ignoreDuplicates: true
+          }
+        )
         .select('id')
-        .eq('tenant_id', tenant_id)
+        .maybeSingle()
 
-      if (item.sku) {
-        query = query.or(`name.eq."${item.name}",sku.eq."${item.sku}"`)
-      } else {
-        query = query.eq('name', item.name)
-      }
-
-      const { data: existing } = await query.limit(1)
-
-      if (existing && existing.length > 0) {
-        alreadyExistingCount++
+      if (prodErr) {
+        console.error('Error upserting product:', prodErr)
         continue
       }
 
-      // Insert new seed product
-      const { data: newProd, error: prodErr } = await supabase
-        .from('products')
-        .insert({
-          tenant_id,
-          name: item.name,
-          sku: item.sku || `SKU-${Math.floor(1000 + Math.random() * 9000)}`,
-          barcode: item.barcode || item.sku || null,
-          sale_price: item.price,
-          cost_price: item.cost_price,
-          product_type: 'simple',
-          is_active: true
-        })
-        .select('id')
-        .single()
+      // If product was already existing, upsertedProduct will be null or already present
+      if (!upsertedProduct?.id) {
+        // Fetch existing product id
+        const { data: existingP } = await supabase
+          .from('products')
+          .select('id')
+          .eq('tenant_id', tenant_id)
+          .eq('sku', skuVal)
+          .limit(1)
 
-      if (!prodErr && newProd?.id) {
+        if (existingP?.[0]?.id) {
+          alreadyExistingCount++
+          // Ensure inventory row exists even if product was created in past
+          if (warehouseId) {
+            await supabase.from('inventory').upsert(
+              {
+                tenant_id,
+                product_id: existingP[0].id,
+                warehouse_id: warehouseId,
+                quantity: item.initial_stock || 10,
+                variant_id: null
+              },
+              {
+                onConflict: 'warehouse_id,product_id,variant_id',
+                ignoreDuplicates: true
+              }
+            )
+          }
+        }
+      } else {
         insertedCount++
-
-        // Create inventory row if warehouse is resolved and doesn't exist yet
+        // Insert initial inventory row
         if (warehouseId) {
-          const { data: existingInv } = await supabase
-            .from('inventory')
-            .select('id')
-            .eq('tenant_id', tenant_id)
-            .eq('product_id', newProd.id)
-            .eq('warehouse_id', warehouseId)
-            .limit(1)
-
-          if (!existingInv || existingInv.length === 0) {
-            await supabase.from('inventory').insert({
+          await supabase.from('inventory').upsert(
+            {
               tenant_id,
-              product_id: newProd.id,
+              product_id: upsertedProduct.id,
               warehouse_id: warehouseId,
               quantity: item.initial_stock || 10,
-              min_stock: item.min_stock || 5
-            })
-          }
+              variant_id: null
+            },
+            {
+              onConflict: 'warehouse_id,product_id,variant_id',
+              ignoreDuplicates: true
+            }
+          )
         }
       }
     }

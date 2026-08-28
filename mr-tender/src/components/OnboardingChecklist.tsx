@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
@@ -24,53 +24,105 @@ export default function OnboardingChecklist() {
   const [isDismissed, setIsDismissed] = useState(false)
   const [loadingSeed, setLoadingSeed] = useState(false)
   const [seedMessage, setSeedMessage] = useState<string | null>(null)
-  const [tenantId, setTenantId] = useState<string>('default')
+  const [tenantId, setTenantId] = useState<string | null>(null)
+  const fullProgressRef = useRef<Record<string, any>>({})
 
+  const currentVerticalKey = activeVertical || 'general'
   const onboardingConfig = (activeVertical && VERTICAL_ONBOARDINGS[activeVertical])
     ? VERTICAL_ONBOARDINGS[activeVertical]
     : VERTICAL_ONBOARDINGS.general
 
   useEffect(() => {
-    async function loadProgress() {
+    async function loadProgressFromDB() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
-        const tid = user?.app_metadata?.tenant_id || user?.user_metadata?.tenant_id || 'default'
+        if (!user) return
+
+        let tid = user.app_metadata?.tenant_id || user.user_metadata?.tenant_id
+        if (!tid) {
+          const { data: ptData } = await supabase
+            .from('platform_tenants')
+            .select('id')
+            .eq('owner_email', user.email)
+            .limit(1)
+          tid = ptData?.[0]?.id || null
+        }
+
+        if (!tid) return
         setTenantId(tid)
 
-        const storageKey = `mrtender_onboarding_${tid}_${activeVertical || 'general'}`
-        const saved = localStorage.getItem(storageKey)
-        if (saved) {
-          try {
-            setCompletedSteps(JSON.parse(saved))
-          } catch {}
-        }
+        // 1. Fetch persistent progress from Postgres (tenant_settings with RLS)
+        const { data: settingsData } = await supabase
+          .from('tenant_settings')
+          .select('onboarding_progress')
+          .eq('tenant_id', tid)
+          .maybeSingle()
 
-        const dismissed = localStorage.getItem(`${storageKey}_dismissed`)
-        if (dismissed === 'true') {
-          setIsDismissed(true)
+        const dbProgress = settingsData?.onboarding_progress || {}
+        fullProgressRef.current = dbProgress
+
+        const vertData = dbProgress[currentVerticalKey]
+        if (vertData) {
+          setCompletedSteps(vertData.completed_steps || {})
+          setIsDismissed(vertData.is_dismissed || false)
+        } else {
+          // Fallback to local cache if DB was blank
+          const localCache = localStorage.getItem(`mrtender_onboarding_${tid}_${currentVerticalKey}`)
+          if (localCache) {
+            try {
+              setCompletedSteps(JSON.parse(localCache))
+            } catch {}
+          }
         }
       } catch (err) {
-        console.error('Error loading onboarding progress:', err)
+        console.error('Error loading onboarding progress from DB:', err)
       }
     }
-    loadProgress()
-  }, [activeVertical])
+
+    loadProgressFromDB()
+  }, [currentVerticalKey])
+
+  async function saveProgress(nextCompleted: Record<string, boolean>, dismissedState: boolean) {
+    if (!tenantId) return
+
+    // Update local state and cache
+    const updatedFull = {
+      ...fullProgressRef.current,
+      [currentVerticalKey]: {
+        completed_steps: nextCompleted,
+        is_dismissed: dismissedState,
+        updated_at: new Date().toISOString()
+      }
+    }
+    fullProgressRef.current = updatedFull
+
+    try {
+      localStorage.setItem(`mrtender_onboarding_${tenantId}_${currentVerticalKey}`, JSON.stringify(nextCompleted))
+      if (dismissedState) {
+        localStorage.setItem(`mrtender_onboarding_${tenantId}_${currentVerticalKey}_dismissed`, 'true')
+      }
+    } catch {}
+
+    // Persist to Postgres with RLS
+    try {
+      await supabase
+        .from('tenant_settings')
+        .update({ onboarding_progress: updatedFull })
+        .eq('tenant_id', tenantId)
+    } catch (err) {
+      console.error('Error persisting onboarding progress to Postgres:', err)
+    }
+  }
 
   function toggleStep(stepId: string) {
     const next = { ...completedSteps, [stepId]: !completedSteps[stepId] }
     setCompletedSteps(next)
-    try {
-      const storageKey = `mrtender_onboarding_${tenantId}_${activeVertical || 'general'}`
-      localStorage.setItem(storageKey, JSON.stringify(next))
-    } catch {}
+    saveProgress(next, isDismissed)
   }
 
   function handleDismiss() {
     setIsDismissed(true)
-    try {
-      const storageKey = `mrtender_onboarding_${tenantId}_${activeVertical || 'general'}_dismissed`
-      localStorage.setItem(storageKey, 'true')
-    } catch {}
+    saveProgress(completedSteps, true)
   }
 
   async function handleLoadSeedData() {
@@ -90,9 +142,11 @@ export default function OnboardingChecklist() {
       }
 
       setSeedMessage(`🎉 ${data.message || 'Productos de ejemplo cargados exitosamente.'}`)
-      // Auto-mark first step
+      // Auto-mark first step and persist
       if (onboardingConfig.checklist[0]) {
-        toggleStep(onboardingConfig.checklist[0].id)
+        const next = { ...completedSteps, [onboardingConfig.checklist[0].id]: true }
+        setCompletedSteps(next)
+        saveProgress(next, isDismissed)
       }
       setTimeout(() => {
         window.location.reload()
@@ -153,7 +207,7 @@ export default function OnboardingChecklist() {
             onClick={handleLoadSeedData}
             disabled={loadingSeed}
             className="btn-neu btn-ghost"
-            title="Carga 6-8 productos realistas de este rubro para ver el sistema funcionando"
+            title="Carga productos realistas de este rubro para ver el sistema funcionando"
             style={{
               padding: '5px 10px',
               fontSize: '0.72rem',
