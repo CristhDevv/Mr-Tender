@@ -3,7 +3,9 @@ import {
   calculateLineTotal,
   calculateCartTotals,
   calculateChange,
-  calculateTaxBreakdown
+  calculateTaxBreakdown,
+  parseScaleBarcode,
+  calculateEarnedPoints
 } from './cart'
 
 describe('calculateLineTotal', () => {
@@ -88,3 +90,53 @@ describe('calculateTaxBreakdown', () => {
     expect(breakdown.taxTotal).toBe(0)
   })
 })
+
+describe('wholesale pricing', () => {
+  it('should apply wholesale price when quantity meets or exceeds threshold', () => {
+    const item = {
+      price: 5000,
+      wholesale_price: 4200,
+      wholesale_min_qty: 6,
+      quantity: 6,
+      discount: 0
+    }
+    expect(calculateLineTotal(item)).toBe(25200) // 6 * 4200
+  })
+
+  it('should use regular retail price when quantity is below wholesale threshold', () => {
+    const item = {
+      price: 5000,
+      wholesale_price: 4200,
+      wholesale_min_qty: 6,
+      quantity: 5,
+      discount: 0
+    }
+    expect(calculateLineTotal(item)).toBe(25000) // 5 * 5000
+  })
+})
+
+describe('parseScaleBarcode', () => {
+  it('should decode weight-based scale barcode with prefix 20', () => {
+    // Prefix 20, Product 00123, 01500 g = 1.500 kg, Checksum 8
+    const res = parseScaleBarcode('2000123015008')
+    expect(res.isScaleBarcode).toBe(true)
+    expect(res.itemCode).toBe('00123')
+    expect(res.type).toBe('weight')
+    expect(res.weightKg).toBe(1.5)
+  })
+
+  it('should decode price-based scale barcode with prefix 28', () => {
+    // Prefix 28, Product 00456, 12500 COP, Checksum 3
+    const res = parseScaleBarcode('2800456125003')
+    expect(res.isScaleBarcode).toBe(true)
+    expect(res.itemCode).toBe('00456')
+    expect(res.type).toBe('price')
+    expect(res.totalPrice).toBe(12500)
+  })
+
+  it('should return false for regular 13-digit EAN barcodes without 20/21/28/29 prefix', () => {
+    const res = parseScaleBarcode('7702001001018')
+    expect(res.isScaleBarcode).toBe(false)
+  })
+})
+

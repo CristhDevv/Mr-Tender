@@ -5,6 +5,12 @@ import { createClient } from '@/lib/supabase/client'
 import CameraScanner from '@/components/CameraScanner'
 import AudioPosHUD from '@/components/AudioPosHUD'
 import RefundModal from '@/components/RefundModal'
+import PriceCheckerModal from '@/components/PriceCheckerModal'
+import RechargesServicesModal from '@/components/RechargesServicesModal'
+import ElectronicWalletModal from '@/components/ElectronicWalletModal'
+import PaymentTerminalModal from '@/components/PaymentTerminalModal'
+import ScaleHardwareModal from '@/components/ScaleHardwareModal'
+import { parseScaleBarcode, getEffectiveUnitPrice, calculateEarnedPoints, kickCashDrawer } from '@/lib/cart'
 import { findMasterProduct } from '@/lib/catalog/colombia-products'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import {
@@ -226,15 +232,58 @@ export default function POSClient() {
   const [dianResult, setDianResult] = useState<{ cufe?: string; qrData?: string; dianStatus?: string; invoiceId?: string; number?: string } | null>(null)
   const [dianEmitting, setDianEmitting] = useState(false)
 
-  // Global Keyboard Shortcuts (Key V or Ctrl+Space for Voice POS)
+  // Global Keyboard Shortcuts (F1-F12 standard Eleventa style POS hotkeys)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Voice toggle
       if (
         (e.key === 'v' || e.key === 'V') &&
         !(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)
       ) {
         e.preventDefault()
         setShowVoiceHUD(prev => !prev)
+        return
+      }
+
+      // F1: Focus Search
+      if (e.key === 'F1') {
+        e.preventDefault()
+        document.getElementById('pos-search-input')?.focus()
+      }
+      // F2: Recharges & Utilities Modal
+      else if (e.key === 'F2') {
+        e.preventDefault()
+        setShowRechargesModal(prev => !prev)
+      }
+      // F4: Kick Cash Drawer
+      else if (e.key === 'F4') {
+        e.preventDefault()
+        kickCashDrawer()
+      }
+      // F5: Camera Scanner Modal
+      else if (e.key === 'F5') {
+        e.preventDefault()
+        setShowScanner(prev => !prev)
+      }
+      // F6: Express Product Modal
+      else if (e.key === 'F6') {
+        e.preventDefault()
+        setShowExpressModal(prev => !prev)
+      }
+      // F8: Loyalty Points & Electronic Wallet
+      else if (e.key === 'F8') {
+        e.preventDefault()
+        setShowWalletModal(prev => !prev)
+      }
+      // F10: Price Checker / Kiosk Mode
+      else if (e.key === 'F10') {
+        e.preventDefault()
+        setShowPriceCheckerModal(prev => !prev)
+      }
+      // F12: Confirm payment / focus confirm button
+      else if (e.key === 'F12') {
+        e.preventDefault()
+        document.getElementById('pos-confirm-payment-btn')?.click()
       }
     }
     window.addEventListener('keydown', handleGlobalKeyDown)
@@ -303,6 +352,13 @@ export default function POSClient() {
   const [editItemPrice, setEditItemPrice] = useState<string>('')
   const [editItemDiscount, setEditItemDiscount] = useState<string>('')
   const [permissionWarning, setPermissionWarning] = useState<string | null>(null)
+
+  // Eleventa Colombia POS Modal States
+  const [showPriceCheckerModal, setShowPriceCheckerModal] = useState(false)
+  const [showRechargesModal, setShowRechargesModal] = useState(false)
+  const [showWalletModal, setShowWalletModal] = useState(false)
+  const [showTerminalModal, setShowTerminalModal] = useState(false)
+  const [walletDiscountApplied, setWalletDiscountApplied] = useState(0)
 
   // Warehouses state
   const [warehouseList, setWarehouseList] = useState<any[]>([])
@@ -619,12 +675,15 @@ export default function POSClient() {
       const existing = prev.find(i => i.id === product.id)
       if (existing) {
         const newQty = existing.quantity + quantity
+        const { unitPrice } = getEffectiveUnitPrice({ ...existing, quantity: newQty })
         return prev.map(i => i.id === product.id
-          ? { ...i, quantity: newQty, lineTotal: newQty * i.price * (1 - i.discount / 100) }
+          ? { ...i, quantity: newQty, lineTotal: newQty * unitPrice * (1 - (Number(i.discount) || 0) / 100) }
           : i
         )
       }
-      return [...prev, { ...product, quantity, discount: 0, lineTotal: quantity * product.price }]
+      const initialItem: CartItem = { ...product, quantity, discount: 0, lineTotal: 0 }
+      const { unitPrice } = getEffectiveUnitPrice(initialItem)
+      return [...prev, { ...initialItem, lineTotal: quantity * unitPrice }]
     })
   }, [])
 
@@ -632,7 +691,11 @@ export default function POSClient() {
     playSound('tap')
     if (qty <= 0) { removeFromCart(id); return }
     const rounded = Math.round(qty * 1000) / 1000
-    setCart(prev => prev.map(i => i.id === id ? { ...i, quantity: rounded, lineTotal: rounded * i.price * (1 - i.discount / 100) } : i))
+    setCart(prev => prev.map(i => {
+      if (i.id !== id) return i
+      const { unitPrice } = getEffectiveUnitPrice({ ...i, quantity: rounded })
+      return { ...i, quantity: rounded, lineTotal: rounded * unitPrice * (1 - (Number(i.discount) || 0) / 100) }
+    }))
   }
 
   const removeFromCart = (id: string) => {
@@ -641,9 +704,31 @@ export default function POSClient() {
   }
 
   const subtotal = cart.reduce((s, i) => s + i.lineTotal, 0)
-  const discountAmt = subtotal * (discount / 100)
-  const total = subtotal - discountAmt
+  const discountAmt = subtotal * ((Number(discount) || 0) / 100)
+  const total = Math.max(0, subtotal - discountAmt - walletDiscountApplied)
   const change = paymentMethod === 'cash' ? Math.max(0, (Number(receivedAmount) || 0) - total) : 0
+
+  // Real-time broadcast for Secondary Customer-Facing Screen
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('BroadcastChannel' in window)) return
+    try {
+      const channel = new BroadcastChannel('mr_tender_customer_display')
+      channel.postMessage({
+        cart,
+        subtotal,
+        discount,
+        tax: 0,
+        total,
+        receivedAmount: Number(receivedAmount) || 0,
+        change,
+        customerName: selectedCustomer?.full_name || null,
+        isCompleted: false
+      })
+      return () => channel.close()
+    } catch (e) {
+      console.error('Customer Display Broadcast Error:', e)
+    }
+  }, [cart, subtotal, discount, total, receivedAmount, change, selectedCustomer])
 
   // Hold / Pause Current Cart
   function holdCurrentCart() {
@@ -722,6 +807,23 @@ export default function POSClient() {
   function handleCameraScan(code: string) {
     const cleanCode = code.trim()
     setSearch(cleanCode)
+
+    // 1. GS1 Variable weight/price scale barcode decoding (Prefix 20, 21, 28, 29)
+    const scaleParsed = parseScaleBarcode(cleanCode)
+    if (scaleParsed.isScaleBarcode && scaleParsed.itemCode) {
+      const itCode = scaleParsed.itemCode
+      const scaleMatch = products.find(p => p.sku === itCode || (p.barcode ? p.barcode.includes(itCode) : false) || (p.sku ? p.sku.endsWith(itCode) : false))
+      if (scaleMatch) {
+        if (scaleParsed.type === 'weight' && scaleParsed.weightKg) {
+          addToCart(scaleMatch, scaleParsed.weightKg)
+          return { found: true, name: scaleMatch.name, price: scaleMatch.price, sku: scaleMatch.sku }
+        } else if (scaleParsed.type === 'price' && scaleParsed.totalPrice) {
+          const qty = Math.round((scaleParsed.totalPrice / (scaleMatch.price || 1)) * 1000) / 1000
+          addToCart(scaleMatch, qty)
+          return { found: true, name: scaleMatch.name, price: scaleMatch.price, sku: scaleMatch.sku }
+        }
+      }
+    }
 
     const foundInInventory = products.find(p => p.sku === cleanCode || p.barcode === cleanCode || p.name.toLowerCase().includes(cleanCode.toLowerCase()))
     if (foundInInventory) {
@@ -936,6 +1038,25 @@ export default function POSClient() {
       const finalSaleNumber = data.number || offlineId
       setSaleNumber(finalSaleNumber)
       playSound('success')
+      kickCashDrawer()
+
+      if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+        try {
+          const channel = new BroadcastChannel('mr_tender_customer_display')
+          channel.postMessage({
+            cart,
+            subtotal,
+            discount,
+            tax: 0,
+            total,
+            receivedAmount: Number(receivedAmount) || total,
+            change,
+            customerName: selectedCustomer?.full_name || null,
+            isCompleted: true
+          })
+          channel.close()
+        } catch {}
+      }
       
       // Emitir Factura Electrónica ante la DIAN si está activado
       if (emitElectronicInvoice) {
@@ -1339,18 +1460,51 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 }}
               >
                 <Mic size={15} strokeWidth={2.5} />
-                <span className="pos-btn-label">Voz AI</span>
+                <span className="pos-btn-label">Voz</span>
               </button>
 
               {/* Scanner */}
               <button
                 className="btn-neu btn-primary"
                 onClick={() => setShowScanner(true)}
-                title="Escanear código de barras"
+                title="Escanear código de barras (F5)"
                 style={{ height: 38, padding: '0 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, boxSizing: 'border-box' }}
               >
                 <Camera size={15} strokeWidth={2} />
                 <span className="pos-btn-label">Escanear</span>
+              </button>
+
+              {/* Price Checker F10 */}
+              <button
+                className="btn-neu"
+                onClick={() => setShowPriceCheckerModal(true)}
+                title="Verificador de Precios / Modo Kiosko (F10)"
+                style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box' }}
+              >
+                <Search size={14} style={{ color: 'var(--accent-purple)' }} />
+                <span className="pos-btn-label">Precios (F10)</span>
+              </button>
+
+              {/* Recharges & Services F2 */}
+              <button
+                className="btn-neu"
+                onClick={() => setShowRechargesModal(true)}
+                title="Venta de Recargas Móviles, Pines y Servicios (F2)"
+                style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box', color: 'var(--accent-blue)', fontWeight: 700 }}
+              >
+                <Smartphone size={14} />
+                <span className="pos-btn-label">Recargas (F2)</span>
+              </button>
+
+              {/* Secondary Customer Display */}
+              <button
+                className="btn-neu"
+                onClick={() => window.open('/pos/customer-display', 'CustomerDisplay', 'width=1024,height=768')}
+                title="Abrir Pantalla Secundaria para el Cliente"
+                style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box' }}
+              >
+                <ExternalLink size={14} style={{ color: 'var(--text-muted)' }} />
+                <span className="pos-btn-label">2ª Pantalla</span>
               </button>
 
               {heldCarts.length > 0 && (
@@ -1605,7 +1759,18 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
           {/* Quick Selectors Row (Cliente + Método) */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 6, marginBottom: 6, flexShrink: 0 }}>
             <div>
-              <label style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Cliente</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <label style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Cliente</label>
+                {selectedCustomer && (
+                  <button
+                    type="button"
+                    onClick={() => setShowWalletModal(true)}
+                    style={{ background: 'none', border: 'none', color: 'var(--accent-purple)', fontSize: '0.62rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                  >
+                    ✨ Puntos (F8) {walletDiscountApplied > 0 ? `(-${formatCurrency(walletDiscountApplied)})` : ''}
+                  </button>
+                )}
+              </div>
               <select className="input-neu" value={selectedCustomer?.id || ''} onChange={e => {
                 const found = customerList.find(c => c.id === e.target.value)
                 setSelectedCustomer(found || null)
@@ -1768,8 +1933,17 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
             {(paymentMethod === 'card_debit' || paymentMethod === 'card_credit') && (
               <div style={{ background: 'var(--bg-deep)', padding: '12px', borderRadius: 'var(--radius-md)', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <CreditCard size={28} style={{ color: 'var(--accent-blue)' }} />
-                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-primary)' }}>Datáfono / Datafono POS</div>
+                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-primary)' }}>Datáfono / Terminal POS</div>
                 <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Pasa la tarjeta en el datáfono por <strong>{formatCurrency(total)}</strong></div>
+                <button
+                  type="button"
+                  onClick={() => setShowTerminalModal(true)}
+                  className="btn-neu btn-primary"
+                  style={{ marginTop: 6, padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  <CreditCard size={14} />
+                  <span>Conectar Datáfono Smart (Point/Bold)</span>
+                </button>
               </div>
             )}
 
@@ -1782,7 +1956,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
 
           {/* Confirm Button Always Pinned at Bottom */}
           <div style={{ marginTop: 'auto', paddingTop: 4, flexShrink: 0 }}>
-            <button className="btn-neu btn-success" onClick={processSale} disabled={loading || !sessionInfo?.session_id || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
+            <button id="pos-confirm-payment-btn" className="btn-neu btn-success" onClick={processSale} disabled={loading || !sessionInfo?.session_id || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
               style={{ width: '100%', padding: '10px', fontSize: '0.9rem', fontWeight: 800, justifyContent: 'center' }}>
               {loading ? 'Procesando...' : paymentMethod === 'fiao' ? `Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `Confirmar Nequi (${formatCurrency(total)})` : 'Confirmar pago'}
             </button>
@@ -1874,60 +2048,17 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
         </div>
       )}
 
-      {/* ── MODAL: WEIGHED PRODUCT PICKER ── */}
+      {/* ── MODAL: WEIGHED PRODUCT PICKER (Serial Scale & Manual) ── */}
       {weighingProduct && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 360, padding: 20 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-              <Scale size={20} style={{ color: 'var(--accent-purple)' }} />
-              <h3 style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>Venta por Peso / Granel</h3>
-            </div>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: 12 }}>
-              <strong>{weighingProduct.name}</strong> ({formatCurrency(weighingProduct.price)} x {weighingProduct.unit_type})
-            </p>
-
-            <div>
-              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
-                Cantidad ({weighingProduct.unit_type})
-              </label>
-              <input
-                className="input-neu"
-                type="number"
-                step="0.05"
-                min="0.05"
-                value={weightValue}
-                onChange={e => setWeightValue(e.target.value)}
-                autoFocus
-                style={{ fontSize: '1.2rem', fontWeight: 900, textAlign: 'center', width: '100%' }}
-              />
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginTop: 8 }}>
-              {['0.25', '0.5', '1', '2'].map(w => (
-                <button key={w} type="button" className="btn-neu" onClick={() => setWeightValue(w)} style={{ padding: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
-                  {w} {weighingProduct.unit_type}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, padding: '8px 10px', background: 'var(--bg-deep)', borderRadius: 8 }}>
-              <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Total a cobrar:</span>
-              <strong style={{ fontSize: '1rem', color: 'var(--accent-blue)' }}>
-                {formatCurrency(Number(weightValue || 0) * weighingProduct.price)}
-              </strong>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-              <button type="button" className="btn-neu" onClick={() => setWeighingProduct(null)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
-              <button type="button" className="btn-neu btn-primary" onClick={() => {
-                addToCart(weighingProduct, parseFloat(weightValue) || 1)
-                setWeighingProduct(null)
-              }} style={{ flex: 1, padding: 10 }}>
-                Agregar al Carrito
-              </button>
-            </div>
-          </div>
-        </div>
+        <ScaleHardwareModal
+          isOpen={Boolean(weighingProduct)}
+          onClose={() => setWeighingProduct(null)}
+          product={weighingProduct}
+          onConfirmWeight={(weight) => {
+            addToCart(weighingProduct, weight)
+            setWeighingProduct(null)
+          }}
+        />
       )}
 
       {/* MODAL: PHARMACY FRACTION SELECTOR */}
@@ -2234,9 +2365,45 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
         onSetReceivedAmount={handleVoiceSetReceivedAmount}
         onClearCart={handleVoiceClearCart}
       />
+
+      {/* Price Checker Modal F10 */}
+      <PriceCheckerModal
+        isOpen={showPriceCheckerModal}
+        onClose={() => setShowPriceCheckerModal(false)}
+        products={products}
+        onAddToCart={(p, qty) => addToCart(p as any, qty)}
+      />
+
+      {/* Recharges & Utility Bills Modal F2 */}
+      <RechargesServicesModal
+        isOpen={showRechargesModal}
+        onClose={() => setShowRechargesModal(false)}
+        onCompleteTransaction={(tx) => {
+          alert(`¡Transacción exitosa!\nTipo: ${tx.type}\nServicio: ${tx.title}\nValor: ${formatCurrency(tx.amount)}\nComisión: ${formatCurrency(tx.commission)}`)
+        }}
+      />
+
+      {/* Customer Loyalty Electronic Wallet & Cashback */}
+      <ElectronicWalletModal
+        isOpen={showWalletModal}
+        onClose={() => setShowWalletModal(false)}
+        customer={selectedCustomer}
+        saleTotal={total}
+        onApplyWalletPayment={(amount) => {
+          setWalletDiscountApplied(amount)
+        }}
+      />
+
+      {/* Datáfono / Payment Terminal Modal */}
+      <PaymentTerminalModal
+        isOpen={showTerminalModal}
+        onClose={() => setShowTerminalModal(false)}
+        amount={total}
+        onPaymentApproved={(res) => {
+          setTransferRef(`Datáfono ${res.terminal} - ${res.cardBrand} *${res.lastFour} (Aut: ${res.authCode})`)
+          setPaymentMethod('card_debit')
+        }}
+      />
     </div>
   )
 }
-
-
-

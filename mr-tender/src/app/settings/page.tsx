@@ -30,9 +30,12 @@ import {
   TrendingUp,
   Landmark,
   AlertTriangle,
-  Info
+  Info,
+  Database,
+  Download
 } from 'lucide-react'
 import Link from 'next/link'
+import ContingencyBackupModal from '@/components/ContingencyBackupModal'
 
 export default function SettingsPage() {
   const supabase = createClient()
@@ -40,6 +43,7 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [showBackupModal, setShowBackupModal] = useState(false)
   const [dependencyNotice, setDependencyNotice] = useState<string | null>(null)
   const [moduleFilter, setModuleFilter] = useState<'all' | 'base' | 'vertical'>('all')
   const [tenantId, setTenantId] = useState('')
@@ -268,6 +272,10 @@ export default function SettingsPage() {
         { key: 'receiptSeries', label: 'Serie de recibos', type: 'text', placeholder: 'R' },
       ]
     },
+    {
+      title: 'Respaldo de Contingencia', Icon: Database,
+      isBackup: true
+    }
   ]
 
   if (loading) {
@@ -646,6 +654,34 @@ export default function SettingsPage() {
             )}
 
           </div>
+        ) : (currentSection as any).isBackup ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div className="neu-flat" style={{ padding: 18, borderRadius: 'var(--radius-md)', background: 'var(--bg-deep)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <Database size={22} style={{ color: 'var(--accent-blue)' }} />
+                <div>
+                  <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
+                    Copia de Seguridad y Contingencia Local
+                  </h3>
+                  <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
+                    Exporta una copia completa de tus productos, clientes, ventas y configuraciones en formato JSON cifrado/descargable para contingencia fuera de línea.
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+                <button
+                  type="button"
+                  className="btn-neu btn-primary"
+                  onClick={() => setShowBackupModal(true)}
+                  style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}
+                >
+                  <Download size={16} />
+                  <span>Generar y Descargar Respaldo Local (JSON)</span>
+                </button>
+              </div>
+            </div>
+          </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
             {currentSection.fields?.map(field => (
@@ -677,6 +713,12 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+
+      <ContingencyBackupModal
+        isOpen={showBackupModal}
+        onClose={() => setShowBackupModal(false)}
+        tenantId={tenantId}
+      />
     </div>
   )
 }

@@ -23,6 +23,7 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
+import MassPriceUpdaterModal from '@/components/MassPriceUpdaterModal'
 
 interface DBProduct {
   id: string
@@ -54,6 +55,7 @@ export default function ProductsPage() {
   const [showTagsModal, setShowTagsModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showQuickStockModal, setShowQuickStockModal] = useState(false)
+  const [showMassPriceModal, setShowMassPriceModal] = useState(false)
 
   // Warehouses State
   const [warehousesList, setWarehousesList] = useState<{ id: string; name: string; is_main: boolean }[]>([])
@@ -264,6 +266,13 @@ export default function ProductsPage() {
     }
   }
 
+  async function handleApplyMassPriceUpdates(updates: Array<{ id: string; sale_price: number }>) {
+    for (const item of updates) {
+      await supabase.from('products').update({ sale_price: item.sale_price }).eq('id', item.id)
+    }
+    await loadProducts()
+  }
+
   // Handle CSV file upload & parsing
   function handleCsvFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -296,12 +305,13 @@ export default function ProductsPage() {
     const csvContent = 'Nombre,PrecioVenta,Costo,CodigoSKU,StockInicial\nArroz Diana 500g,2800,2100,7701234567890,24\nLeche Alqueria 1L,4500,3600,7709876543210,12\nAceite Premier 1L,9500,7800,7705556667770,8\n'
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.setAttribute('href', url)
-    link.setAttribute('download', 'plantilla_productos_mrtender.csv')
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'plantilla_productos_mrtender.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
   }
 
   async function executeBulkImport() {
@@ -372,6 +382,10 @@ export default function ProductsPage() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => setShowMassPriceModal(true)} className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)', fontWeight: 700 }}>
+            <TrendingUp size={14} strokeWidth={2.5} />
+            <span>Ajuste Masivo Precios</span>
+          </button>
           <button onClick={() => setShowTagsModal(true)} className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
             <Printer size={14} strokeWidth={2} />
             <span>Etiquetas</span>
@@ -825,6 +839,16 @@ export default function ProductsPage() {
         </div>
       )}
 
+      {/* Mass Price Updater Modal */}
+      <MassPriceUpdaterModal
+        isOpen={showMassPriceModal}
+        onClose={() => setShowMassPriceModal(false)}
+        products={products}
+        categories={categoryList}
+        onApplyUpdates={handleApplyMassPriceUpdates}
+      />
+
     </div>
   )
 }
+

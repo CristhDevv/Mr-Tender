@@ -26,6 +26,8 @@ export default function NewProductPage() {
     sku: '',
     price: '',
     cost: '',
+    wholesale_price: '',
+    wholesale_min_qty: '',
     categoryId: '',
     warehouseId: '',
     description: '',
@@ -159,7 +161,9 @@ export default function NewProductPage() {
         ...f,
         name: master.name,
         cost: master.suggestedCost.toString(),
-        price: master.suggestedPrice.toString()
+        price: master.suggestedPrice.toString(),
+        wholesale_price: master.wholesalePrice ? master.wholesalePrice.toString() : f.wholesale_price,
+        wholesale_min_qty: master.wholesaleMinQty ? master.wholesaleMinQty.toString() : f.wholesale_min_qty
       }))
 
       // Auto-match or create category
@@ -210,6 +214,8 @@ export default function NewProductPage() {
           sku: form.sku || null,
           sale_price: Number(form.price),
           cost_price: Number(form.cost),
+          wholesale_price: form.wholesale_price ? Number(form.wholesale_price) : null,
+          wholesale_min_qty: form.wholesale_min_qty ? Number(form.wholesale_min_qty) : null,
           category_id: form.categoryId || null,
           description: form.description || null,
           product_type: 'product',
@@ -345,6 +351,16 @@ export default function NewProductPage() {
           <div>
             <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Costo de compra *</label>
             <input className="input-neu" type="number" step="100" placeholder="0" value={form.cost} onChange={e => set('cost')(e.target.value)} required />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Precio Mayoreo (Opcional)</label>
+            <input className="input-neu" type="number" step="100" placeholder="Ej: 2200" value={form.wholesale_price} onChange={e => set('wholesale_price')(e.target.value)} />
+          </div>
+
+          <div>
+            <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>Cant. Mínima Mayoreo</label>
+            <input className="input-neu" type="number" placeholder="Ej: 6" value={form.wholesale_min_qty} onChange={e => set('wholesale_min_qty')(e.target.value)} />
           </div>
 
           <div style={{ gridColumn: '1/-1' }}>
