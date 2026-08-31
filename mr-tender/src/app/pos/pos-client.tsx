@@ -1,5 +1,5 @@
 'use client'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import CameraScanner from '@/components/CameraScanner'
@@ -362,10 +362,19 @@ export default function POSClient() {
 
   // Warehouses state
   const [warehouseList, setWarehouseList] = useState<any[]>([])
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>(null)
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>('all')
+  const [selectedCategory, setSelectedCategory] = useState<string>('all')
 
-  // State loaded from DB
-  const [products, setProducts] = useState<Product[]>([])
+  // State loaded from DB (Fast Stale-While-Revalidate from localStorage for 0ms startup)
+  const [products, setProducts] = useState<Product[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mr_tender_cached_products')
+        if (cached) return JSON.parse(cached)
+      } catch {}
+    }
+    return []
+  })
   const [sessionInfo, setSessionInfo] = useState<{
     tenant_id: string
     user_id: string
@@ -490,7 +499,7 @@ export default function POSClient() {
         const activeWh = warehouses?.find((w: any) => w.is_main) || warehouses?.[0] || null
         const warehouse_id = activeWh?.id || null
         if (warehouses) setWarehouseList(warehouses)
-        if (warehouse_id) setSelectedWarehouseId(warehouse_id)
+        // Keep default selectedWarehouseId as 'all' (Todas)
 
         // Get active cash register and open session
         const [regRes, sessRes] = await Promise.all([
@@ -649,25 +658,59 @@ export default function POSClient() {
     return match ? Number(match.quantity || 0) : 0
   }, [])
 
-  const filtered = search.trim() === '' ? [] : products.filter(p => {
-    const matchSearch =
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase()) ||
-      (p.barcode ? p.barcode.toLowerCase().includes(search.toLowerCase()) : false)
+  // Dynamic categories list from loaded products
+  const categories = useMemo(() => {
+    const map = new Map<string, number>()
+    products.forEach(p => {
+      const cat = p.category || 'Varios'
+      map.set(cat, (map.get(cat) || 0) + 1)
+    })
+    return Array.from(map.entries()).sort((a, b) => b[1] - a[1])
+  }, [products])
 
-    if (!matchSearch) return false
+  // Fast string normalizer for instant search (accent and case insensitive)
+  const normalizeStr = (str: string) =>
+    (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
-    // Warehouse filter: if specific warehouse selected (not 'all'), filter by warehouse stock/record
+  // Ultra-fast in-memory product filter
+  const filtered = useMemo(() => {
+    let list = products
+
+    // 1. Warehouse filter
     if (selectedWarehouseId && selectedWarehouseId !== 'all') {
-      if (p.is_pharmacy) return true
-      if (p.inventory && p.inventory.length > 0) {
-        return p.inventory.some(inv => inv.warehouse_id === selectedWarehouseId)
-      }
-      return p.warehouse_id === selectedWarehouseId
+      list = list.filter(p => {
+        if (p.is_pharmacy) return true
+        if (p.inventory && p.inventory.length > 0) {
+          return p.inventory.some(inv => inv.warehouse_id === selectedWarehouseId)
+        }
+        return p.warehouse_id === selectedWarehouseId
+      })
     }
 
-    return true
-  })
+    // 2. Search query filter
+    const q = normalizeStr(search.trim())
+    if (q !== '') {
+      return list.filter(p => {
+        const nameNorm = normalizeStr(p.name)
+        const skuNorm = normalizeStr(p.sku || '')
+        const barcodeNorm = p.barcode ? normalizeStr(p.barcode) : ''
+        const genNorm = p.generic_name ? normalizeStr(p.generic_name) : ''
+        return (
+          nameNorm.includes(q) ||
+          skuNorm.includes(q) ||
+          barcodeNorm.includes(q) ||
+          genNorm.includes(q)
+        )
+      })
+    }
+
+    // 3. Category filter (when search is empty, displays all or category-specific products)
+    if (selectedCategory !== 'all') {
+      list = list.filter(p => (p.category || 'Varios') === selectedCategory)
+    }
+
+    return list
+  }, [products, search, selectedWarehouseId, selectedCategory])
 
   const addToCart = useCallback((product: Product, quantity = 1) => {
     playSound('beep')
@@ -1384,6 +1427,22 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   placeholder="Buscar producto, SKU o código..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      if (filtered.length === 1) {
+                        e.preventDefault()
+                        const target = filtered[0]
+                        if (target.is_pharmacy && (target.blister_price || target.box_price)) {
+                          setSelectedFractionProduct(target)
+                        } else if (target.unit_type !== 'unit') {
+                          setWeighingProduct(target)
+                        } else {
+                          addToCart(target)
+                          setSearch('')
+                        }
+                      }
+                    }
+                  }}
                   autoFocus
                   style={{
                     fontSize: '0.88rem',
@@ -1564,8 +1623,78 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 )
               })()}
 
+              {/* Quick Category Chips Filter Bar */}
+              {categories.length > 1 && (
+                <div style={{
+                  display: 'flex',
+                  gap: 5,
+                  overflowX: 'auto',
+                  padding: '2px 0 6px',
+                  scrollbarWidth: 'none',
+                  flexShrink: 0
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('all')}
+                    className="btn-neu"
+                    style={{
+                      padding: '4px 10px',
+                      fontSize: '0.72rem',
+                      fontWeight: selectedCategory === 'all' ? 800 : 600,
+                      borderRadius: 16,
+                      whiteSpace: 'nowrap',
+                      background: selectedCategory === 'all' ? 'var(--accent-blue)' : 'var(--bg-card)',
+                      color: selectedCategory === 'all' ? '#fff' : 'var(--text-secondary)',
+                      boxShadow: selectedCategory === 'all' ? '0 2px 6px rgba(59,130,246,0.3)' : 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <span>Todos</span>
+                    <span style={{ fontSize: '0.62rem', opacity: 0.85, background: selectedCategory === 'all' ? 'rgba(255,255,255,0.25)' : 'var(--bg-deep)', padding: '1px 5px', borderRadius: 10 }}>
+                      {products.length}
+                    </span>
+                  </button>
+
+                  {categories.map(([catName, count]) => {
+                    const isSelected = selectedCategory === catName
+                    return (
+                      <button
+                        key={catName}
+                        type="button"
+                        onClick={() => setSelectedCategory(isSelected ? 'all' : catName)}
+                        className="btn-neu"
+                        style={{
+                          padding: '4px 10px',
+                          fontSize: '0.72rem',
+                          fontWeight: isSelected ? 800 : 600,
+                          borderRadius: 16,
+                          whiteSpace: 'nowrap',
+                          background: isSelected ? 'var(--accent-blue)' : 'var(--bg-card)',
+                          color: isSelected ? '#fff' : 'var(--text-secondary)',
+                          boxShadow: isSelected ? '0 2px 6px rgba(59,130,246,0.3)' : 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 4
+                        }}
+                      >
+                        <span>{catName}</span>
+                        <span style={{ fontSize: '0.62rem', opacity: 0.85, background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--bg-deep)', padding: '1px 5px', borderRadius: 10 }}>
+                          {count}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
               {/* Product grid results */}
-              <div className="pos-product-grid">
+              <div className="pos-product-grid" style={{ flex: 1, overflowY: 'auto' }}>
                 {filtered.map(product => {
                   const displayStock = getProductStock(product, selectedWarehouseId)
                   return (
@@ -1597,14 +1726,24 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   )
                 })}
                 {filtered.length === 0 && (
-                  <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '16px 12px', color: 'var(--text-muted)' }}>
-                    <Search size={22} strokeWidth={1.5} style={{ margin: '0 auto 4px', color: 'var(--text-muted)' }} />
-                    <div style={{ fontSize: '0.75rem' }}>{search.trim() === '' ? 'Escribe o escanea para buscar' : 'No se encontraron productos'}</div>
-                    {search.trim() !== '' && (
-                      <button className="btn-neu btn-primary" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} style={{ margin: '6px auto 0', padding: '5px 10px', fontSize: '0.72rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                        <PlusCircle size={12} />
+                  <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '24px 12px', color: 'var(--text-muted)' }}>
+                    <Search size={24} strokeWidth={1.5} style={{ margin: '0 auto 6px', color: 'var(--text-muted)' }} />
+                    <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                      {search.trim() !== ''
+                        ? `No se encontraron productos para "${search}"`
+                        : 'No hay productos disponibles en esta categoría o bodega'}
+                    </div>
+                    {search.trim() !== '' ? (
+                      <button className="btn-neu btn-primary" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} style={{ margin: '8px auto 0', padding: '6px 12px', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        <PlusCircle size={13} />
                         <span>Registrar "{search}"</span>
                       </button>
+                    ) : (
+                      selectedCategory !== 'all' && (
+                        <button className="btn-neu" onClick={() => setSelectedCategory('all')} style={{ margin: '8px auto 0', padding: '5px 10px', fontSize: '0.72rem' }}>
+                          Ver todos los productos
+                        </button>
+                      )
                     )}
                   </div>
                 )}
