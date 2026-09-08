@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { getColombiaDateString, getColombiaDayBoundsUTC, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   ShoppingCart,
   Search,
@@ -152,27 +153,21 @@ export default function SalesHistoryPage() {
         .limit(200)
 
       if (dateFilter === 'today') {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        query = query.gte('created_at', today.toISOString())
+        const bounds = getColombiaDayBoundsUTC()
+        query = query.gte('created_at', bounds.gte).lte('created_at', bounds.lte)
       } else if (dateFilter === 'yesterday') {
-        const yesterdayStart = new Date()
-        yesterdayStart.setDate(yesterdayStart.getDate() - 1)
-        yesterdayStart.setHours(0, 0, 0, 0)
-        const yesterdayEnd = new Date()
-        yesterdayEnd.setDate(yesterdayEnd.getDate() - 1)
-        yesterdayEnd.setHours(23, 59, 59, 999)
-        query = query.gte('created_at', yesterdayStart.toISOString()).lte('created_at', yesterdayEnd.toISOString())
+        const yesterdayStr = getColombiaRelativeDateString(-1)
+        const bounds = getColombiaDayBoundsUTC(yesterdayStr)
+        query = query.gte('created_at', bounds.gte).lte('created_at', bounds.lte)
       } else if (dateFilter === 'week') {
-        const weekAgo = new Date()
-        weekAgo.setDate(weekAgo.getDate() - 7)
-        weekAgo.setHours(0, 0, 0, 0)
-        query = query.gte('created_at', weekAgo.toISOString())
+        const weekAgoStr = getColombiaRelativeDateString(-7)
+        const bounds = getColombiaDayBoundsUTC(weekAgoStr)
+        query = query.gte('created_at', bounds.gte)
       } else if (dateFilter === 'month') {
-        const monthStart = new Date()
-        monthStart.setDate(1)
-        monthStart.setHours(0, 0, 0, 0)
-        query = query.gte('created_at', monthStart.toISOString())
+        const todayStr = getColombiaDateString()
+        const monthStartStr = todayStr.substring(0, 7) + '-01'
+        const bounds = getColombiaDayBoundsUTC(monthStartStr)
+        query = query.gte('created_at', bounds.gte)
       }
 
       const { data: salesData, error: salesErr } = await query
@@ -420,7 +415,7 @@ ${itemsSummary}
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement('a')
     link.setAttribute('href', encodedUri)
-    link.setAttribute('download', `Reporte_Ventas_${dateFilter}_${new Date().toISOString().slice(0, 10)}.csv`)
+    link.setAttribute('download', `Reporte_Ventas_${dateFilter}_${getColombiaDateString()}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -498,10 +493,11 @@ ${itemsSummary}
 
   // KPIs
   const kpis = useMemo(() => {
-    const totalVolume = filteredSales.filter(s => s.status !== 'cancelled').reduce((sum, s) => sum + (Number(s.total) || 0), 0)
-    const validCount = filteredSales.filter(s => s.status !== 'cancelled').length
+    const validSales = filteredSales.filter(s => s.status !== 'cancelled')
+    const totalVolume = validSales.reduce((sum, s) => sum + (Number(s.total) || 0), 0)
+    const validCount = validSales.length
     const avgTicket = validCount > 0 ? Math.round(totalVolume / validCount) : 0
-    const uniqueCustomers = new Set(filteredSales.map(s => s.customer_name)).size
+    const uniqueCustomers = new Set(validSales.map(s => s.customer_name)).size
 
     return { totalVolume, validCount, avgTicket, uniqueCustomers }
   }, [filteredSales])

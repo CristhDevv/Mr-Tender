@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaDateString, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Calendar,
   Scissors,
@@ -44,7 +45,7 @@ export default function SalonAgendaPage() {
     customer_phone: '',
     service_name: 'Corte de Cabello & Barba Spa',
     stylist_name: 'Mateo Barbero',
-    appointment_date: new Date().toISOString().split('T')[0],
+    appointment_date: getColombiaDateString(),
     appointment_time: '14:00',
     price: 45000
   })
@@ -118,8 +119,8 @@ export default function SalonAgendaPage() {
     if (!tenantId || submitting) return
     setSubmitting(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      const today = getColombiaDateString()
+      const tomorrow = getColombiaRelativeDateString(1)
 
       const demo = [
         {

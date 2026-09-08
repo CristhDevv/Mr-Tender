@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Sparkles,
   Cake,
@@ -44,7 +45,7 @@ export default function BakeryCustomOrdersPage() {
   const [orderForm, setOrderForm] = useState({
     customer_name: '',
     customer_phone: '',
-    delivery_date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+    delivery_date: getColombiaRelativeDateString(1),
     delivery_time: '15:00',
     cake_type: 'Torta de Chocolate con Frutos Rojos',
     portions: 25,
@@ -123,8 +124,8 @@ export default function BakeryCustomOrdersPage() {
     if (!tenantId || submitting) return
     setSubmitting(true)
     try {
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
-      const nextWeek = new Date(Date.now() + 86400000 * 4).toISOString().split('T')[0]
+      const tomorrow = getColombiaRelativeDateString(1)
+      const nextWeek = getColombiaRelativeDateString(4)
       const demo = [
         {
           tenant_id: tenantId,

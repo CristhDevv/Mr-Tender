@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaRelativeDateString } from '@/lib/date-utils'
 import { generateQuotePdf, HardwareQuotePdfData } from '@/lib/pdf-generator'
 import {
   FileText,
@@ -50,7 +51,7 @@ export default function HardwareQuotesPage() {
     customer_phone: '',
     customer_email: '',
     project_name: 'Remodelación Obra Casa Campestre',
-    valid_until: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+    valid_until: getColombiaRelativeDateString(15),
     notes: 'Precios válidos por 15 días. Incluye transporte en perímetro urbano.',
     items: [
       { name: 'Cemento Gris Argos 50kg', quantity: 20, unitPrice: 32000, taxRate: 19 },
@@ -199,7 +200,7 @@ export default function HardwareQuotesPage() {
     if (!tenantId || submitting) return
     setSubmitting(true)
     try {
-      const tomorrow = new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]
+      const tomorrow = getColombiaRelativeDateString(15)
       const demo = [
         {
           tenant_id: tenantId,

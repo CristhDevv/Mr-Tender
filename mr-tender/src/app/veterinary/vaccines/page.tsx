@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
+import { getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Syringe,
   Dog,
@@ -72,8 +73,8 @@ export default function VetVaccinesPage() {
             tenant_id: tid,
             type: 'vaccine',
             vaccine_name: 'Vacuna Antirrábica Rabisin',
-            applied_date: new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0],
-            next_due_date: new Date(Date.now() + 330 * 86400000).toISOString().split('T')[0],
+            applied_date: getColombiaRelativeDateString(-30),
+            next_due_date: getColombiaRelativeDateString(330),
             lot_number: 'LOT-RAB-2026',
             vet_name: 'Dr. Alejandro Restrepo',
             status: 'applied',
@@ -84,8 +85,8 @@ export default function VetVaccinesPage() {
             tenant_id: tid,
             type: 'vaccine',
             vaccine_name: 'Triple Felina (Panleucopenia, Rinotraqueítis, Calicivirus)',
-            applied_date: new Date(Date.now() - 60 * 86400000).toISOString().split('T')[0],
-            next_due_date: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0],
+            applied_date: getColombiaRelativeDateString(-60),
+            next_due_date: getColombiaRelativeDateString(15),
             lot_number: 'LOT-FEL-9912',
             vet_name: 'Dra. Carolina Vélez',
             status: 'pending_booster',

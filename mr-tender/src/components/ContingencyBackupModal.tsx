@@ -12,6 +12,7 @@ import {
   HardDrive
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { getColombiaDateString } from '@/lib/date-utils'
 
 interface ContingencyBackupModalProps {
   isOpen: boolean
@@ -66,7 +67,7 @@ export default function ContingencyBackupModal({
         settings: settRes.data || []
       }
 
-      const timestamp = new Date().toISOString().slice(0, 10)
+      const timestamp = getColombiaDateString()
       const cleanName = businessName.replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()
       const filename = `mr_tender_backup_${cleanName}_${timestamp}.json`
 

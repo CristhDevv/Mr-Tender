@@ -5,6 +5,7 @@ import { DianCreditNotePayload } from '@/lib/dian/types'
 import { buildCreditNoteUblXml } from '@/lib/dian/ubl-builder'
 import { dianClient } from '@/lib/dian/dian-client'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
+import { getColombiaDateString, getColombiaTimeString } from '@/lib/date-utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -83,8 +84,8 @@ export async function POST(req: NextRequest) {
       creditNoteNumber: ncNumber,
       prefix: 'NC',
       folio,
-      issueDate: new Date().toISOString().split('T')[0],
-      issueTime: new Date().toTimeString().split(' ')[0] + '-05:00',
+      issueDate: getColombiaDateString(),
+      issueTime: getColombiaTimeString(),
       environment: invoice.dian_environment || '2',
       resolution,
       emisor,
@@ -98,7 +99,7 @@ export async function POST(req: NextRequest) {
       billingReference: {
         invoiceNumber: invoice.number,
         invoiceCufe: invoice.cufe || invoice.uuid_fiscal || '',
-        invoiceIssueDate: invoice.issued_at?.split('T')[0] || new Date().toISOString().split('T')[0]
+        invoiceIssueDate: invoice.issued_at ? getColombiaDateString(invoice.issued_at) : getColombiaDateString()
       },
       discrepancyResponse: {
         code: discrepancyCode || '2',

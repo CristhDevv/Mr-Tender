@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaDateString, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Landmark,
   Plus,
@@ -95,7 +96,7 @@ export default function TreasuryPage() {
 
   const [transactionForm, setTransactionForm] = useState({
     bank_account_id: '',
-    transaction_date: new Date().toISOString().split('T')[0],
+    transaction_date: getColombiaDateString(),
     description: '',
     amount: 150000,
     transaction_type: 'income' as 'income' | 'expense',
@@ -106,7 +107,7 @@ export default function TreasuryPage() {
     schedule_type: 'cxc' as 'cxc' | 'cxp',
     entity_name: '',
     document_reference: 'FAC-001',
-    due_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: getColombiaRelativeDateString(10),
     amount: 1200000,
     notes: ''
   })
@@ -214,7 +215,7 @@ export default function TreasuryPage() {
       setShowTransactionModal(false)
       setTransactionForm({
         bank_account_id: '',
-        transaction_date: new Date().toISOString().split('T')[0],
+        transaction_date: getColombiaDateString(),
         description: '',
         amount: 150000,
         transaction_type: 'income',
@@ -256,7 +257,7 @@ export default function TreasuryPage() {
         schedule_type: 'cxc',
         entity_name: '',
         document_reference: 'FAC-001',
-        due_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        due_date: getColombiaRelativeDateString(10),
         amount: 1200000,
         notes: ''
       })
@@ -273,7 +274,7 @@ export default function TreasuryPage() {
     try {
       const { error } = await supabase
         .from('payment_schedules')
-        .update({ status: 'paid', payment_date: new Date().toISOString().split('T')[0] })
+        .update({ status: 'paid', payment_date: getColombiaDateString() })
         .eq('id', scheduleId)
 
       if (error) throw error
@@ -328,7 +329,7 @@ export default function TreasuryPage() {
           {
             tenant_id: tenantId,
             bank_account_id: acc1.id,
-            transaction_date: new Date().toISOString().split('T')[0],
+            transaction_date: getColombiaDateString(),
             description: 'Recaudo Factura Electrónica FE-1092 - Inversiones Andina',
             amount: 4500000,
             transaction_type: 'income',
@@ -339,7 +340,7 @@ export default function TreasuryPage() {
           {
             tenant_id: tenantId,
             bank_account_id: acc1.id,
-            transaction_date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+            transaction_date: getColombiaRelativeDateString(-1),
             description: 'Pago Proveedor Harinas del Campo S.A. - Doc Soporte',
             amount: 1800000,
             transaction_type: 'expense',
@@ -350,7 +351,7 @@ export default function TreasuryPage() {
           {
             tenant_id: tenantId,
             bank_account_id: acc2.id,
-            transaction_date: new Date().toISOString().split('T')[0],
+            transaction_date: getColombiaDateString(),
             description: 'Pago Nómina 1ra Quincena Colaboradores',
             amount: 3250000,
             transaction_type: 'expense',
@@ -368,7 +369,7 @@ export default function TreasuryPage() {
           schedule_type: 'cxc',
           entity_name: 'Distribuciones del Norte S.A.S',
           document_reference: 'FE-1095',
-          due_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          due_date: getColombiaRelativeDateString(5),
           amount: 3800000,
           status: 'pending',
           notes: 'Factura a 30 días. Recordatorio programado.'
@@ -378,7 +379,7 @@ export default function TreasuryPage() {
           schedule_type: 'cxp',
           entity_name: 'Empaques & Cajas Industriales',
           document_reference: 'PROV-8821',
-          due_date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          due_date: getColombiaRelativeDateString(8),
           amount: 1450000,
           status: 'pending',
           notes: 'Vencimiento de crédito de empaques.'
@@ -388,7 +389,7 @@ export default function TreasuryPage() {
           schedule_type: 'cxp',
           entity_name: 'Arrendamiento Local Principal',
           document_reference: 'CANON-SEP',
-          due_date: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          due_date: getColombiaRelativeDateString(12),
           amount: 2800000,
           status: 'pending',
           notes: 'Pago mensual de canon de arrendamiento comercial.'

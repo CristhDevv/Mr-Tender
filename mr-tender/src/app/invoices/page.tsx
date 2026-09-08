@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
 import { generateDianInvoicePdfA4, generateDianInvoicePdfPos } from '@/lib/dian/pdf-dian'
 import { getDianVerificationUrl } from '@/lib/dian/qr'
+import { getColombiaDateString, getColombiaTimeString } from '@/lib/date-utils'
 import {
   Receipt,
   FileText,
@@ -151,8 +152,8 @@ export default function InvoicesPage() {
       number: inv.number,
       prefix: inv.series || 'FE',
       folio: inv.folio || 1,
-      issueDate: inv.issued_at ? inv.issued_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      issueTime: inv.issued_at ? inv.issued_at.split('T')[1]?.slice(0, 8) + '-05:00' : '10:00:00-05:00',
+      issueDate: inv.issued_at ? getColombiaDateString(inv.issued_at) : getColombiaDateString(),
+      issueTime: inv.issued_at ? getColombiaTimeString(inv.issued_at) : getColombiaTimeString(),
       currency: 'COP',
       environment: inv.dian_environment || '2',
       resolution: {
@@ -240,8 +241,8 @@ export default function InvoicesPage() {
       number: inv.number,
       prefix: inv.series || 'FE',
       folio: inv.folio || 1,
-      issueDate: inv.issued_at ? inv.issued_at.split('T')[0] : new Date().toISOString().split('T')[0],
-      issueTime: inv.issued_at ? inv.issued_at.split('T')[1]?.slice(0, 8) + '-05:00' : '10:00:00-05:00',
+      issueDate: inv.issued_at ? getColombiaDateString(inv.issued_at) : getColombiaDateString(),
+      issueTime: inv.issued_at ? getColombiaTimeString(inv.issued_at) : getColombiaTimeString(),
       currency: 'COP',
       environment: inv.dian_environment || '2',
       resolution: {

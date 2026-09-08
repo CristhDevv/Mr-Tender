@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatNumber } from '@/lib/utils'
 import { roundCurrency, safePercentage } from '@/lib/finance-math'
+import { getColombiaDateString, getColombiaDayBoundsUTC, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -74,8 +75,8 @@ export default function DashboardPage() {
         }
         setTenantName(user.user_metadata?.full_name || 'Mi Negocio')
 
-        const todayStr = new Date().toISOString().split('T')[0]
-        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+        const todayBounds = getColombiaDayBoundsUTC()
+        const sevenDaysAgoStartUtc = getColombiaDayBoundsUTC(getColombiaRelativeDateString(-6)).gte
 
         // 1. Fetch sales today with items for margin calculation (excluding cancelled sales)
         const [salesTodayRes, allSalesRes, custRes, regRes, invRes, topItemsRes] = await Promise.all([
@@ -89,15 +90,15 @@ export default function DashboardPage() {
             `)
             .eq('tenant_id', tenant_id)
             .neq('status', 'cancelled')
-            .gte('created_at', todayStr + 'T00:00:00')
-            .lte('created_at', todayStr + 'T23:59:59')
+            .gte('created_at', todayBounds.gte)
+            .lte('created_at', todayBounds.lte)
             .order('created_at', { ascending: false }),
           supabase
             .from('sales')
             .select('total, created_at')
             .eq('tenant_id', tenant_id)
             .neq('status', 'cancelled')
-            .gte('created_at', sevenDaysAgo)
+            .gte('created_at', sevenDaysAgoStartUtc)
             .order('created_at', { ascending: true }),
           supabase
             .from('customers')
@@ -150,18 +151,17 @@ export default function DashboardPage() {
         // Cash status
         setCajaStatus(!!(regRes.data?.[0]?.current_session_id))
 
-        // 7-day Real Trend
+        // 7-day Real Trend (Colombia Timezone)
         const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
         const past7DaysMap: Record<string, { label: string; ventas: number }> = {}
         for (let i = 6; i >= 0; i--) {
-          const d = new Date()
-          d.setDate(d.getDate() - i)
-          const key = d.toISOString().split('T')[0]
-          past7DaysMap[key] = { label: i === 0 ? 'Hoy' : dayNames[d.getDay()], ventas: 0 }
+          const colDate = getColombiaRelativeDateString(-i)
+          const d = new Date(colDate + 'T12:00:00')
+          past7DaysMap[colDate] = { label: i === 0 ? 'Hoy' : dayNames[d.getDay()], ventas: 0 }
         }
 
         (allSalesRes.data || []).forEach((s: any) => {
-          const sKey = s.created_at.split('T')[0]
+          const sKey = getColombiaDateString(s.created_at)
           if (past7DaysMap[sKey]) {
             past7DaysMap[sKey].ventas += Number(s.total || 0)
           }

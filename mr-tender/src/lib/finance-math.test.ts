@@ -6,7 +6,9 @@ import {
   calculateLineFinancials,
   calculateInvoiceTotals,
   calculateChange,
-  calculateCashDrawerSummary
+  calculateCashDrawerSummary,
+  calculateCashDiscrepancyThreshold,
+  validateCashDiscrepancy
 } from './finance-math'
 
 describe('finance-math: Precision and Rounding', () => {
@@ -180,3 +182,58 @@ describe('finance-math: Cash Drawer Arqueo Summary', () => {
     expect(summary.totalRevenue).toBe(770000)
   })
 })
+
+describe('finance-math: Cash Discrepancy Threshold & Validation (Paso 3)', () => {
+  it('should calculate threshold as max($5.000, 2% of expected)', () => {
+    // Low volume box: $100.000 expected -> 2% is $2.000 -> Threshold is $5.000
+    expect(calculateCashDiscrepancyThreshold(100000)).toBe(5000)
+
+    // High volume box: $1.000.000 expected -> 2% is $20.000 -> Threshold is $20.000
+    expect(calculateCashDiscrepancyThreshold(1000000)).toBe(20000)
+
+    // Edge case: $0 expected -> Threshold is $5.000
+    expect(calculateCashDiscrepancyThreshold(0)).toBe(5000)
+  })
+
+  it('should pass without requiring justification when cash drawer is exact ($0 diff)', () => {
+    const res = validateCashDiscrepancy(100000, 100000, '')
+    expect(res.difference).toBe(0)
+    expect(res.isDiscrepancySignificant).toBe(false)
+    expect(res.requiresJustification).toBe(false)
+    expect(res.error).toBeUndefined()
+  })
+
+  it('should pass without requiring justification when difference is within threshold (e.g. $3.000 <= $5.000)', () => {
+    const res = validateCashDiscrepancy(100000, 103000, '')
+    expect(res.difference).toBe(3000)
+    expect(res.isDiscrepancySignificant).toBe(false)
+    expect(res.requiresJustification).toBe(false)
+    expect(res.error).toBeUndefined()
+  })
+
+  it('should block closing when discrepancy exceeds threshold and justification is empty', () => {
+    const res = validateCashDiscrepancy(100000, 85000, '') // Faltante de $15.000
+    expect(res.difference).toBe(-15000)
+    expect(res.absoluteDiff).toBe(15000)
+    expect(res.threshold).toBe(5000)
+    expect(res.isDiscrepancySignificant).toBe(true)
+    expect(res.requiresJustification).toBe(true)
+    expect(res.isJustificationValid).toBe(false)
+    expect(res.error).toContain('supera el umbral permitido')
+  })
+
+  it('should block closing when justification is too short (< 10 chars)', () => {
+    const res = validateCashDiscrepancy(100000, 85000, 'faltaron') // 8 chars
+    expect(res.isDiscrepancySignificant).toBe(true)
+    expect(res.isJustificationValid).toBe(false)
+    expect(res.error).toBeDefined()
+  })
+
+  it('should allow closing when discrepancy exceeds threshold but valid justification (>= 10 chars) is provided', () => {
+    const res = validateCashDiscrepancy(100000, 85000, 'Billete falso retenido en turno') // 32 chars
+    expect(res.isDiscrepancySignificant).toBe(true)
+    expect(res.isJustificationValid).toBe(true)
+    expect(res.error).toBeUndefined()
+  })
+})
+

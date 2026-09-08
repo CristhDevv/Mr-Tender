@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
+import { getColombiaDateString } from '@/lib/date-utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   DollarSign,
@@ -485,7 +486,7 @@ export default function InventoryPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.setAttribute('href', url)
-    link.setAttribute('download', `kardex_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('download', `kardex_${getColombiaDateString()}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

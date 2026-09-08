@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaDateString, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Wrench,
   FileText,
@@ -47,8 +48,8 @@ export default function HardwareRentalsPage() {
     serial_number: 'DW-88912',
     customer_name: '',
     customer_phone: '',
-    rental_start: new Date().toISOString().split('T')[0],
-    rental_end_expected: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
+    rental_start: getColombiaDateString(),
+    rental_end_expected: getColombiaRelativeDateString(3),
     daily_rate: 65000,
     deposit_amount: 200000
   })
@@ -122,9 +123,9 @@ export default function HardwareRentalsPage() {
     if (!tenantId || submitting) return
     setSubmitting(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const nextWeek = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0]
-      const lastWeek = new Date(Date.now() - 3 * 86400000).toISOString().split('T')[0]
+      const today = getColombiaDateString()
+      const nextWeek = getColombiaRelativeDateString(5)
+      const lastWeek = getColombiaRelativeDateString(-3)
 
       const demo = [
         {

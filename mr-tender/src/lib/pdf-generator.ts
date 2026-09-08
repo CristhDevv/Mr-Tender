@@ -1,4 +1,5 @@
 import { jsPDF } from 'jspdf'
+import { getColombiaDateString } from './date-utils'
 
 export interface InvoicePdfData {
   businessName: string
@@ -206,7 +207,7 @@ export function generatePnlPdf(data: PnlReportPdfData): void {
   doc.text('Informe oficial generado por Tender Copilot AI — Mr. Tender Cloud ERP', 15, y)
   doc.text('Documento confidencial para toma de decisiones', 195, y, { align: 'right' })
 
-  doc.save(`Reporte_Financiero_PyG_${new Date().toISOString().split('T')[0]}.pdf`)
+  doc.save(`Reporte_Financiero_PyG_${getColombiaDateString()}.pdf`)
 }
 
 export interface HardwareQuotePdfData {

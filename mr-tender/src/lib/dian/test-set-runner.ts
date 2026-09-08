@@ -2,6 +2,7 @@ import { createClient } from '../supabase/server'
 import { DianInvoicePayload, DianCreditNotePayload, DianDebitNotePayload } from './types'
 import { buildInvoiceUblXml, buildCreditNoteUblXml } from './ubl-builder'
 import { dianClient } from './dian-client'
+import { getColombiaDateString, getColombiaTimeString } from '../date-utils'
 
 export interface TestSetProgress {
   testSetId: string
@@ -93,8 +94,8 @@ export async function runDianTestSet(tenantId: string, testSetId: string): Promi
       number: docNumber,
       prefix: 'SETP',
       folio,
-      issueDate: new Date().toISOString().split('T')[0],
-      issueTime: new Date().toTimeString().split(' ')[0] + '-05:00',
+      issueDate: getColombiaDateString(),
+      issueTime: getColombiaTimeString(),
       currency: 'COP',
       environment: '2',
       resolution,
@@ -187,8 +188,8 @@ export async function runDianTestSet(tenantId: string, testSetId: string): Promi
       creditNoteNumber: 'NC-990000001',
       prefix: 'NC',
       folio: 990000001,
-      issueDate: new Date().toISOString().split('T')[0],
-      issueTime: new Date().toTimeString().split(' ')[0] + '-05:00',
+      issueDate: getColombiaDateString(),
+      issueTime: getColombiaTimeString(),
       environment: '2',
       resolution,
       emisor,
@@ -202,7 +203,7 @@ export async function runDianTestSet(tenantId: string, testSetId: string): Promi
       billingReference: {
         invoiceNumber: lastIssuedInvoiceNumber,
         invoiceCufe: lastIssuedInvoiceCufe,
-        invoiceIssueDate: new Date().toISOString().split('T')[0]
+        invoiceIssueDate: getColombiaDateString()
       },
       discrepancyResponse: {
         code: '2',

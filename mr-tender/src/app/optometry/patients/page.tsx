@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
+import { getColombiaDateString } from '@/lib/date-utils'
 import {
   Glasses,
   Eye,
@@ -51,7 +52,7 @@ export default function OptometryPatientsPage() {
     patient_name: '',
     patient_id_doc: '',
     patient_phone: '',
-    exam_date: new Date().toISOString().split('T')[0],
+    exam_date: getColombiaDateString(),
     optometrist_name: 'Dra. Elena Vargas (Optómetra ULS)',
     od_sphere: -1.75,
     od_cylinder: -0.50,
@@ -133,7 +134,7 @@ export default function OptometryPatientsPage() {
     if (!tenantId || submitting) return
     setSubmitting(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
+      const today = getColombiaDateString()
       const demo = [
         {
           tenant_id: tenantId,

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaDateString } from '@/lib/date-utils'
 import {
   BookOpen,
   FolderTree,
@@ -125,7 +126,7 @@ export default function AccountingPage() {
     asset_name: '',
     asset_code: 'ACT-001',
     category: 'machinery',
-    purchase_date: new Date().toISOString().split('T')[0],
+    purchase_date: getColombiaDateString(),
     purchase_cost: 15000000,
     useful_life_months: 60,
     salvage_value: 0,
@@ -194,7 +195,7 @@ export default function AccountingPage() {
         asset_name: '',
         asset_code: 'ACT-' + Date.now().toString().slice(-3),
         category: 'machinery',
-        purchase_date: new Date().toISOString().split('T')[0],
+        purchase_date: getColombiaDateString(),
         purchase_cost: 15000000,
         useful_life_months: 60,
         salvage_value: 0,
@@ -232,7 +233,7 @@ export default function AccountingPage() {
           .insert({
             tenant_id: tenantId,
             number: entryNum,
-            entry_date: new Date().toISOString().split('T')[0],
+            entry_date: getColombiaDateString(),
             description: 'Depreciación mensual NIIF - ' + asset.asset_name + ' (' + asset.asset_code + ')',
             total_debit: monthlyQuota,
             total_credit: monthlyQuota

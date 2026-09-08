@@ -316,3 +316,64 @@ export function calculateCashDrawerSummary(params: {
     totalRevenue
   }
 }
+
+/**
+ * Calculates the cash discrepancy alert threshold.
+ * Threshold is defined as max($5,000 COP, 2% of expected drawer cash).
+ */
+export function calculateCashDiscrepancyThreshold(expectedAmount: number): number {
+  const expected = Math.max(0, Number(expectedAmount) || 0)
+  const percentageThreshold = roundCurrency(expected * 0.02)
+  return Math.max(5000, percentageThreshold)
+}
+
+export interface CashDiscrepancyValidation {
+  expected: number
+  counted: number
+  difference: number
+  absoluteDiff: number
+  threshold: number
+  isDiscrepancySignificant: boolean
+  requiresJustification: boolean
+  isJustificationValid: boolean
+  error?: string
+}
+
+/**
+ * Validates whether counted cash drawer matches expected cash within tolerable threshold,
+ * and enforces mandatory justification (> 10 characters) if discrepancy exceeds threshold.
+ */
+export function validateCashDiscrepancy(
+  expectedAmount: number,
+  countedAmount: number,
+  notes?: string | null
+): CashDiscrepancyValidation {
+  const expected = roundCurrency(expectedAmount || 0)
+  const counted = roundCurrency(countedAmount || 0)
+  const difference = roundCurrency(counted - expected)
+  const absoluteDiff = Math.abs(difference)
+  const threshold = calculateCashDiscrepancyThreshold(expected)
+  const isDiscrepancySignificant = absoluteDiff > threshold
+  const trimmedNotes = (notes || '').trim()
+  const isJustificationValid = trimmedNotes.length >= 10
+
+  let error: string | undefined
+  if (isDiscrepancySignificant && !isJustificationValid) {
+    const formattedDiff = Math.abs(difference).toLocaleString('es-CO')
+    const formattedThreshold = threshold.toLocaleString('es-CO')
+    error = `El descuadre de caja ($${formattedDiff}) supera el umbral permitido ($${formattedThreshold}). Debe ingresar una justificación obligatoria de al menos 10 caracteres.`
+  }
+
+  return {
+    expected,
+    counted,
+    difference,
+    absoluteDiff,
+    threshold,
+    isDiscrepancySignificant,
+    requiresJustification: isDiscrepancySignificant,
+    isJustificationValid,
+    error
+  }
+}
+

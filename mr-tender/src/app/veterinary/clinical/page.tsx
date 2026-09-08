@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
+import { getColombiaDateString, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   HeartPulse,
   Dog,
@@ -48,12 +49,12 @@ export default function VetClinicalPage() {
   const [form, setForm] = useState({
     pet_name: 'Lucas (Golden Retriever)',
     vet_name: 'Dr. Alejandro Restrepo (Médico Veterinario)',
-    visit_date: new Date().toISOString().split('T')[0],
+    visit_date: getColombiaDateString(),
     reason_for_visit: 'Control general y cojera en pata posterior derecha',
     symptoms: 'Dolor leve a la palpación en rodilla derecha. Sin fiebre.',
     diagnosis: 'Distensión ligamentosa leve. Buen estado nutricional.',
     treatment_plan: 'Antiinflamatorio canino por 5 días, reposo moderado.',
-    next_appointment_date: new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]
+    next_appointment_date: getColombiaRelativeDateString(15)
   })
 
   useEffect(() => {
@@ -85,7 +86,7 @@ export default function VetClinicalPage() {
             tenant_id: tid,
             pet_id: 'p1',
             vet_name: 'Dr. Alejandro Restrepo',
-            visit_date: new Date().toISOString().split('T')[0],
+            visit_date: getColombiaDateString(),
             reason_for_visit: 'Control post-operatorio de esterilización',
             symptoms: 'Herida quirúrgica limpia, sin signos de infección.',
             diagnosis: 'Evolución satisfactoria de herida quirúrgica.',
@@ -97,7 +98,7 @@ export default function VetClinicalPage() {
             tenant_id: tid,
             pet_id: 'p2',
             vet_name: 'Dra. Carolina Vélez',
-            visit_date: new Date(Date.now() - 2 * 86400000).toISOString().split('T')[0],
+            visit_date: getColombiaRelativeDateString(-2),
             reason_for_visit: 'Vacunación y desparasitación anual',
             symptoms: 'Constantes vitales normales. T: 38.5°C, FC: 110 lpm.',
             diagnosis: 'Paciente clínicamente sano apto para vacunar.',

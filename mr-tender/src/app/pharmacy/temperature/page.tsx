@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
+import { getColombiaDateString, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Thermometer,
   Pill,
@@ -40,7 +41,7 @@ export default function PharmacyTemperaturePage() {
   const [submitting, setSubmitting] = useState(false)
 
   const [thermoForm, setThermoForm] = useState({
-    log_date: new Date().toISOString().split('T')[0],
+    log_date: getColombiaDateString(),
     time_slot: 'morning' as 'morning' | 'afternoon',
     ambient_temperature: '21.5',
     relative_humidity: '55',
@@ -108,8 +109,8 @@ export default function PharmacyTemperaturePage() {
     if (!tenantId || submitting) return
     setSubmitting(true)
     try {
-      const todayStr = new Date().toISOString().split('T')[0]
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+      const todayStr = getColombiaDateString()
+      const yesterday = getColombiaRelativeDateString(-1)
       const demo = [
         {
           tenant_id: tenantId,

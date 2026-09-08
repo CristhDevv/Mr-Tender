@@ -3,6 +3,7 @@ import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { validateTenantAccess, getSecureRole } from '@/lib/supabase/auth-helpers'
 import { getVerticalCopilotDirectives } from '@/lib/constants/vertical-copilot'
 import { resolveActiveVertical } from '@/lib/constants/vertical-terminology'
+import { getColombiaDateString } from '@/lib/date-utils'
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || ''
 
@@ -375,7 +376,7 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
       if (!isAdmin && !allowedPerms.includes('reports.sales') && !allowedPerms.includes('*')) {
         toolResult = { error: 'Acceso denegado. No tienes permisos para ver reportes de ventas.' }
       } else {
-        const colDateStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota' }).format(new Date())
+        const colDateStr = getColombiaDateString()
         let startDate = `${colDateStr}T00:00:00-05:00`
         let endDate = `${colDateStr}T23:59:59-05:00`
 
@@ -631,10 +632,10 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
       if (!isAdmin && !allowedPerms.includes('reports.financial') && !allowedPerms.includes('*')) {
         toolResult = { error: 'Acceso denegado. No tienes permisos para exportar el Estado de Resultados.' }
       } else {
-        const todayStr = new Date().toISOString().split('T')[0]
+        const todayStr = getColombiaDateString()
         const startDate = funcArgs.period === 'today'
-          ? todayStr + 'T00:00:00'
-          : todayStr.substring(0, 7) + '-01T00:00:00'
+          ? `${todayStr}T00:00:00-05:00`
+          : `${todayStr.substring(0, 7)}-01T00:00:00-05:00`
 
         const { data: sales } = await supabase
           .from('sales')

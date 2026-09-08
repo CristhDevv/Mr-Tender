@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaDateString, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   TrendingUp,
   Search,
@@ -81,7 +82,7 @@ export default function CrmPage() {
     estimated_value: 3500000,
     stage: 'lead' as CrmDeal['stage'],
     probability: 20,
-    expected_close_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    expected_close_date: getColombiaRelativeDateString(15),
     notes: ''
   })
 
@@ -147,7 +148,7 @@ export default function CrmPage() {
         estimated_value: 3500000,
         stage: 'lead',
         probability: 20,
-        expected_close_date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        expected_close_date: getColombiaRelativeDateString(15),
         notes: ''
       })
       await loadDeals()
@@ -223,7 +224,7 @@ export default function CrmPage() {
           estimated_value: 12500000,
           stage: 'negotiation',
           probability: 80,
-          expected_close_date: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          expected_close_date: getColombiaRelativeDateString(5),
           notes: 'Esperando visto bueno de junta directiva para orden de compra.'
         },
         {
@@ -235,7 +236,7 @@ export default function CrmPage() {
           estimated_value: 6800000,
           stage: 'proposal_sent',
           probability: 60,
-          expected_close_date: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          expected_close_date: getColombiaRelativeDateString(10),
           notes: 'Propuesta enviada por correo y cotización en PDF.'
         },
         {
@@ -247,7 +248,7 @@ export default function CrmPage() {
           estimated_value: 4200000,
           stage: 'won',
           probability: 100,
-          expected_close_date: new Date().toISOString().split('T')[0],
+          expected_close_date: getColombiaDateString(),
           notes: 'Ganado. Cliente solicita emitir factura electrónica con anticipo 50%.'
         },
         {
@@ -259,7 +260,7 @@ export default function CrmPage() {
           estimated_value: 8900000,
           stage: 'contacted',
           probability: 40,
-          expected_close_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          expected_close_date: getColombiaRelativeDateString(14),
           notes: 'Reunión agendada para el viernes 10:00 AM.'
         }
       ])

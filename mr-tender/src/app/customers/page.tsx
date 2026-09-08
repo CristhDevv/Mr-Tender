@@ -38,6 +38,7 @@ interface CustomerFiaoSale {
   id: string
   number: string
   total: number
+  status?: string
   created_at: string
   sale_items?: {
     product_name: string
@@ -118,7 +119,7 @@ export default function CustomersPage() {
         const { data, error } = await supabase
           .from('sales')
           .select(`
-            id, number, total, created_at,
+            id, number, total, status, created_at,
             sale_items (product_name, quantity, total)
           `)
           .eq('customer_id', selected)
@@ -398,8 +399,17 @@ Fecha: ${new Date().toLocaleString('es-CO')}
                   {customerSales.map(sale => (
                     <div key={sale.id} className="neu-flat" style={{ padding: '8px 10px', borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: 3 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-primary)' }}>{sale.number}</span>
-                        <strong style={{ fontSize: '0.82rem', color: 'var(--accent-blue)' }}>{formatCurrency(sale.total)}</strong>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.78rem', color: 'var(--text-primary)' }}>{sale.number}</span>
+                          {sale.status === 'cancelled' && (
+                            <span style={{ fontSize: '0.62rem', fontWeight: 800, padding: '1px 5px', borderRadius: 4, background: '#FEE2E2', color: '#DC2626' }}>
+                              ANULADA
+                            </span>
+                          )}
+                        </div>
+                        <strong style={{ fontSize: '0.82rem', color: sale.status === 'cancelled' ? 'var(--text-muted)' : 'var(--accent-blue)', textDecoration: sale.status === 'cancelled' ? 'line-through' : 'none' }}>
+                          {formatCurrency(sale.total)}
+                        </strong>
                       </div>
                       <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>
                         {formatDate(sale.created_at)}

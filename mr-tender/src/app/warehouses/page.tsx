@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/utils'
+import { getColombiaDateString } from '@/lib/date-utils'
 import { createClient } from '@/lib/supabase/client'
 import {
   Building2,
@@ -483,7 +484,7 @@ export default function WarehousesPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `inventario_${wh.name.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `inventario_${wh.name.toLowerCase().replace(/\s+/g, '_')}_${getColombiaDateString()}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -534,7 +535,7 @@ export default function WarehousesPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `consolidado_bodegas_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `consolidado_bodegas_${getColombiaDateString()}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -568,7 +569,7 @@ export default function WarehousesPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `toma_fisica_${wh.name.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`
+    link.download = `toma_fisica_${wh.name.toLowerCase().replace(/\s+/g, '_')}_${getColombiaDateString()}.csv`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)

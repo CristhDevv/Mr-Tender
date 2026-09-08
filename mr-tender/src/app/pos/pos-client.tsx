@@ -14,6 +14,22 @@ import PosAbonoModal from '@/components/PosAbonoModal'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
 import { parseScaleBarcode, getEffectiveUnitPrice, calculateEarnedPoints, kickCashDrawer } from '@/lib/cart'
 import { calculateLineFinancials, calculateInvoiceTotals, roundCurrency, roundCOP } from '@/lib/finance-math'
+import { getColombiaDateString, getColombiaTimeString } from '@/lib/date-utils'
+import {
+  SalePayload,
+  SaleItemPayload,
+  SalePaymentPayload,
+  ProductStockRow,
+  ProductStockInventoryRow,
+  PharmacyMedicineRow,
+  PharmacyLotRow,
+  CustomerRow,
+  CustomerMetadata,
+  WarehouseRow,
+  TenantSettingsRow,
+  AbonoResponsePayload,
+  OfflineSaleQueueItem
+} from '@/lib/types'
 import { findMasterProduct } from '@/lib/catalog/colombia-products'
 import { uploadProductImage } from '@/lib/image-upload'
 import { usePermissions } from '@/lib/hooks/usePermissions'
@@ -190,7 +206,7 @@ interface Customer {
   credit_used: number
   total_purchases?: number
   total_orders?: number
-  metadata?: any
+  metadata?: CustomerMetadata | null
 }
 
 interface HeldCart {
@@ -231,7 +247,7 @@ export default function POSClient() {
   const [businessName, setBusinessName] = useState('MI TIENDA')
   const [merchantPhone, setMerchantPhone] = useState('3001234567')
   const [defaultTaxRate, setDefaultTaxRate] = useState(19)
-  const [tenantSettingsFull, setTenantSettingsFull] = useState<any>(null)
+  const [tenantSettingsFull, setTenantSettingsFull] = useState<TenantSettingsRow | null>(null)
   const [isOnline, setIsOnline] = useState(true)
   const [pendingSyncCount, setPendingSyncCount] = useState(0)
 
@@ -377,7 +393,7 @@ export default function POSClient() {
   }, [step])
 
   // Audio-POS Voice Handlers
-  const handleVoiceAddItems = useCallback((items: Array<{ product: any; quantity: number }>) => {
+  const handleVoiceAddItems = useCallback((items: Array<{ product: Product; quantity: number }>) => {
     items.forEach(({ product, quantity }) => {
       setCart(prevCart => {
         const existing = prevCart.find(i => i.id === product.id)
@@ -452,7 +468,7 @@ export default function POSClient() {
   const [walletDiscountApplied, setWalletDiscountApplied] = useState(0)
 
   // Warehouses state
-  const [warehouseList, setWarehouseList] = useState<any[]>([])
+  const [warehouseList, setWarehouseList] = useState<WarehouseRow[]>([])
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string | null>('all')
   const [selectedCategory, setSelectedCategory] = useState<string>('all')
 
@@ -509,7 +525,7 @@ export default function POSClient() {
     const savedQueueStr = localStorage.getItem('mr_tender_offline_sales')
     if (!savedQueueStr) return
     try {
-      let queue: Array<{ offline_id?: string; payload: any; created_at: string }> = JSON.parse(savedQueueStr)
+      let queue: OfflineSaleQueueItem[] = JSON.parse(savedQueueStr)
       if (!Array.isArray(queue) || queue.length === 0) return
 
       const remaining: typeof queue = []
@@ -587,9 +603,9 @@ export default function POSClient() {
           .order('is_main', { ascending: false })
           .order('name', { ascending: true })
         
-        const activeWh = warehouses?.find((w: any) => w.is_main) || warehouses?.[0] || null
+        const activeWh = warehouses?.find((w: WarehouseRow) => w.is_main) || warehouses?.[0] || null
         const warehouse_id = activeWh?.id || null
-        if (warehouses) setWarehouseList(warehouses)
+        if (warehouses) setWarehouseList(warehouses as WarehouseRow[])
         // Keep default selectedWarehouseId as 'all' (Todas)
 
         // Get active cash register and open session
@@ -630,21 +646,31 @@ export default function POSClient() {
           .order('full_name', { ascending: true })
 
         if (custData) {
-          setCustomerList(custData as any)
+          const typedCustomers = (custData as unknown as CustomerRow[]).map(c => ({
+            ...c,
+            credit_limit: Number(c.credit_limit || 0),
+            credit_used: Number(c.credit_used || 0),
+            total_purchases: Number(c.total_purchases || 0),
+            total_orders: Number(c.total_orders || 0)
+          }))
+          setCustomerList(typedCustomers as Customer[])
           if (typeof window !== 'undefined') {
             const params = new URLSearchParams(window.location.search)
             const cId = params.get('customer')
             if (cId) {
-              const found = custData.find((c: any) => c.id === cId)
+              const found = typedCustomers.find(c => c.id === cId)
               if (found) {
-                setSelectedCustomer(found as any)
+                setSelectedCustomer(found as Customer)
                 const cleanTaxId = (found.tax_id || found.phone || '').replace(/[^a-zA-Z0-9]/g, '')
+                const pt: '1' | '2' = (found.metadata?.person_type === '1' || found.metadata?.person_type === '2')
+                  ? found.metadata.person_type
+                  : (cleanTaxId.length >= 9 ? '1' : '2')
                 setDianCustomer({
                   idType: (found.metadata?.id_type || (cleanTaxId.length >= 9 ? '31' : '13')) as any,
                   documentNumber: cleanTaxId,
                   dv: found.metadata?.dv || (cleanTaxId.length >= 9 ? calculateNITVerificationDigit(cleanTaxId) : undefined),
                   name: (found.tax_name || found.full_name || '').toUpperCase(),
-                  personType: found.metadata?.person_type || (cleanTaxId.length >= 9 ? '1' : '2'),
+                  personType: pt,
                   regime: (found.tax_regime || '49') as any,
                   email: found.email || '',
                   phone: found.phone || '',
@@ -681,10 +707,11 @@ export default function POSClient() {
         const loadedProducts: Product[] = []
 
         if (prodRes.data) {
-          prodRes.data.forEach((p: any) => {
-            const whStock = p.inventory?.find((inv: any) => inv.warehouse_id === warehouse_id)
+          const productRows = prodRes.data as unknown as ProductStockRow[]
+          productRows.forEach((p: ProductStockRow) => {
+            const whStock = p.inventory?.find((inv: ProductStockInventoryRow) => inv.warehouse_id === warehouse_id)
             const stock = whStock ? Number(whStock.quantity) : 0
-            const catName = p.categories?.name || 'General'
+            const catName = Array.isArray(p.categories) ? p.categories[0]?.name : p.categories?.name || 'General'
             const isWeighed = /kg|kilo|libra|\blb\b|gramo|\bgr\b|queso|carne|pollo|fruta|verdura/i.test(p.name)
 
             loadedProducts.push({
@@ -698,42 +725,46 @@ export default function POSClient() {
               category: catName,
               unit_type: isWeighed ? 'lb' : 'unit',
               tax_rate: p.tax_rate !== null && p.tax_rate !== undefined ? Number(p.tax_rate) : currentTaxRate,
-              image_url: p.image_url || null,
-              category_id: p.category_id,
-              warehouse_id,
-              inventory: p.inventory || []
+              image_url: p.image_url || undefined,
+              category_id: p.category_id || undefined,
+              warehouse_id: warehouse_id || undefined,
+              inventory: (p.inventory || []).map((inv: ProductStockInventoryRow) => ({
+                quantity: Number(inv.quantity),
+                warehouse_id: inv.warehouse_id || ''
+              }))
             })
           })
         }
 
         if (medRes.data) {
-          medRes.data.forEach((m: any) => {
+          const medicineRows = medRes.data as unknown as PharmacyMedicineRow[]
+          medicineRows.forEach((m: PharmacyMedicineRow) => {
             const lots = m.pharmacy_lots || []
-            const activeLots = lots.filter((l: any) => l.status !== 'expired' && l.status !== 'quarantine')
+            const activeLots = lots.filter((l: PharmacyLotRow) => l.status !== 'expired' && l.status !== 'quarantine')
             const realStock = activeLots.length > 0
-              ? activeLots.reduce((acc: number, l: any) => acc + Number(l.current_quantity || 0), 0)
+              ? activeLots.reduce((acc: number, l: PharmacyLotRow) => acc + Number(l.current_quantity || 0), 0)
               : 0
 
             loadedProducts.push({
               id: m.id,
               name: `${m.trade_name} (${m.generic_name} ${m.concentration || ''})`,
               price: Number(m.unit_price || m.box_price || 0),
-              cost: Number(m.unit_price * 0.6 || 0),
+              cost: Number(Number(m.unit_price || 0) * 0.6 || 0),
               sku: m.invima_registration || '',
               stock: realStock,
               category: 'Farmacia',
               unit_type: 'unit',
-              warehouse_id,
+              warehouse_id: warehouse_id || undefined,
               is_pharmacy: true,
               generic_name: m.generic_name,
-              concentration: m.concentration,
-              laboratory: m.laboratory,
+              concentration: m.concentration || undefined,
+              laboratory: m.laboratory || undefined,
               unit_price: Number(m.unit_price || 0),
               blister_price: m.blister_price ? Number(m.blister_price) : null,
               box_price: m.box_price ? Number(m.box_price) : null,
               units_per_box: Number(m.units_per_box || 1),
               units_per_blister: Number(m.units_per_blister || 1),
-              prescription_type: m.prescription_type || (m.is_controlled ? 'controlled' : m.requires_prescription ? 'rx' : 'otc')
+              prescription_type: (m.prescription_type as 'otc' | 'rx' | 'controlled') || (m.is_controlled ? 'controlled' : m.requires_prescription ? 'rx' : 'otc')
             })
           })
         }
@@ -1185,7 +1216,7 @@ export default function POSClient() {
       discount
     )
 
-    const itemsPayload = cart.map(item => {
+    const itemsPayload: SaleItemPayload[] = cart.map(item => {
       const fin = calculateLineFinancials({
         price: item.price,
         quantity: item.quantity,
@@ -1217,7 +1248,17 @@ export default function POSClient() {
 
     const offlineId = 'OFF-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9)
 
-    const salePayload = {
+    const paymentsPayload: SalePaymentPayload[] = [
+      {
+        payment_method: paymentMethod,
+        amount: invoiceFinancials.payableAmount,
+        received_amount: paymentMethod === 'cash' ? (Number(receivedAmount) || invoiceFinancials.payableAmount) : invoiceFinancials.payableAmount,
+        change_amount: change,
+        reference: paymentMethod === 'transfer' ? transferRef.trim() : null
+      }
+    ]
+
+    const salePayload: SalePayload = {
       tenant_id: sessionInfo.tenant_id,
       seller_id: sessionInfo.user_id,
       register_id: sessionInfo.register_id,
@@ -1233,15 +1274,7 @@ export default function POSClient() {
       points_redeemed: 0,
       offline_id: offlineId,
       items: itemsPayload,
-      payments: [
-        {
-          payment_method: paymentMethod,
-          amount: invoiceFinancials.payableAmount,
-          received_amount: paymentMethod === 'cash' ? (Number(receivedAmount) || invoiceFinancials.payableAmount) : invoiceFinancials.payableAmount,
-          change_amount: change,
-          reference: paymentMethod === 'transfer' ? transferRef.trim() : null
-        }
-      ]
+      payments: paymentsPayload
     }
 
     try {
@@ -1401,17 +1434,18 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
   }
 
   async function handleDownloadOfficialPdfA4() {
-    const emisorNit = tenantSettingsFull?.tax_id ? tenantSettingsFull.tax_id.replace(/\D/g, '') : '901234567'
-    const resolutionNum = tenantSettingsFull?.dian_resolution || '18760000001'
-    const resolutionPrefix = tenantSettingsFull?.dian_prefix || 'SETP'
+    const rawTaxId = typeof tenantSettingsFull?.tax_id === 'string' ? tenantSettingsFull.tax_id : ''
+    const emisorNit = rawTaxId ? rawTaxId.replace(/\D/g, '') : '901234567'
+    const resolutionNum = typeof tenantSettingsFull?.dian_resolution === 'string' ? tenantSettingsFull.dian_resolution : '18760000001'
+    const resolutionPrefix = typeof tenantSettingsFull?.dian_prefix === 'string' ? tenantSettingsFull.dian_prefix : 'SETP'
 
     const payload = {
       documentType: '01' as any,
       number: dianResult?.number || saleNumber,
       prefix: resolutionPrefix,
       folio: 1,
-      issueDate: new Date().toISOString().split('T')[0],
-      issueTime: new Date().toTimeString().split(' ')[0] + '-05:00',
+      issueDate: getColombiaDateString(),
+      issueTime: getColombiaTimeString(),
       currency: 'COP',
       environment: (tenantSettingsFull?.dian_environment || '2') as any,
       resolution: {
@@ -1870,7 +1904,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   style={{ height: 38, padding: '0 8px', fontSize: '0.78rem', flexShrink: 0, boxSizing: 'border-box' }}
                 >
                   <option value="all">Todas las bodegas</option>
-                  {warehouseList.map((w: any) => (
+                  {warehouseList.map((w: WarehouseRow) => (
                     <option key={w.id} value={w.id}>
                       {w.name} {w.is_main ? '(Principal)' : ''}
                     </option>
@@ -2579,12 +2613,15 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                     setSelectedCustomer(found || null)
                     if (found) {
                       const cleanTaxId = (found.tax_id || found.phone || '').replace(/[^a-zA-Z0-9]/g, '')
+                      const pt: '1' | '2' = (found.metadata?.person_type === '1' || found.metadata?.person_type === '2')
+                        ? found.metadata.person_type
+                        : (cleanTaxId.length >= 9 ? '1' : '2')
                       setDianCustomer({
                         idType: (found.metadata?.id_type || (cleanTaxId.length >= 9 ? '31' : '13')) as any,
                         documentNumber: cleanTaxId,
                         dv: found.metadata?.dv || (cleanTaxId.length >= 9 ? calculateNITVerificationDigit(cleanTaxId) : undefined),
                         name: (found.tax_name || found.full_name || '').toUpperCase(),
-                        personType: found.metadata?.person_type || (cleanTaxId.length >= 9 ? '1' : '2'),
+                        personType: pt,
                         regime: (found.tax_regime || '49') as any,
                         email: found.email || '',
                         phone: found.phone || '',
@@ -3325,7 +3362,10 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
         isOpen={showPriceCheckerModal}
         onClose={() => setShowPriceCheckerModal(false)}
         products={products}
-        onAddToCart={(p, qty) => addToCart(p as any, qty)}
+        onAddToCart={(p, qty) => {
+          const matched = products.find(prod => prod.id === p.id || (p.barcode && prod.barcode === p.barcode))
+          if (matched) addToCart(matched, qty)
+        }}
       />
 
       {/* Abonos a Fiao / Cartera Modal F3 */}

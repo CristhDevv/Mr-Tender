@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
+import { getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Eye,
   Glasses,
@@ -68,7 +69,7 @@ export default function OptometryLabPage() {
             lens_type: 'Policarbonato Antirreflejo Verde AR',
             lab_supplier: 'Laboratorio Oftálmico Essilor',
             status: 'surfacing',
-            promised_date: new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0],
+            promised_date: getColombiaRelativeDateString(2),
             created_at: new Date().toISOString()
           },
           {
@@ -80,7 +81,7 @@ export default function OptometryLabPage() {
             lens_type: 'Progresivo Digital FreeForm Transitions Gen 8',
             lab_supplier: 'Laboratorio Servióptica',
             status: 'ready_for_patient',
-            promised_date: new Date(Date.now() + 1 * 86400000).toISOString().split('T')[0],
+            promised_date: getColombiaRelativeDateString(1),
             created_at: new Date().toISOString()
           }
         ]

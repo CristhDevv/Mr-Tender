@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate, formatCurrency } from '@/lib/utils'
+import { getColombiaDateString, getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Dumbbell,
   Users,
@@ -50,8 +51,8 @@ export default function GymMembersPage() {
     id_number: '',
     phone: '',
     plan_name: 'Plan Mensual Ilimitado',
-    membership_start: new Date().toISOString().split('T')[0],
-    membership_expires_at: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
+    membership_start: getColombiaDateString(),
+    membership_expires_at: getColombiaRelativeDateString(30),
     weight_kg: 72,
     body_fat_percent: 18.5,
     muscle_mass_kg: 33.2
@@ -120,9 +121,9 @@ export default function GymMembersPage() {
     if (!tenantId || submitting) return
     setSubmitting(true)
     try {
-      const today = new Date().toISOString().split('T')[0]
-      const nextMonth = new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0]
-      const lastMonth = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0]
+      const today = getColombiaDateString()
+      const nextMonth = getColombiaRelativeDateString(30)
+      const lastMonth = getColombiaRelativeDateString(-30)
 
       const demo = [
         {

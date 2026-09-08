@@ -5,6 +5,7 @@ import { DianInvoicePayload, DianTaxRegime, DianPersonType, DianIdType, DianPaym
 import { buildInvoiceUblXml } from '@/lib/dian/ubl-builder'
 import { dianClient } from '@/lib/dian/dian-client'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
+import { getColombiaDateString, getColombiaTimeString } from '@/lib/date-utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -228,8 +229,8 @@ export async function POST(req: NextRequest) {
       number: invoiceNumber,
       prefix: resolution.prefix,
       folio: nextFolio,
-      issueDate: new Date().toISOString().split('T')[0],
-      issueTime: new Date().toTimeString().split(' ')[0] + '-05:00',
+      issueDate: getColombiaDateString(),
+      issueTime: getColombiaTimeString(),
       currency: 'COP',
       environment: resolution.environment || '2',
       resolution: {

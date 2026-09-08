@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaRelativeDateString } from '@/lib/date-utils'
 import {
   Shirt,
   Boxes,
@@ -50,7 +51,7 @@ export default function LaundryOrdersPage() {
     garment_count: 12,
     rack_number: 'P-12',
     price: 32500,
-    promised_date: new Date(Date.now() + 86400000).toISOString().split('T')[0]
+    promised_date: getColombiaRelativeDateString(1)
   })
 
   useEffect(() => {
@@ -115,7 +116,7 @@ export default function LaundryOrdersPage() {
     if (!tenantId || submitting) return
     setSubmitting(true)
     try {
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0]
+      const tomorrow = getColombiaRelativeDateString(1)
       const demo = [
         {
           tenant_id: tenantId,

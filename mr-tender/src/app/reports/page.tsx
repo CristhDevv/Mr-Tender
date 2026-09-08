@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { roundCurrency, safePercentage } from '@/lib/finance-math'
+import { getColombiaDateString, getColombiaRelativeDateString, isDateInRangeColombia } from '@/lib/date-utils'
 import { jsPDF } from 'jspdf'
 import {
   BarChart3,
@@ -90,6 +91,7 @@ export default function ReportsPage() {
             payments (payment_method, amount)
           `)
           .eq('tenant_id', tid)
+          .neq('status', 'cancelled')
           .order('created_at', { ascending: false })
         setSales(salesData || [])
 
@@ -142,34 +144,36 @@ export default function ReportsPage() {
     loadData()
   }, [])
 
-  // Date Range Calculator based on preset
+  // Date Range Calculator based on preset (Colombia Timezone)
   const dateRange = useMemo(() => {
-    const now = new Date()
-    const todayStr = now.toISOString().split('T')[0]
+    const todayStr = getColombiaDateString()
+    const [yearStr, monthStr] = todayStr.split('-')
+    const year = parseInt(yearStr, 10)
+    const month = parseInt(monthStr, 10)
 
     if (periodPreset === 'today') {
       return { start: todayStr, end: todayStr }
     }
     if (periodPreset === '7days') {
-      const d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      return { start: d.toISOString().split('T')[0], end: todayStr }
+      return { start: getColombiaRelativeDateString(-7), end: todayStr }
     }
     if (periodPreset === '30days') {
-      const d = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-      return { start: d.toISOString().split('T')[0], end: todayStr }
+      return { start: getColombiaRelativeDateString(-30), end: todayStr }
     }
     if (periodPreset === 'this_month') {
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+      const firstDay = `${yearStr}-${monthStr}-01`
       return { start: firstDay, end: todayStr }
     }
     if (periodPreset === 'last_month') {
-      const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0]
-      const lastDay = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0]
-      return { start: firstDay, end: lastDay }
+      const lastMonthDate = new Date(year, month - 2, 1)
+      const lastMonthEnd = new Date(year, month - 1, 0)
+      const lmYear = lastMonthDate.getFullYear()
+      const lmMonth = String(lastMonthDate.getMonth() + 1).padStart(2, '0')
+      const lmLastDay = String(lastMonthEnd.getDate()).padStart(2, '0')
+      return { start: `${lmYear}-${lmMonth}-01`, end: `${lmYear}-${lmMonth}-${lmLastDay}` }
     }
     if (periodPreset === 'this_year') {
-      const firstDay = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0]
-      return { start: firstDay, end: todayStr }
+      return { start: `${yearStr}-01-01`, end: todayStr }
     }
     if (periodPreset === 'custom') {
       return { start: startDate, end: endDate }
@@ -178,11 +182,7 @@ export default function ReportsPage() {
   }, [periodPreset, startDate, endDate])
 
   const isDateInRange = (dateString?: string | null) => {
-    if (!dateString) return true
-    const itemDate = dateString.split('T')[0]
-    if (dateRange.start && itemDate < dateRange.start) return false
-    if (dateRange.end && itemDate > dateRange.end) return false
-    return true
+    return isDateInRangeColombia(dateString, dateRange.start, dateRange.end)
   }
 
   // Categories list from products
@@ -453,7 +453,7 @@ export default function ReportsPage() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.setAttribute('download', `MrTender_${activeTab}_${new Date().toISOString().split('T')[0]}.csv`)
+    link.setAttribute('download', `MrTender_${activeTab}_${getColombiaDateString()}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -552,7 +552,7 @@ export default function ReportsPage() {
     doc.setTextColor(148, 163, 184)
     doc.text('Documento emitido por Mr. Tender ERP • Gestión Comercial & POS', 105, 290, { align: 'center' })
 
-    doc.save(`Reporte_${activeTab}_${new Date().toISOString().split('T')[0]}.pdf`)
+    doc.save(`Reporte_${activeTab}_${getColombiaDateString()}.pdf`)
   }
 
   const periodLabel = periodPreset === 'today' ? 'Hoy'

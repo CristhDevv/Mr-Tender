@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
+import { getColombiaDateString } from '@/lib/date-utils'
 import {
   Users,
   Receipt,
@@ -125,13 +126,13 @@ export default function PayrollPage() {
     bank_name: 'Bancolombia',
     bank_account_type: 'ahorros',
     bank_account_number: '',
-    start_date: new Date().toISOString().split('T')[0]
+    start_date: getColombiaDateString()
   })
 
   const [settlementForm, setSettlementForm] = useState({
     contract_id: '',
-    period_start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-    period_end: new Date(new Date().getFullYear(), new Date().getMonth(), 15).toISOString().split('T')[0],
+    period_start: `${getColombiaDateString().slice(0, 7)}-01`,
+    period_end: `${getColombiaDateString().slice(0, 7)}-15`,
     period_type: 'quincenal',
     worked_days: 15,
     base_salary: 650000,
@@ -222,7 +223,7 @@ export default function PayrollPage() {
         bank_name: 'Bancolombia',
         bank_account_type: 'ahorros',
         bank_account_number: '',
-        start_date: new Date().toISOString().split('T')[0]
+        start_date: getColombiaDateString()
       })
       await loadPayrollData()
     } catch (err: any) {
@@ -377,11 +378,13 @@ export default function PayrollPage() {
 
       // 2. Settlements
       if (c1 && c2) {
+        const pStart = `${getColombiaDateString().slice(0, 7)}-01`
+        const pEnd = `${getColombiaDateString().slice(0, 7)}-15`
         await supabase.from('payroll_settlements').insert([
           {
             tenant_id: tenantId,
-            period_start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-            period_end: new Date(new Date().getFullYear(), new Date().getMonth(), 15).toISOString().split('T')[0],
+            period_start: pStart,
+            period_end: pEnd,
             period_type: 'quincenal',
             contract_id: c1.id,
             employee_name: c1.employee_name,
@@ -405,8 +408,8 @@ export default function PayrollPage() {
           },
           {
             tenant_id: tenantId,
-            period_start: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0],
-            period_end: new Date(new Date().getFullYear(), new Date().getMonth(), 15).toISOString().split('T')[0],
+            period_start: pStart,
+            period_end: pEnd,
             period_type: 'quincenal',
             contract_id: c2.id,
             employee_name: c2.employee_name,

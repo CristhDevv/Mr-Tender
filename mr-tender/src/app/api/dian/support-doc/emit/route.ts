@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { validateTenantAccess } from '@/lib/supabase/auth-helpers'
 import { buildSupportDocUBLXML, SupportDocUblData } from '@/lib/dian/support-doc-ubl'
+import { getColombiaDateString, getColombiaTimeString } from '@/lib/date-utils'
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,9 +38,8 @@ export async function POST(req: NextRequest) {
     const total = numSubtotal - numRetefuente - numReteica
 
     const consecutive = `DS-${Date.now().toString().slice(-4)}`
-    const now = new Date()
-    const issueDate = now.toISOString().split('T')[0]
-    const issueTime = `${now.toTimeString().split(' ')[0]}-05:00`
+    const issueDate = getColombiaDateString()
+    const issueTime = getColombiaTimeString()
 
     const ublData: SupportDocUblData = {
       consecutive,

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getColombiaDateString } from '@/lib/date-utils'
 import {
   ShoppingBag,
   Plus,
@@ -180,7 +181,7 @@ export default function PurchasesPage() {
           warehouse_id: warehouseId,
           number: randomOrderNumber,
           status: 'pending',
-          order_date: new Date().toISOString().split('T')[0],
+          order_date: getColombiaDateString(),
           subtotal: totalAmount,
           tax_amount: 0,
           discount_amount: 0,

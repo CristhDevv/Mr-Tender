@@ -1,7 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
-import { roundCurrency } from '@/lib/finance-math'
+import { roundCurrency, validateCashDiscrepancy, calculateCashDiscrepancyThreshold } from '@/lib/finance-math'
 import { createClient } from '@/lib/supabase/client'
 import {
   DollarSign,
@@ -229,22 +229,29 @@ export default function CashPage() {
   async function handleCloseSession(e: React.FormEvent) {
     e.preventDefault()
     if (!closingAmount) return
-    setSubmitting(true)
 
     const counted = roundCurrency(parseFloat(closingAmount) || 0)
-    const diff = roundCurrency(counted - expected)
+    const validation = validateCashDiscrepancy(expected, counted, closingNotes)
+
+    if (validation.error) {
+      alert(validation.error)
+      return
+    }
+
+    setSubmitting(true)
 
     try {
       const { error } = await supabase.rpc('close_cash_session', {
         p_closing_amount: counted,
-        p_notes: closingNotes
+        p_notes: closingNotes.trim(),
+        p_session_id: session?.id
       })
       if (error) throw error
 
       setCloseReport({
         expected,
         counted,
-        diff,
+        diff: validation.difference,
         openedAt: session?.opened_at || new Date().toISOString(),
         sales: totalSales,
         expenses: totalExpenses
@@ -1205,64 +1212,136 @@ export default function CashPage() {
       )}
 
       {/* ── MODAL: ARQUEO CIEGO & CIERRE ── */}
-      {modal === 'close' && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <form onSubmit={handleCloseSession} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 400, padding: 22 }}>
-            <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>
-              Arqueo Ciego de Cierre de Turno
-            </h2>
-            <p style={{ fontSize: '0.75rem', color: '#64748B', marginBottom: 14 }}>
-              Cuenta el dinero físico total en la gaveta e ingrésalo aquí. El sistema calculará automáticamente la diferencia.
-            </p>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                  Efectivo Total Contado ($) *
-                </label>
-                <input
-                  className="input-neu"
-                  type="number"
-                  step="100"
-                  placeholder="Ej: 345000"
-                  value={closingAmount}
-                  onChange={e => setClosingAmount(e.target.value)}
-                  required
-                  autoFocus
-                  style={{ fontSize: '1.25rem', fontWeight: 900, textAlign: 'center' }}
-                />
+      {modal === 'close' && (() => {
+        const liveCounted = roundCurrency(parseFloat(closingAmount) || 0)
+        const hasCounted = Boolean(closingAmount && !isNaN(parseFloat(closingAmount)))
+        const liveVal = validateCashDiscrepancy(expected, liveCounted, closingNotes)
+        const isDiscrepant = hasCounted && liveVal.isDiscrepancySignificant
+        const notesLength = closingNotes.trim().length
+        const isSubmitDisabled = submitting || !hasCounted || (isDiscrepant && !liveVal.isJustificationValid)
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+            <form onSubmit={handleCloseSession} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 420, padding: 22 }}>
+              <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>
+                Arqueo Ciego de Cierre de Turno
+              </h2>
+              <p style={{ fontSize: '0.75rem', color: '#64748B', marginBottom: 14 }}>
+                Cuenta el dinero físico total en la gaveta e ingrésalo aquí. El sistema validará la tolerancia y diferencias.
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
+                    Efectivo Total Contado ($) *
+                  </label>
+                  <input
+                    className="input-neu"
+                    type="number"
+                    step="100"
+                    placeholder="Ej: 345000"
+                    value={closingAmount}
+                    onChange={e => setClosingAmount(e.target.value)}
+                    required
+                    autoFocus
+                    style={{ fontSize: '1.25rem', fontWeight: 900, textAlign: 'center' }}
+                  />
+                </div>
+
+                {hasCounted && (
+                  <div style={{
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: liveVal.difference === 0 ? '#ECFDF5' : liveVal.difference > 0 ? '#EFF6FF' : '#FEF2F2',
+                    border: liveVal.difference === 0 ? '1px solid #A7F3D0' : liveVal.difference > 0 ? '1px solid #BFDBFE' : '1px solid #FECACA',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155' }}>
+                      {liveVal.difference === 0 ? 'Cuadre Exacto:' : liveVal.difference > 0 ? 'Sobrante en Arqueo:' : 'Faltante en Arqueo:'}
+                    </span>
+                    <span style={{
+                      fontWeight: 900,
+                      fontSize: '0.9rem',
+                      color: liveVal.difference === 0 ? '#059669' : liveVal.difference > 0 ? '#2563EB' : '#DC2626'
+                    }}>
+                      {liveVal.difference === 0 ? '✓ $0 (Exacto)' : (liveVal.difference > 0 ? `+${formatCurrency(liveVal.difference)}` : formatCurrency(liveVal.difference))}
+                    </span>
+                  </div>
+                )}
+
+                {isDiscrepant && (
+                  <div style={{
+                    padding: '10px 12px',
+                    borderRadius: 8,
+                    background: '#FFFBEB',
+                    border: '1px solid #FCD34D',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#B45309', fontWeight: 800, fontSize: '0.78rem' }}>
+                      <AlertTriangle size={15} strokeWidth={2.5} />
+                      <span>Descuadre superior al umbral permitido</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#78350F', lineHeight: 1.4 }}>
+                      La diferencia de <strong>{formatCurrency(liveVal.absoluteDiff)}</strong> supera el límite tolerable de <strong>{formatCurrency(liveVal.threshold)}</strong> (máx $5.000 o 2% del esperado).
+                      <br />
+                      <strong>Es obligatorio ingresar una justificación detallada (mín. 10 caracteres).</strong>
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: isDiscrepant ? '#DC2626' : '#475569' }}>
+                      {isDiscrepant ? 'Motivo / Justificación Obligatoria *' : 'Observaciones de Entrega de Turno'}
+                    </label>
+                    {isDiscrepant && (
+                      <span style={{ fontSize: '0.68rem', fontWeight: 700, color: notesLength >= 10 ? '#059669' : '#DC2626' }}>
+                        {notesLength}/10 caracteres mín.
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    className="input-neu"
+                    placeholder={isDiscrepant ? 'Ej: Billete falso retenido / error en vuelto cliente' : 'Ej: Turno entregado a satisfacción'}
+                    value={closingNotes}
+                    onChange={e => setClosingNotes(e.target.value)}
+                    style={{
+                      fontSize: '0.84rem',
+                      borderColor: isDiscrepant && notesLength < 10 ? '#FCA5A5' : undefined
+                    }}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: '#475569', display: 'block', marginBottom: 4 }}>
-                  Observaciones de Entrega de Turno
-                </label>
-                <input
-                  className="input-neu"
-                  placeholder="Ej: Turno entregado a satisfacción"
-                  value={closingNotes}
-                  onChange={e => setClosingNotes(e.target.value)}
-                  style={{ fontSize: '0.84rem' }}
-                />
+              <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
+                <button type="button" className="btn-neu" onClick={() => setModal(null)} style={{ flex: 1, padding: 10 }}>
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="btn-neu"
+                  disabled={isSubmitDisabled}
+                  style={{
+                    flex: 1,
+                    padding: 10,
+                    background: isSubmitDisabled ? '#94A3B8' : '#DC2626',
+                    color: '#FFFFFF',
+                    border: isSubmitDisabled ? '1px solid #64748B' : '1px solid #B91C1C',
+                    fontWeight: 800,
+                    cursor: isSubmitDisabled ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  {submitting ? 'Cerrando...' : isDiscrepant && !liveVal.isJustificationValid ? 'Justificación requerida' : 'Finalizar Turno'}
+                </button>
               </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8, marginTop: 18 }}>
-              <button type="button" className="btn-neu" onClick={() => setModal(null)} style={{ flex: 1, padding: 10 }}>
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="btn-neu"
-                disabled={submitting || !closingAmount}
-                style={{ flex: 1, padding: 10, background: '#DC2626', color: '#FFFFFF', border: '1px solid #B91C1C', fontWeight: 800 }}
-              >
-                {submitting ? 'Cerrando...' : 'Finalizar Turno'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            </form>
+          </div>
+        )
+      })()}
 
       {/* ── MODAL: DETALLE DE TURNO HISTÓRICO ── */}
       {modal === 'detail' && selectedHistorySession && (
