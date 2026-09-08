@@ -1,3 +1,5 @@
+import { roundCurrency, calculateLineFinancials, calculateInvoiceTotals, calculateChange as mathCalculateChange } from './finance-math'
+
 export interface CartItem {
   id?: string
   name?: string
@@ -7,6 +9,8 @@ export interface CartItem {
   quantity: number
   discount: number // percentage (0-100)
   tax_rate?: number
+  cost_price?: number
+  cost?: number
 }
 
 export function getEffectiveUnitPrice(item: CartItem): { unitPrice: number; isWholesale: boolean } {
@@ -25,10 +29,16 @@ export function getEffectiveUnitPrice(item: CartItem): { unitPrice: number; isWh
 }
 
 export function calculateLineTotal(item: CartItem): number {
-  const { unitPrice } = getEffectiveUnitPrice(item)
-  const base = unitPrice * (item.quantity || 0)
-  const discount = Math.max(0, Math.min(100, item.discount || 0))
-  return base * (1 - discount / 100)
+  const fin = calculateLineFinancials({
+    price: item.price,
+    quantity: item.quantity,
+    discountPercent: item.discount,
+    wholesalePrice: item.wholesale_price,
+    wholesaleMinQty: item.wholesale_min_qty,
+    taxRate: item.tax_rate,
+    costPrice: item.cost_price || item.cost
+  })
+  return fin.netLineTotal
 }
 
 /**
@@ -39,12 +49,11 @@ export function addItemToCart<T extends CartItem>(cart: T[], product: T, quantit
   const existing = cart.find(i => i.id === product.id)
   if (existing) {
     const newQty = (existing.quantity || 0) + quantity
-    const { unitPrice } = getEffectiveUnitPrice({ ...existing, quantity: newQty })
-    const discount = Math.max(0, Math.min(100, Number(existing.discount) || 0))
+    const lineTotal = calculateLineTotal({ ...existing, quantity: newQty })
     const updatedItem: T = {
       ...existing,
       quantity: newQty,
-      lineTotal: newQty * unitPrice * (1 - discount / 100)
+      lineTotal
     }
     const rest = cart.filter(i => i.id !== product.id)
     return [updatedItem, ...rest]
@@ -57,10 +66,10 @@ export function addItemToCart<T extends CartItem>(cart: T[], product: T, quantit
     discount,
     lineTotal: 0
   }
-  const { unitPrice } = getEffectiveUnitPrice(initialItem)
+  const lineTotal = calculateLineTotal(initialItem)
   const newItem: T = {
     ...initialItem,
-    lineTotal: quantity * unitPrice * (1 - discount / 100)
+    lineTotal
   }
   return [newItem, ...cart]
 }
@@ -77,46 +86,56 @@ export function updateCartItemQuantity<T extends CartItem>(cart: T[], id: string
   const target = cart.find(i => i.id === id)
   if (!target) return cart
 
-  const { unitPrice } = getEffectiveUnitPrice({ ...target, quantity: rounded })
-  const discount = Math.max(0, Math.min(100, Number(target.discount) || 0))
+  const lineTotal = calculateLineTotal({ ...target, quantity: rounded })
   const updatedItem: T = {
     ...target,
     quantity: rounded,
-    lineTotal: rounded * unitPrice * (1 - discount / 100)
+    lineTotal
   }
   const rest = cart.filter(i => i.id !== id)
   return [updatedItem, ...rest]
 }
 
 export function calculateCartTotals(items: CartItem[], globalDiscountPercent = 0) {
-  const subtotal = items.reduce((sum, item) => sum + calculateLineTotal(item), 0)
-  const safeDiscountPercent = Math.max(0, Math.min(100, globalDiscountPercent || 0))
-  const discountAmt = subtotal * (safeDiscountPercent / 100)
-  const total = Math.max(0, subtotal - discountAmt)
+  const totals = calculateInvoiceTotals(
+    items.map(it => ({
+      price: it.price,
+      quantity: it.quantity,
+      discountPercent: it.discount,
+      wholesalePrice: it.wholesale_price,
+      wholesaleMinQty: it.wholesale_min_qty,
+      taxRate: it.tax_rate,
+      costPrice: it.cost_price || it.cost
+    })),
+    globalDiscountPercent
+  )
   return {
-    subtotal,
-    discountAmt,
-    total
+    subtotal: totals.netBeforeGlobalDiscount,
+    discountAmt: totals.globalDiscountAmount,
+    total: totals.payableAmount
   }
 }
 
 export function calculateChange(receivedAmount: number, total: number): number {
-  const received = Number(receivedAmount) || 0
-  const tot = Number(total) || 0
-  return Math.max(0, received - tot)
+  return mathCalculateChange(receivedAmount, total)
 }
 
 export function calculateTaxBreakdown(items: CartItem[], defaultTaxRate = 19) {
-  return items.reduce((acc, item) => {
-    const rate = item.tax_rate !== undefined ? Number(item.tax_rate) : defaultTaxRate
-    const lineTotal = calculateLineTotal(item)
-    const base = rate > 0 ? lineTotal / (1 + rate / 100) : lineTotal
-    const tax = lineTotal - base
-    return {
-      baseTotal: acc.baseTotal + base,
-      taxTotal: acc.taxTotal + tax
-    }
-  }, { baseTotal: 0, taxTotal: 0 })
+  const totals = calculateInvoiceTotals(
+    items.map(it => ({
+      price: it.price,
+      quantity: it.quantity,
+      discountPercent: it.discount,
+      wholesalePrice: it.wholesale_price,
+      wholesaleMinQty: it.wholesale_min_qty,
+      taxRate: it.tax_rate !== undefined ? it.tax_rate : defaultTaxRate,
+      costPrice: it.cost_price || it.cost
+    }))
+  )
+  return {
+    baseTotal: totals.taxExclusiveAmount,
+    taxTotal: totals.taxAmount
+  }
 }
 
 export interface ParsedScaleBarcode {

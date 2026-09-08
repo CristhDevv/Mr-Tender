@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
+import { roundCurrency } from '@/lib/finance-math'
 import { createClient } from '@/lib/supabase/client'
 import {
   DollarSign,
@@ -219,19 +220,19 @@ export default function CashPage() {
     }
   }
 
-  const totalSales = movements.filter(m => m.movement_type === 'sale').reduce((s, m) => s + Number(m.amount), 0)
-  const totalExpenses = movements.filter(m => m.movement_type === 'expense' || m.movement_type === 'withdrawal').reduce((s, m) => s + Number(m.amount), 0)
-  const totalIncome = movements.filter(m => m.movement_type === 'income' || m.movement_type === 'deposit').reduce((s, m) => s + Number(m.amount), 0)
-  const opening = session ? Number(session.opening_amount) : 0
-  const expected = opening + totalSales + totalIncome - totalExpenses
+  const totalSales = roundCurrency(movements.filter(m => m.movement_type === 'sale').reduce((s, m) => s + Number(m.amount), 0))
+  const totalExpenses = roundCurrency(movements.filter(m => m.movement_type === 'expense' || m.movement_type === 'withdrawal').reduce((s, m) => s + Number(m.amount), 0))
+  const totalIncome = roundCurrency(movements.filter(m => m.movement_type === 'income' || m.movement_type === 'deposit').reduce((s, m) => s + Number(m.amount), 0))
+  const opening = session ? roundCurrency(Number(session.opening_amount)) : 0
+  const expected = roundCurrency(opening + totalSales + totalIncome - totalExpenses)
 
   async function handleCloseSession(e: React.FormEvent) {
     e.preventDefault()
     if (!closingAmount) return
     setSubmitting(true)
 
-    const counted = parseFloat(closingAmount) || 0
-    const diff = counted - expected
+    const counted = roundCurrency(parseFloat(closingAmount) || 0)
+    const diff = roundCurrency(counted - expected)
 
     try {
       const { error } = await supabase.rpc('close_cash_session', {

@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { roundCurrency, safePercentage } from '@/lib/finance-math'
 import { jsPDF } from 'jspdf'
 import {
   BarChart3,
@@ -314,18 +315,19 @@ export default function ReportsPage() {
 
   // 7. P&L Financials
   const pnlMetrics = useMemo(() => {
-    const grossSales = filteredSales.reduce((acc, s) => acc + Number(s.total || 0), 0)
-    const discounts = filteredSales.reduce((acc, s) => acc + Number(s.discount_amount || 0), 0)
+    const grossSales = roundCurrency(filteredSales.reduce((acc, s) => acc + Number(s.total || 0), 0))
+    const discounts = roundCurrency(filteredSales.reduce((acc, s) => acc + Number(s.discount_amount || 0), 0))
     const netSales = grossSales
     let costOfGoods = 0
     filteredSales.forEach(s => {
       s.sale_items?.forEach((item: any) => {
-        const cost = Number(item.cost_price || item.unit_price * 0.7)
+        const cost = Number(item.cost_price !== undefined && item.cost_price !== null ? item.cost_price : (item.unit_price * 0.7))
         costOfGoods += cost * Number(item.quantity || 1)
       })
     })
-    const grossProfit = netSales - costOfGoods
-    const marginPct = netSales > 0 ? ((grossProfit / netSales) * 100).toFixed(1) : '0'
+    costOfGoods = roundCurrency(costOfGoods)
+    const grossProfit = roundCurrency(netSales - costOfGoods)
+    const marginPct = safePercentage(grossProfit, netSales, 1).toString()
     return { grossSales, discounts, netSales, costOfGoods, grossProfit, marginPct, ordersCount: filteredSales.length }
   }, [filteredSales])
 

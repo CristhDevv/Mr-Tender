@@ -13,6 +13,7 @@ import DianCustomerModal, { DianCustomerData } from '@/components/DianCustomerMo
 import PosAbonoModal from '@/components/PosAbonoModal'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
 import { parseScaleBarcode, getEffectiveUnitPrice, calculateEarnedPoints, kickCashDrawer } from '@/lib/cart'
+import { calculateLineFinancials, calculateInvoiceTotals, roundCurrency, roundCOP } from '@/lib/finance-math'
 import { findMasterProduct } from '@/lib/catalog/colombia-products'
 import { uploadProductImage } from '@/lib/image-upload'
 import { usePermissions } from '@/lib/hooks/usePermissions'
@@ -145,6 +146,9 @@ interface Product {
   stock: number
   category: string
   cost: number
+  cost_price?: number
+  wholesale_price?: number | null
+  wholesale_min_qty?: number | null
   unit_type?: string
   tax_rate?: number
   category_id?: string
@@ -689,6 +693,7 @@ export default function POSClient() {
               price: Number(p.sale_price),
               cost: Number(p.cost_price),
               sku: p.sku || p.barcode || '',
+              barcode: p.barcode || '',
               stock,
               category: catName,
               unit_type: isWeighed ? 'lb' : 'unit',
@@ -1167,34 +1172,48 @@ export default function POSClient() {
 
     setLoading(true)
 
+    const invoiceFinancials = calculateInvoiceTotals(
+      cart.map(item => ({
+        price: item.price,
+        quantity: item.quantity,
+        discountPercent: item.discount,
+        taxRate: item.tax_rate !== undefined ? Number(item.tax_rate) : defaultTaxRate,
+        costPrice: item.cost !== undefined ? item.cost : (item.cost_price || 0),
+        wholesalePrice: item.wholesale_price,
+        wholesaleMinQty: item.wholesale_min_qty
+      })),
+      discount
+    )
+
     const itemsPayload = cart.map(item => {
-      const rate = item.tax_rate !== undefined ? Number(item.tax_rate) : defaultTaxRate
-      const lineTotal = item.lineTotal
-      const itemNetSubtotal = rate > 0 ? (lineTotal / (1 + rate / 100)) : lineTotal
-      const itemTaxAmount = lineTotal - itemNetSubtotal
-      const itemDiscountAmt = (item.quantity * item.price) * (item.discount / 100)
+      const fin = calculateLineFinancials({
+        price: item.price,
+        quantity: item.quantity,
+        discountPercent: item.discount,
+        taxRate: item.tax_rate !== undefined ? Number(item.tax_rate) : defaultTaxRate,
+        costPrice: item.cost !== undefined ? item.cost : (item.cost_price || 0),
+        wholesalePrice: item.wholesale_price,
+        wholesaleMinQty: item.wholesale_min_qty
+      })
 
       return {
         product_id: item.id,
         variant_id: null,
         product_name: item.name,
-        product_sku: item.sku,
-        quantity: item.quantity,
-        unit_price: item.price,
+        product_sku: item.sku || item.barcode || '',
+        quantity: fin.quantity,
+        unit_price: fin.unitPrice,
         original_price: item.price,
-        discount_percentage: item.discount,
-        discount_amount: itemDiscountAmt,
-        tax_rate: rate,
-        tax_amount: itemTaxAmount,
-        subtotal: itemNetSubtotal,
-        total: lineTotal,
-        cost_price: item.cost,
+        discount_percentage: fin.discountPercent,
+        discount_amount: fin.discountAmount,
+        tax_rate: fin.taxRate,
+        tax_amount: fin.taxAmount,
+        subtotal: fin.taxBase,
+        total: fin.netLineTotal,
+        cost_price: fin.cogs > 0 && fin.quantity > 0 ? (fin.cogs / fin.quantity) : (item.cost || item.cost_price || 0),
         warehouse_id: sessionInfo.warehouse_id
       }
     })
-
-    const calculatedTaxAmount = itemsPayload.reduce((sum, it) => sum + it.tax_amount, 0)
-    const calculatedSubtotal = (total - calculatedTaxAmount) + discountAmt
 
     const offlineId = 'OFF-' + Date.now() + '-' + Math.random().toString(36).slice(2, 9)
 
@@ -1205,11 +1224,11 @@ export default function POSClient() {
       session_id: sessionInfo.session_id,
       branch_id: sessionInfo.branch_id,
       customer_id: selectedCustomer ? selectedCustomer.id : null,
-      subtotal: calculatedSubtotal,
-      discount_amount: discountAmt,
-      tax_amount: calculatedTaxAmount,
+      subtotal: invoiceFinancials.taxExclusiveAmount,
+      discount_amount: invoiceFinancials.totalDiscounts,
+      tax_amount: invoiceFinancials.taxAmount,
       tip_amount: 0,
-      total,
+      total: invoiceFinancials.payableAmount,
       change_amount: change,
       points_redeemed: 0,
       offline_id: offlineId,
@@ -1217,8 +1236,8 @@ export default function POSClient() {
       payments: [
         {
           payment_method: paymentMethod,
-          amount: total,
-          received_amount: paymentMethod === 'cash' ? (Number(receivedAmount) || total) : total,
+          amount: invoiceFinancials.payableAmount,
+          received_amount: paymentMethod === 'cash' ? (Number(receivedAmount) || invoiceFinancials.payableAmount) : invoiceFinancials.payableAmount,
           change_amount: change,
           reference: paymentMethod === 'transfer' ? transferRef.trim() : null
         }

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatNumber } from '@/lib/utils'
+import { roundCurrency, safePercentage } from '@/lib/finance-math'
 import {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -121,24 +122,27 @@ export default function DashboardPage() {
 
         // Sales today KPIs
         const salesTodayData = salesTodayRes.data || []
-        const totalSales = salesTodayData.reduce((s, item) => s + Number(item.total || 0), 0)
+        const totalSales = roundCurrency(salesTodayData.reduce((s, item) => s + Number(item.total || 0), 0))
         const totalOrders = salesTodayData.length
         
         let totalCost = 0
         salesTodayData.forEach((s: any) => {
           (s.sale_items || []).forEach((item: any) => {
-            totalCost += (Number(item.cost_price || 0) * Number(item.quantity || 1))
+            const itemQty = Number(item.quantity || 1)
+            const itemCost = Number(item.cost_price || 0)
+            totalCost += (itemCost * itemQty)
           })
         })
-        const totalProfit = totalSales - totalCost
-        const grossMargin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0
-        const totalPendingCredit = (custRes.data || []).reduce((s, c) => s + Number(c.credit_used || 0), 0)
+        totalCost = roundCurrency(totalCost)
+        const totalProfit = roundCurrency(totalSales - totalCost)
+        const grossMargin = safePercentage(totalProfit, totalSales, 1)
+        const totalPendingCredit = roundCurrency((custRes.data || []).reduce((s, c) => s + Number(c.credit_used || 0), 0))
 
         setStats({
           salesToday: totalSales,
           ordersToday: totalOrders,
           profitToday: totalProfit,
-          avgTicket: totalOrders > 0 ? totalSales / totalOrders : 0,
+          avgTicket: totalOrders > 0 ? roundCurrency(totalSales / totalOrders) : 0,
           grossMargin,
           pendingCredit: totalPendingCredit
         })
