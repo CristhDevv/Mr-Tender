@@ -2,58 +2,29 @@
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
-import { ALL_SYSTEM_MODULES, getModuleIcon, resolveModuleToggle, getModuleById } from '@/lib/constants/modules'
+import { usePermissions } from '@/lib/hooks/usePermissions'
 import {
   Building2,
   DollarSign,
   Receipt,
-  ShoppingCart,
   Smartphone,
   Save,
   Check,
-  ExternalLink,
-  Layers,
-  Wrench,
-  Pill,
-  UtensilsCrossed,
-  Globe,
-  Wine,
-  Scissors,
-  Dog,
-  Car,
-  Shirt,
-  Dumbbell,
-  Footprints,
-  Glasses,
-  Croissant,
-  Briefcase,
-  TrendingUp,
-  Landmark,
-  AlertTriangle,
-  Info,
-  Database,
-  Download
+  Printer
 } from 'lucide-react'
-import Link from 'next/link'
-import ContingencyBackupModal from '@/components/ContingencyBackupModal'
 
 export default function SettingsPage() {
   const supabase = createClient()
+  const { role, isAdmin } = usePermissions()
+
   const [activeSection, setActiveSection] = useState(0)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
-  const [showBackupModal, setShowBackupModal] = useState(false)
-  const [dependencyNotice, setDependencyNotice] = useState<string | null>(null)
-  const [moduleFilter, setModuleFilter] = useState<'all' | 'base' | 'vertical'>('all')
   const [tenantId, setTenantId] = useState('')
-  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>(() => {
-    const defaultMods: Record<string, boolean> = {}
-    ALL_SYSTEM_MODULES.forEach(m => {
-      defaultMods[m.id] = m.defaultEnabled
-    })
-    return defaultMods
-  })
+  const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>({})
+  const [enableInvoicing, setEnableInvoicing] = useState(false)
 
   const [form, setForm] = useState({
     businessName: '',
@@ -62,22 +33,15 @@ export default function SettingsPage() {
     phone: '',
     email: '',
     address: '',
+    city: '',
     currency: 'COP',
     taxName: 'IVA',
     taxRate: '19.00',
-    invoiceSeries: 'F',
+    invoiceSeries: 'POS',
     receiptSeries: 'R',
-    // DIAN Fields
-    dianNit: '',
     dianRegimen: 'No Responsable de IVA',
-    dianResolution: '',
-    dianPrefix: 'SETP',
-    dianRangeFrom: '1',
-    dianRangeTo: '5000',
-    dianSoftwareId: '',
-    dianSoftwarePin: '12345',
-    dianTechnicalKey: 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
-    dianEnvironment: '2', // 1: Prod, 2: Hab
+    ticketFooterMessage: '¡Gracias por su compra! Vuelva pronto.',
+    ticketCopies: '1',
     // Digital Payments
     nequiPhone: '',
     daviplataPhone: '',
@@ -87,10 +51,11 @@ export default function SettingsPage() {
   useEffect(() => {
     async function loadSettings() {
       try {
+        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return
 
-        let tid = user.user_metadata?.tenant_id
+        let tid = user.app_metadata?.tenant_id || user.user_metadata?.tenant_id
         if (!tid) {
           const { data: userData } = await supabase
             .from('users')
@@ -126,11 +91,9 @@ export default function SettingsPage() {
 
         if (data && data.length > 0) {
           const row = data[0]
-          if (row.enabled_modules) {
-            const defaultMods: Record<string, boolean> = {}
-            ALL_SYSTEM_MODULES.forEach(m => { defaultMods[m.id] = m.defaultEnabled })
-            setEnabledModules({ ...defaultMods, ...row.enabled_modules })
-          }
+          const mods = row.enabled_modules || {}
+          setEnabledModules(mods)
+          setEnableInvoicing(!!mods.invoicing)
           setForm({
             businessName: row.business_name || '',
             tradeName: row.trade_name || '',
@@ -138,24 +101,18 @@ export default function SettingsPage() {
             phone: row.phone || '',
             email: row.email || '',
             address: row.address || '',
+            city: row.city || 'Colombia',
             currency: row.currency || 'COP',
             taxName: row.tax_name || 'IVA',
-            taxRate: String(row.tax_rate || '19.00'),
-            invoiceSeries: row.invoice_series || 'F',
+            taxRate: String(row.tax_rate !== null && row.tax_rate !== undefined ? row.tax_rate : '19.00'),
+            invoiceSeries: row.invoice_series || 'POS',
             receiptSeries: row.receipt_series || 'R',
-            dianNit: row.tax_id || '',
             dianRegimen: row.dian_regimen || 'No Responsable de IVA',
-            dianResolution: row.dian_resolution || '18760000001',
-            dianPrefix: row.dian_prefix || 'SETP',
-            dianRangeFrom: row.dian_from || '1',
-            dianRangeTo: row.dian_to || '5000',
-            dianSoftwareId: row.dian_software_id || '',
-            dianSoftwarePin: row.fiscal_config?.software_pin || '12345',
-            dianTechnicalKey: row.fiscal_config?.technical_key || 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
-            dianEnvironment: row.fiscal_config?.environment || '2',
+            ticketFooterMessage: row.ticket_footer_message || '¡Gracias por su compra! Vuelva pronto.',
+            ticketCopies: String(row.ticket_copies || '1'),
             nequiPhone: row.whatsapp || row.phone || '',
             daviplataPhone: row.phone || '',
-            bancolombiaKey: '',
+            bancolombiaKey: row.bancolombia_key || '',
           })
         }
       } catch (err: any) {
@@ -176,12 +133,13 @@ export default function SettingsPage() {
     if (!tenantId) return
     setError('')
     setSaved(false)
+    setSaving(true)
     try {
-      const payload = {
+      const payload: Record<string, any> = {
         tenant_id: tenantId,
         business_name: form.businessName,
         trade_name: form.tradeName,
-        tax_id: form.taxId || form.dianNit,
+        tax_id: form.taxId,
         phone: form.phone || form.nequiPhone,
         whatsapp: form.nequiPhone,
         address: form.address,
@@ -191,17 +149,12 @@ export default function SettingsPage() {
         invoice_series: form.invoiceSeries,
         receipt_series: form.receiptSeries,
         dian_regimen: form.dianRegimen,
-        dian_resolution: form.dianResolution,
-        dian_prefix: form.dianPrefix,
-        dian_from: form.dianRangeFrom,
-        dian_to: form.dianRangeTo,
-        dian_software_id: form.dianSoftwareId,
-        enabled_modules: enabledModules,
-        fiscal_config: {
-          software_pin: form.dianSoftwarePin,
-          technical_key: form.dianTechnicalKey,
-          environment: form.dianEnvironment,
-          dv: calculateNITVerificationDigit(form.taxId || form.dianNit || '901234567')
+        ticket_footer_message: form.ticketFooterMessage,
+        ticket_copies: Number(form.ticketCopies) || 1,
+        bancolombia_key: form.bancolombiaKey,
+        enabled_modules: {
+          ...enabledModules,
+          invoicing: enableInvoicing
         }
       }
 
@@ -212,76 +165,72 @@ export default function SettingsPage() {
       if (upsertErr) throw upsertErr
 
       setSaved(true)
+      try {
+        const cached = localStorage.getItem('mr_tender_cached_modules')
+        const parsed = cached ? JSON.parse(cached) : {}
+        parsed.invoicing = enableInvoicing
+        localStorage.setItem('mr_tender_cached_modules', JSON.stringify(parsed))
+      } catch {}
       setTimeout(() => setSaved(false), 3000)
     } catch (err: any) {
       console.error(err)
       setError(err.message || 'Error al actualizar configuraciones')
+    } finally {
+      setSaving(false)
     }
   }
 
+  // 100% Non-technical, user-friendly sections for business owners
   const SECTIONS = [
     {
-      title: 'Datos del negocio', Icon: Building2,
+      title: 'Datos del Negocio',
+      description: 'Información general y datos de contacto de tu establecimiento.',
+      Icon: Building2,
       fields: [
-        { key: 'businessName', label: 'Nombre del negocio', type: 'text', placeholder: 'Ej: Tienda La Esperanza' },
-        { key: 'tradeName', label: 'Nombre comercial', type: 'text', placeholder: 'Opcional' },
-        { key: 'taxId', label: 'NIT / Cédula Fiscal', type: 'text', placeholder: '901234567-1' },
-        { key: 'phone', label: 'Teléfono / WhatsApp', type: 'text', placeholder: '3001234567' },
-        { key: 'address', label: 'Dirección', type: 'text', placeholder: 'Calle, número, barrio' },
+        { key: 'businessName', label: 'Nombre del negocio / Razón Social', type: 'text', placeholder: 'Ej: Panadería y Pastelería La Espiga' },
+        { key: 'tradeName', label: 'Nombre comercial (Opcional)', type: 'text', placeholder: 'Ej: La Espiga Dorada' },
+        { key: 'taxId', label: 'NIT / Cédula Fiscal', type: 'text', placeholder: 'Ej: 901234567-1' },
+        { key: 'phone', label: 'Teléfono / WhatsApp de Contacto', type: 'text', placeholder: '3001234567' },
+        { key: 'address', label: 'Dirección del Establecimiento', type: 'text', placeholder: 'Calle 10 # 4-50, Barrio Centro' },
       ]
     },
     {
-      title: 'Módulos de Negocio', Icon: Layers,
-      isModules: true
+      title: 'Facturación & Tickets',
+      description: 'Ajustes del comprobante de venta, mensajes impresos y régimen.',
+      Icon: Receipt,
+      fields: [
+        { key: 'dianRegimen', label: 'Régimen Tributario', type: 'select', options: ['No Responsable de IVA', 'Responsable de IVA (Común)', 'Régimen Simple de Tributación (RST)'] },
+        { key: 'invoiceSeries', label: 'Prefijo de Venta (en el ticket)', type: 'text', placeholder: 'POS' },
+        { key: 'ticketCopies', label: 'Copias a imprimir por venta', type: 'select', options: ['1 copia', '2 copias'] },
+        { key: 'ticketFooterMessage', label: 'Mensaje al final del ticket', type: 'textarea', placeholder: '¡Gracias por su compra! Vuelva pronto.' },
+      ]
     },
     {
-      title: 'Pagos Digitales & QR', Icon: Smartphone,
+      title: 'Pagos Digitales & QR',
+      description: 'Cuentas para recibir transferencias y pagos con QR en el punto de venta.',
+      Icon: Smartphone,
       fields: [
         { key: 'nequiPhone', label: 'Número Nequi para pagos QR', type: 'text', placeholder: '3001234567' },
         { key: 'daviplataPhone', label: 'Número Daviplata', type: 'text', placeholder: '3001234567' },
-        { key: 'bancolombiaKey', label: 'Llave Bre-B / Cuenta Bancolombia', type: 'text', placeholder: 'Opcional' },
+        { key: 'bancolombiaKey', label: 'Llave Bre-B / Cuenta Bancolombia (Opcional)', type: 'text', placeholder: 'Número de cuenta o llave QR' },
       ]
     },
     {
-      title: 'Moneda e impuestos', Icon: DollarSign,
+      title: 'Moneda e Impuestos',
+      description: 'Moneda principal de trabajo e impuesto por defecto para productos.',
+      Icon: DollarSign,
       fields: [
-        { key: 'currency', label: 'Moneda', type: 'select', options: ['COP', 'USD', 'MXN', 'PEN'] },
-        { key: 'taxName', label: 'Nombre del impuesto', type: 'text', placeholder: 'IVA' },
-        { key: 'taxRate', label: 'Tasa de impuesto (%)', type: 'number', placeholder: '19' },
+        { key: 'currency', label: 'Moneda del Negocio', type: 'select', options: ['COP (Pesos Colombianos)', 'USD (Dólares)', 'MXN (Pesos Mexicanos)', 'PEN (Soles)'] },
+        { key: 'taxName', label: 'Nombre del Impuesto', type: 'text', placeholder: 'IVA' },
+        { key: 'taxRate', label: 'Tasa de impuesto por defecto (%)', type: 'number', placeholder: '19' },
       ]
-    },
-    {
-      title: 'Facturación DIAN', Icon: Receipt,
-      fields: [
-        { key: 'dianEnvironment', label: 'Ambiente DIAN', type: 'select', options: ['2 - Habilitación / Pruebas', '1 - Producción Oficial'] },
-        { key: 'dianNit', label: 'NIT Emisor DIAN', type: 'text', placeholder: 'Ej: 901234567' },
-        { key: 'dianRegimen', label: 'Régimen Fiscal', type: 'select', options: ['No Responsable de IVA', 'Responsable de IVA (Común)', 'Régimen Simple de TRIBUTACIÓN (RST)'] },
-        { key: 'dianResolution', label: 'Resolución DIAN Nº', type: 'text', placeholder: '18760000001' },
-        { key: 'dianPrefix', label: 'Prefijo Autorizado', type: 'text', placeholder: 'SETP' },
-        { key: 'dianRangeFrom', label: 'Desde (Nº Inicial)', type: 'number', placeholder: '1' },
-        { key: 'dianRangeTo', label: 'Hasta (Nº Final)', type: 'number', placeholder: '5000' },
-        { key: 'dianSoftwareId', label: 'ID Software Habilitado DIAN', type: 'text', placeholder: 'ID de Software' },
-        { key: 'dianSoftwarePin', label: 'PIN del Software DIAN (5 dígitos)', type: 'text', placeholder: '12345' },
-        { key: 'dianTechnicalKey', label: 'Clave Técnica DIAN', type: 'text', placeholder: 'Clave técnica alfanumérica' },
-      ]
-    },
-    {
-      title: 'Configuración ventas', Icon: ShoppingCart,
-      fields: [
-        { key: 'invoiceSeries', label: 'Serie de facturas', type: 'text', placeholder: 'F' },
-        { key: 'receiptSeries', label: 'Serie de recibos', type: 'text', placeholder: 'R' },
-      ]
-    },
-    {
-      title: 'Respaldo de Contingencia', Icon: Database,
-      isBackup: true
     }
   ]
 
   if (loading) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '50vh', color: 'var(--text-muted)' }}>
-        <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>Cargando configuraciones...</div>
+        <div style={{ fontSize: '0.92rem', fontWeight: 600 }}>Cargando configuración...</div>
       </div>
     )
   }
@@ -290,435 +239,191 @@ export default function SettingsPage() {
   const CurrentSectionIcon = currentSection.Icon
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%', overflowX: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, width: '100%', maxWidth: 900, overflowX: 'hidden' }}>
       
       {/* Header */}
       <div style={{ marginBottom: 4 }}>
-        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 2px' }}>Configuración</h1>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0, lineHeight: 1.3 }}>Ajustes generales, módulos de negocio, facturación DIAN y pagos</p>
+        <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: '0 0 2px' }}>
+          Configuración del Negocio
+        </h1>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', margin: 0, lineHeight: 1.3 }}>
+          Datos de la empresa, comprobantes de venta, métodos de pago e impuestos
+        </p>
       </div>
 
-      {/* Responsive Wrapping Navigation Tabs */}
+      {error && (
+        <div style={{ padding: '10px 14px', background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 10, color: '#DC2626', fontSize: '0.82rem', fontWeight: 600 }}>
+          {error}
+        </div>
+      )}
+
+      {saved && (
+        <div style={{ padding: '10px 14px', background: '#ECFDF5', border: '1px solid #A7F3D0', borderRadius: 10, color: '#059669', fontSize: '0.82rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Check size={16} />
+          <span>Configuración guardada correctamente.</span>
+        </div>
+      )}
+
+      {/* Navigation Tabs */}
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {SECTIONS.map((s, i) => {
           const SectionIcon = s.Icon
           const isActive = activeSection === i
           return (
-            <button key={s.title} onClick={() => setActiveSection(i)}
+            <button
+              key={s.title}
+              onClick={() => setActiveSection(i)}
               className="btn-neu"
               style={{
-                display: 'flex', alignItems: 'center', gap: 6,
-                padding: '8px 14px', fontSize: '0.8rem', fontWeight: isActive ? 700 : 500,
-                background: isActive ? 'var(--text-primary)' : 'var(--bg)',
-                color: isActive ? 'var(--bg)' : 'var(--text-secondary)',
-                border: 'none', cursor: 'pointer', transition: 'all 0.15s ease'
-              }}>
-              <SectionIcon size={15} strokeWidth={2} />
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                fontSize: '0.8rem',
+                fontWeight: isActive ? 800 : 600,
+                background: isActive ? '#00D6BC' : '#FFFFFF',
+                color: isActive ? '#FFFFFF' : 'var(--text-secondary)',
+                border: isActive ? '1px solid #00BAA4' : '1px solid #E2E8F0',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <SectionIcon size={14} strokeWidth={isActive ? 2.5 : 1.75} style={{ color: isActive ? '#FFFFFF' : '#64748B' }} />
               <span>{s.title}</span>
             </button>
           )
         })}
       </div>
 
-      {/* Form Content */}
-      <div className="neu-card" style={{ padding: '20px 22px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, paddingBottom: 10, borderBottom: '1px solid var(--border-color)' }}>
-          <CurrentSectionIcon size={18} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
-          <h2 style={{ fontSize: '0.98rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{currentSection.title}</h2>
+      {/* Form Card */}
+      <div className="neu-card" style={{ padding: '22px 24px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 16, paddingBottom: 12, borderBottom: '1px solid #E2E8F0' }}>
+          <div style={{ width: 34, height: 34, borderRadius: 8, background: '#E6FAF7', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#008272', flexShrink: 0 }}>
+            <CurrentSectionIcon size={18} strokeWidth={2} />
+          </div>
+          <div>
+            <h2 style={{ fontSize: '0.98rem', fontWeight: 800, color: 'var(--text-primary)', margin: '0 0 2px' }}>
+              {currentSection.title}
+            </h2>
+            <p style={{ margin: 0, fontSize: '0.76rem', color: '#64748B' }}>
+              {currentSection.description}
+            </p>
+          </div>
         </div>
 
-        {currentSection.isModules ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {/* Header & Segmented Filter */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-                <div>
-                  <p style={{ fontSize: '0.82rem', color: 'var(--text-secondary)', margin: 0 }}>
-                    Activa o desactiva las funcionalidades de tu negocio. Los cambios se reflejarán inmediatamente en tu menú lateral.
-                  </p>
-                </div>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  <span>🟢 Base: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && enabledModules[m.id]).length}/13</strong></span>
-                  <span style={{ margin: '0 6px' }}>•</span>
-                  <span>🟣 Verticales: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && enabledModules[m.id]).length}/12</strong></span>
-                </div>
-              </div>
-
-              {/* Segmented Filter */}
-              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => setModuleFilter('all')}
-                  className="btn-neu"
-                  style={{
-                    padding: '6px 14px',
-                    fontSize: '0.78rem',
-                    fontWeight: moduleFilter === 'all' ? 700 : 500,
-                    background: moduleFilter === 'all' ? 'var(--text-primary)' : 'var(--bg-deep)',
-                    color: moduleFilter === 'all' ? 'var(--bg)' : 'var(--text-secondary)'
-                  }}
-                >
-                  Todos ({Object.values(enabledModules).filter(Boolean).length}/25)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setModuleFilter('base')}
-                  className="btn-neu"
-                  style={{
-                    padding: '6px 14px',
-                    fontSize: '0.78rem',
-                    fontWeight: moduleFilter === 'base' ? 700 : 500,
-                    background: moduleFilter === 'base' ? 'var(--text-primary)' : 'var(--bg-deep)',
-                    color: moduleFilter === 'base' ? 'var(--bg)' : 'var(--text-secondary)'
-                  }}
-                >
-                  🟢 Módulos Base / Indispensables ({ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && enabledModules[m.id]).length}/13)
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setModuleFilter('vertical')}
-                  className="btn-neu"
-                  style={{
-                    padding: '6px 14px',
-                    fontSize: '0.78rem',
-                    fontWeight: moduleFilter === 'vertical' ? 700 : 500,
-                    background: moduleFilter === 'vertical' ? 'var(--text-primary)' : 'var(--bg-deep)',
-                    color: moduleFilter === 'vertical' ? 'var(--bg)' : 'var(--text-secondary)'
-                  }}
-                >
-                  🟣 Módulos Verticales / Especializados ({ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && enabledModules[m.id]).length}/12)
-                </button>
-              </div>
-            </div>
-
-            {dependencyNotice && (
-              <div style={{
-                background: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
-                color: 'var(--text-primary)',
-                padding: '10px 14px',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '0.82rem',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                border: '1px solid var(--border-color)'
-              }}>
-                <span>{dependencyNotice}</span>
-              </div>
-            )}
-
-            {/* 🟢 SECCIÓN 1: MÓDULOS BASE (INDISPENSABLES) */}
-            {(moduleFilter === 'all' || moduleFilter === 'base') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: '1rem' }}>🟢</span>
-                    <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                      Módulos Base & Operativos
-                    </span>
-                    <span style={{ fontSize: '0.65rem', background: 'var(--bg-deep)', border: '1px solid var(--border-color)', padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>
-                      INDISPENSABLES
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                    Herramientas transversales necesarias para facturación, caja, control de existencias, compras, cartera y contabilidad.
-                  </p>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
-                  {ALL_SYSTEM_MODULES.filter(m => m.group === 'base').map(m => {
-                    const IconComponent = getModuleIcon(m.id)
-                    const isEnabled = !!enabledModules[m.id]
-                    const requiresNames = m.requires?.map(reqId => getModuleById(reqId)?.name.split('(')[0].trim() || reqId) || []
-
-                    return (
-                      <div
-                        key={m.id}
-                        onClick={() => {
-                          const currentState = !!enabledModules[m.id]
-                          const targetState = !currentState
-                          const result = resolveModuleToggle(m.id, targetState, enabledModules)
-
-                          if (!targetState && result.blockedBy.length > 0) {
-                            const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-                            setDependencyNotice(`⚠️ No puedes desactivar "${m.name}" porque es requerido por: ${blockedNames}. Desactiva primero esos módulos.`)
-                            setTimeout(() => setDependencyNotice(null), 6000)
-                            return
-                          }
-
-                          if (targetState && result.autoEnabled.length > 0) {
-                            const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-                            setDependencyNotice(`ℹ️ Se activaron automáticamente los prerrequisitos: ${autoNames}`)
-                            setTimeout(() => setDependencyNotice(null), 5000)
-                          } else {
-                            setDependencyNotice(null)
-                          }
-
-                          setEnabledModules(result.updatedModules)
-                        }}
-                        className="neu-card"
-                        style={{
-                          padding: 12,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 10,
-                          border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
-                          background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
-                          transition: '0.15s ease'
-                        }}
-                      >
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
-                          <div style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 6,
-                            background: 'var(--bg-deep)',
-                            color: 'var(--text-primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <IconComponent size={16} strokeWidth={2} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
-                              <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>{m.name}</span>
-                            </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.25, marginBottom: requiresNames.length > 0 ? 4 : 0 }}>
-                              {m.description}
-                            </div>
-                            {requiresNames.length > 0 && (
-                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span>🔗 Requiere:</span>
-                                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{requiresNames.join(', ')}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Toggle Switch */}
-                        <div style={{
-                          width: 34,
-                          height: 18,
-                          borderRadius: 9,
-                          background: isEnabled ? 'var(--text-primary)' : 'var(--border-color)',
-                          position: 'relative',
-                          flexShrink: 0,
-                          transition: '0.2s'
-                        }}>
-                          <div style={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '50%',
-                            background: '#fff',
-                            position: 'absolute',
-                            top: 3,
-                            left: isEnabled ? 19 : 3,
-                            transition: '0.2s'
-                          }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* 🟣 SECCIÓN 2: MÓDULOS VERTICALES (ESPECIALIZADOS) */}
-            {(moduleFilter === 'all' || moduleFilter === 'vertical') && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 6, marginTop: moduleFilter === 'all' ? 12 : 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: '1rem' }}>🟣</span>
-                    <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                      Módulos Verticales & Especializados por Giro
-                    </span>
-                    <span style={{ fontSize: '0.65rem', background: 'var(--accent-purple-lt, rgba(168,85,247,0.12))', color: 'var(--accent-purple, #9333ea)', border: '1px solid var(--border-color)', padding: '1px 6px', borderRadius: 10, fontWeight: 700 }}>
-                      POR INDUSTRIA
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', margin: '2px 0 0' }}>
-                    Activa únicamente el vertical que pertenezca a la actividad económica de tu negocio.
-                  </p>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
-                  {ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical').map(m => {
-                    const IconComponent = getModuleIcon(m.id)
-                    const isEnabled = !!enabledModules[m.id]
-                    const requiresNames = m.requires?.map(reqId => getModuleById(reqId)?.name.split('(')[0].trim() || reqId) || []
-
-                    return (
-                      <div
-                        key={m.id}
-                        onClick={() => {
-                          const currentState = !!enabledModules[m.id]
-                          const targetState = !currentState
-                          const result = resolveModuleToggle(m.id, targetState, enabledModules)
-
-                          if (!targetState && result.blockedBy.length > 0) {
-                            const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-                            setDependencyNotice(`⚠️ No puedes desactivar "${m.name}" porque es requerido por: ${blockedNames}. Desactiva primero esos módulos.`)
-                            setTimeout(() => setDependencyNotice(null), 6000)
-                            return
-                          }
-
-                          if (targetState && result.autoEnabled.length > 0) {
-                            const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-                            setDependencyNotice(`ℹ️ Se activaron automáticamente los prerrequisitos: ${autoNames}`)
-                            setTimeout(() => setDependencyNotice(null), 5000)
-                          } else {
-                            setDependencyNotice(null)
-                          }
-
-                          setEnabledModules(result.updatedModules)
-                        }}
-                        className="neu-card"
-                        style={{
-                          padding: 12,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          gap: 10,
-                          border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
-                          background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
-                          transition: '0.15s ease'
-                        }}
-                      >
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start', flex: 1 }}>
-                          <div style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 6,
-                            background: 'var(--bg-deep)',
-                            color: 'var(--text-primary)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                          }}>
-                            <IconComponent size={16} strokeWidth={2} />
-                          </div>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 2 }}>
-                              <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>{m.name}</span>
-                              <span style={{ fontSize: '0.62rem', background: 'var(--accent-purple-lt, rgba(168,85,247,0.12))', color: 'var(--accent-purple, #9333ea)', padding: '1px 6px', borderRadius: 4, fontWeight: 700, border: '1px solid var(--border-color)' }}>
-                                {m.categoryName}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', lineHeight: 1.25, marginBottom: requiresNames.length > 0 ? 4 : 0 }}>
-                              {m.description}
-                            </div>
-                            {requiresNames.length > 0 && (
-                              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                                <span>🔗 Requiere:</span>
-                                <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{requiresNames.join(', ')}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Toggle Switch */}
-                        <div style={{
-                          width: 34,
-                          height: 18,
-                          borderRadius: 9,
-                          background: isEnabled ? 'var(--text-primary)' : 'var(--border-color)',
-                          position: 'relative',
-                          flexShrink: 0,
-                          transition: '0.2s'
-                        }}>
-                          <div style={{
-                            width: 12,
-                            height: 12,
-                            borderRadius: '50%',
-                            background: '#fff',
-                            position: 'absolute',
-                            top: 3,
-                            left: isEnabled ? 19 : 3,
-                            transition: '0.2s'
-                          }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-          </div>
-        ) : (currentSection as any).isBackup ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            <div className="neu-flat" style={{ padding: 18, borderRadius: 'var(--radius-md)', background: 'var(--bg-deep)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-                <Database size={22} style={{ color: 'var(--accent-blue)' }} />
-                <div>
-                  <h3 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-                    Copia de Seguridad y Contingencia Local
-                  </h3>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
-                    Exporta una copia completa de tus productos, clientes, ventas y configuraciones en formato JSON cifrado/descargable para contingencia fuera de línea.
+        <form onSubmit={(e) => { e.preventDefault(); handleSave(); }} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          {activeSection === 1 && (
+            <div style={{
+              padding: '16px 18px',
+              borderRadius: 12,
+              border: enableInvoicing ? '1px solid #94F0E3' : '1px solid #E2E8F0',
+              background: enableInvoicing ? '#E6FAF7' : '#F8FAFC',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 16,
+              marginBottom: 8,
+              transition: 'all 0.2s ease'
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#0F172A', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>Facturación Electrónica DIAN</span>
+                  <span style={{
+                    fontSize: '0.68rem',
+                    fontWeight: 800,
+                    padding: '2px 8px',
+                    borderRadius: 20,
+                    background: enableInvoicing ? '#00D6BC' : '#94A3B8',
+                    color: '#FFFFFF',
+                    letterSpacing: '0.02em'
+                  }}>
+                    {enableInvoicing ? '✓ HABILITADA (Visible en menú lateral)' : '✕ OCULTA (No visible en menú lateral)'}
                   </span>
                 </div>
+                <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: 4, lineHeight: 1.4 }}>
+                  {enableInvoicing
+                    ? 'El menú Facturación está activo en el menú lateral para emitir facturas UBL 2.1 y documentos soporte.'
+                    : 'Mantener oculto el menú Facturación del panel lateral mientras se completan las resoluciones y pruebas DIAN.'}
+                </div>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
-                <button
-                  type="button"
-                  className="btn-neu btn-primary"
-                  onClick={() => setShowBackupModal(true)}
-                  style={{ padding: '10px 18px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}
-                >
-                  <Download size={16} />
-                  <span>Generar y Descargar Respaldo Local (JSON)</span>
-                </button>
-              </div>
+              <label style={{ position: 'relative', display: 'inline-block', width: 48, height: 26, flexShrink: 0, cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={enableInvoicing}
+                  onChange={e => setEnableInvoicing(e.target.checked)}
+                  style={{ opacity: 0, width: 0, height: 0 }}
+                />
+                <span style={{
+                  position: 'absolute', cursor: 'pointer', top: 0, left: 0, right: 0, bottom: 0,
+                  background: enableInvoicing ? '#00D6BC' : '#CBD5E1',
+                  transition: '0.2s', borderRadius: 26
+                }}>
+                  <span style={{
+                    position: 'absolute', height: 20, width: 20, left: enableInvoicing ? 24 : 4, bottom: 3,
+                    background: '#FFFFFF', transition: '0.2s', borderRadius: '50%',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                  }} />
+                </span>
+              </label>
             </div>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
-            {currentSection.fields?.map(field => (
-              <div key={field.key}>
-                <label style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>{field.label}</label>
-                {field.type === 'select' ? (
-                  <select className="input-neu" value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }}>
-                    {field.options?.map(o => <option key={o} value={o}>{o}</option>)}
+          )}
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14 }}>
+            {currentSection.fields?.map(f => (
+              <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 5, gridColumn: f.type === 'textarea' ? '1 / -1' : undefined }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155' }}>
+                  {f.label}
+                </label>
+
+                {f.type === 'select' ? (
+                  <select
+                    className="input-neu"
+                    value={(form as any)[f.key]}
+                    onChange={e => handleFieldChange(f.key as any, e.target.value)}
+                    style={{ fontSize: '0.84rem', background: '#FFFFFF', cursor: 'pointer' }}
+                  >
+                    {f.options?.map(opt => (
+                      <option key={opt} value={opt.split(' ')[0]}>{opt}</option>
+                    ))}
                   </select>
+                ) : f.type === 'textarea' ? (
+                  <textarea
+                    className="input-neu"
+                    rows={2}
+                    value={(form as any)[f.key]}
+                    onChange={e => handleFieldChange(f.key as any, e.target.value)}
+                    placeholder={f.placeholder}
+                    style={{ fontSize: '0.84rem', resize: 'vertical' }}
+                  />
                 ) : (
-                  <input className="input-neu" type={field.type} placeholder={field.placeholder} value={form[field.key as keyof typeof form]} onChange={e => handleFieldChange(field.key as keyof typeof form, e.target.value)} style={{ fontSize: '0.82rem' }} />
+                  <input
+                    type={f.type}
+                    className="input-neu"
+                    value={(form as any)[f.key]}
+                    onChange={e => handleFieldChange(f.key as any, e.target.value)}
+                    placeholder={f.placeholder}
+                    style={{ fontSize: '0.84rem' }}
+                  />
                 )}
               </div>
             ))}
           </div>
-        )}
 
-        {error && (
-          <div style={{ marginTop: 12, background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}>
-            {error}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 12, paddingTop: 14, borderTop: '1px solid #E2E8F0' }}>
+            <button
+              type="submit"
+              disabled={saving}
+              className="btn-neu btn-primary"
+              style={{ padding: '9px 22px', fontSize: '0.84rem', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Save size={15} />
+              <span>{saving ? 'Guardando...' : 'Guardar Cambios'}</span>
+            </button>
           </div>
-        )}
-
-        <div style={{ marginTop: 18, display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 10 }}>
-          {saved && <div className="badge badge-green" style={{ padding: '8px 14px', fontSize: '0.78rem' }}>✓ Guardado</div>}
-          <button className="btn-neu btn-primary" style={{ padding: '10px 22px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 6 }} onClick={handleSave}>
-            <Save size={15} strokeWidth={2.5} />
-            <span>Guardar cambios</span>
-          </button>
-        </div>
+        </form>
       </div>
 
-      <ContingencyBackupModal
-        isOpen={showBackupModal}
-        onClose={() => setShowBackupModal(false)}
-        tenantId={tenantId}
-      />
     </div>
   )
 }

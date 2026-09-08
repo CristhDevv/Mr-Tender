@@ -180,14 +180,7 @@ export default function LaundryOrdersPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/laundry/rack"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-purple)' }}
-          >
-            <Boxes size={15} />
-            <span>Planta & Percheros</span>
-          </Link>
+          
           <button
             onClick={() => setShowModal(true)}
             className="btn-neu btn-primary"

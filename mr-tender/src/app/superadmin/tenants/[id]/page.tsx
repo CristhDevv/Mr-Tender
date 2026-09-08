@@ -20,7 +20,8 @@ import {
   ArrowUpRight,
   Sparkles,
   SlidersHorizontal,
-  Info
+  Info,
+  Receipt
 } from 'lucide-react'
 
 interface Tenant {
@@ -61,7 +62,17 @@ export default function TenantDetailPage() {
   const [saving, setSaving] = useState(false)
   const [tenant, setTenant] = useState<Tenant | null>(null)
   const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
-  const [activeTab, setActiveTab] = useState<'info' | 'modules' | 'users' | 'danger'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'modules' | 'dian' | 'users' | 'danger'>('info')
+  const [dianForm, setDianForm] = useState({
+    environment: '2',
+    softwareId: '',
+    softwarePin: '12345',
+    technicalKey: 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
+    resolution: '18760000001',
+    prefix: 'SETP',
+    from: '1',
+    to: '5000'
+  })
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // Tenant Edit Form
@@ -97,7 +108,7 @@ export default function TenantDetailPage() {
 
       const [tenantRes, settingsRes, usersRes] = await Promise.all([
         supabase.from('platform_tenants').select('*').eq('id', tenantId).single(),
-        supabase.from('tenant_settings').select('enabled_modules').eq('tenant_id', tenantId).limit(1),
+        supabase.from('tenant_settings').select('*').eq('tenant_id', tenantId).limit(1),
         supabase.from('profiles').select('id, email, full_name, role, created_at').eq('tenant_id', tenantId)
       ])
 
@@ -119,8 +130,23 @@ export default function TenantDetailPage() {
       const defaultMods: Record<string, boolean> = {}
       ALL_SYSTEM_MODULES.forEach(m => { defaultMods[m.id] = m.defaultEnabled })
 
-      if (settingsRes.data?.[0]?.enabled_modules) {
-        setModules({ ...defaultMods, ...settingsRes.data[0].enabled_modules })
+      if (settingsRes.data?.[0]) {
+        const row = settingsRes.data[0]
+        if (row.enabled_modules) {
+          setModules({ ...defaultMods, ...row.enabled_modules })
+        } else {
+          setModules(defaultMods)
+        }
+        setDianForm({
+          environment: row.fiscal_config?.environment || '2',
+          softwareId: row.dian_software_id || '',
+          softwarePin: row.fiscal_config?.software_pin || '12345',
+          technicalKey: row.fiscal_config?.technical_key || 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
+          resolution: row.dian_resolution || '18760000001',
+          prefix: row.dian_prefix || 'SETP',
+          from: row.dian_from || '1',
+          to: row.dian_to || '5000'
+        })
       } else {
         setModules(defaultMods)
       }
@@ -162,6 +188,35 @@ export default function TenantDetailPage() {
       await loadTenantData()
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Error al guardar cambios' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Save DIAN Technical Configuration
+  async function handleSaveDian(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.from('tenant_settings').upsert({
+        tenant_id: tenantId,
+        dian_software_id: dianForm.softwareId,
+        dian_resolution: dianForm.resolution,
+        dian_prefix: dianForm.prefix,
+        dian_from: dianForm.from,
+        dian_to: dianForm.to,
+        fiscal_config: {
+          software_pin: dianForm.softwarePin,
+          technical_key: dianForm.technicalKey,
+          environment: dianForm.environment
+        }
+      }, { onConflict: 'tenant_id' })
+
+      if (error) throw error
+      setMessage({ type: 'success', text: 'Configuración técnica DIAN guardada exitosamente.' })
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error al guardar configuración DIAN' })
     } finally {
       setSaving(false)
     }
@@ -513,6 +568,24 @@ export default function TenantDetailPage() {
         >
           <Layers size={15} strokeWidth={2} />
           <span>Módulos del Sistema ({activeModulesCount}/{ALL_SYSTEM_MODULES.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('dian')}
+          className="btn-neu"
+          style={{
+            padding: '8px 16px',
+            fontSize: '0.82rem',
+            fontWeight: activeTab === 'dian' ? 700 : 500,
+            background: activeTab === 'dian' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'dian' ? 'var(--bg)' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <Receipt size={15} strokeWidth={2} />
+          <span>DIAN Electrónica</span>
         </button>
 
         <button
@@ -966,6 +1039,147 @@ export default function TenantDetailPage() {
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* ── TAB: CONFIGURACIÓN TÉCNICA DIAN ── */}
+      {activeTab === 'dian' && (
+        <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Receipt size={18} strokeWidth={2} style={{ color: '#00B19D' }} />
+              <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>
+                Configuración Técnica DIAN (Exclusivo Superadmin)
+              </h3>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+              Credenciales técnicas de habilitación, ID de software, claves criptográficas y numeración autorizada para este tenant.
+            </p>
+          </div>
+
+          <form onSubmit={handleSaveDian} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  Ambiente DIAN
+                </label>
+                <select
+                  className="input-neu"
+                  value={dianForm.environment}
+                  onChange={e => setDianForm(f => ({ ...f, environment: e.target.value }))}
+                  style={{ fontSize: '0.84rem' }}
+                >
+                  <option value="2">2 - Habilitación / Set de Pruebas</option>
+                  <option value="1">1 - Producción Oficial</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  ID Software Habilitado DIAN
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={dianForm.softwareId}
+                  onChange={e => setDianForm(f => ({ ...f, softwareId: e.target.value }))}
+                  placeholder="UUID Software ID"
+                  style={{ fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  PIN del Software (5 dígitos)
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={dianForm.softwarePin}
+                  onChange={e => setDianForm(f => ({ ...f, softwarePin: e.target.value }))}
+                  placeholder="12345"
+                  style={{ fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  Clave Técnica DIAN
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={dianForm.technicalKey}
+                  onChange={e => setDianForm(f => ({ ...f, technicalKey: e.target.value }))}
+                  placeholder="Clave técnica alfanumérica"
+                  style={{ fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  Resolución DIAN Nº
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={dianForm.resolution}
+                  onChange={e => setDianForm(f => ({ ...f, resolution: e.target.value }))}
+                  placeholder="18760000001"
+                  style={{ fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  Prefijo Autorizado
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={dianForm.prefix}
+                  onChange={e => setDianForm(f => ({ ...f, prefix: e.target.value }))}
+                  placeholder="SETP o FE"
+                  style={{ fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>
+                  Rango Autorizado (Desde - Hasta)
+                </label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input
+                    type="number"
+                    className="input-neu"
+                    value={dianForm.from}
+                    onChange={e => setDianForm(f => ({ ...f, from: e.target.value }))}
+                    placeholder="Desde"
+                    style={{ fontSize: '0.84rem', flex: 1 }}
+                  />
+                  <input
+                    type="number"
+                    className="input-neu"
+                    value={dianForm.to}
+                    onChange={e => setDianForm(f => ({ ...f, to: e.target.value }))}
+                    placeholder="Hasta"
+                    style={{ fontSize: '0.84rem', flex: 1 }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 12, borderTop: '1px solid var(--border-color)' }}>
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-neu btn-primary"
+                style={{ padding: '8px 20px', fontSize: '0.82rem', fontWeight: 700 }}
+              >
+                {saving ? 'Guardando...' : 'Guardar Credenciales DIAN'}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

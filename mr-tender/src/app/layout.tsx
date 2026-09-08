@@ -1,15 +1,16 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter } from 'next/font/google'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 
-const inter = Inter({
+const jakarta = Plus_Jakarta_Sans({
   subsets: ['latin'],
   display: 'swap',
-  variable: '--font-inter',
+  variable: '--font-jakarta',
+  weight: ['400', '500', '600', '700', '800']
 })
 
 export const viewport: Viewport = {
-  themeColor: '#C26D2D',
+  themeColor: '#00D6BC',
   width: 'device-width',
   initialScale: 1,
   maximumScale: 1,
@@ -17,8 +18,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: { default: 'Mr Tender — ERP & POS para tu negocio 🇨🇴', template: '%s | Mr Tender' },
-  description: 'Punto de venta y control de inventario para tiendas de barrio, micromercados y pequeños negocios en Colombia.',
-  keywords: ['ERP', 'punto de venta', 'POS', 'inventario', 'tienda de barrio', 'Colombia'],
+  description: 'Punto de venta y control de inventario para tiendas de barrio, panaderías, restaurantes y pequeños negocios en Colombia.',
+  keywords: ['ERP', 'punto de venta', 'POS', 'inventario', 'panadería', 'Colombia'],
   authors: [{ name: 'Mr Tender' }],
   manifest: '/manifest.webmanifest',
   icons: {
@@ -35,8 +36,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={inter.variable} suppressHydrationWarning>
-      <body className={inter.className} suppressHydrationWarning>
+    <html lang="es" className={jakarta.variable} suppressHydrationWarning>
+      <body className={jakarta.className} suppressHydrationWarning>
         {children}
         <script
           dangerouslySetInnerHTML={{

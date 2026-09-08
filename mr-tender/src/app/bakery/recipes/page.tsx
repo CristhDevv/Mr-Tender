@@ -202,30 +202,16 @@ export default function BakeryRecipesPage() {
           </div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Croissant size={24} style={{ color: 'var(--accent-amber)' }} />
-            Recetario & Fichas Técnicas de Panadería
+            Recetas & Costos de Panadería
           </h1>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-            Escandallo por gramaje de harina e ingredientes, costo por tanda y rendimiento de horneada.
+            Cálculo de costos por ingredientes, costo por tanda y rendimiento de horneada.
           </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/bakery/production"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Flame size={15} />
-            <span>Horneadas del Día</span>
-          </Link>
-          <Link
-            href="/bakery/custom-orders"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-purple)' }}
-          >
-            <BookOpen size={15} />
-            <span>Encargos & Tortas</span>
-          </Link>
+          
+          
           <button
             onClick={() => setShowRecipeModal(true)}
             className="btn-neu btn-primary"
@@ -245,7 +231,7 @@ export default function BakeryRecipesPage() {
           </div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>No hay recetas registradas</h3>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', maxWidth: 440, margin: 0 }}>
-            Estandariza tus recetas de panadería para garantizar siempre el mismo sabor y controlar tus costos.
+            Estandariza tus recetas para garantizar siempre la misma calidad y controlar tus costos de ingredientes.
           </p>
           <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
             <button onClick={handleSeedDemoRecipes} className="btn-neu btn-primary" style={{ padding: '9px 18px', fontSize: '0.82rem' }}>
@@ -311,141 +297,151 @@ export default function BakeryRecipesPage() {
 
       {/* Modal: Crear Receta */}
       {showRecipeModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="neu-card" style={{ maxWidth: 560, width: '100%', padding: 24, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Nueva Receta de Panadería</h3>
-              <button onClick={() => setShowRecipeModal(false)} className="btn-neu btn-ghost" style={{ padding: 4 }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, overflowY: 'auto' }}>
+          <div className="neu-card animate-scale-in" style={{ maxWidth: 580, width: '100%', maxHeight: 'calc(100dvh - 24px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, borderRadius: 16 }}>
+            {/* Fixed Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #E2E8F0', background: '#FFFFFF', flexShrink: 0 }}>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#0F172A' }}>Nueva Receta de Panadería</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#64748B' }}>Registra la ficha técnica con ingredientes y costos</p>
+              </div>
+              <button onClick={() => setShowRecipeModal(false)} className="btn-neu btn-ghost" style={{ width: 30, height: 30, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
+              </button>
             </div>
 
-            <form onSubmit={handleCreateRecipe} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10 }}>
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleCreateRecipe} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 18px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Nombre del Pan / Postre</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej: Pan de Bono, Croissant..."
+                      value={recipeForm.name}
+                      onChange={e => setRecipeForm({ ...recipeForm, name: e.target.value })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Categoría</label>
+                    <input
+                      type="text"
+                      placeholder="Panadería Salada, Dulce..."
+                      value={recipeForm.category}
+                      onChange={e => setRecipeForm({ ...recipeForm, category: e.target.value })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Rendimiento</label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={recipeForm.yield_quantity}
+                      onChange={e => setRecipeForm({ ...recipeForm, yield_quantity: Number(e.target.value) })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 10px', fontSize: '0.82rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Temp Horno (°C)</label>
+                    <input
+                      type="number"
+                      value={recipeForm.baking_temp_celsius}
+                      onChange={e => setRecipeForm({ ...recipeForm, baking_temp_celsius: Number(e.target.value) })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 10px', fontSize: '0.82rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Precio Venta</label>
+                    <input
+                      type="number"
+                      value={recipeForm.suggested_sale_price}
+                      onChange={e => setRecipeForm({ ...recipeForm, suggested_sale_price: Number(e.target.value) })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 10px', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Ingredients List */}
                 <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Nombre del Pan / Postre</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Ej: Pan de Bono, Croissant..."
-                    value={recipeForm.name}
-                    onChange={e => setRecipeForm({ ...recipeForm, name: e.target.value })}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Ingredientes de la Tanda</label>
+                    <button type="button" onClick={handleAddIngredient} className="btn-neu" style={{ padding: '3px 8px', fontSize: '0.72rem' }}>
+                      + Ingrediente
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {recipeForm.ingredients.map((it, idx) => (
+                      <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 6, alignItems: 'center' }}>
+                        <input
+                          type="text"
+                          placeholder="Ingrediente (ej. Harina)"
+                          value={it.ingredient}
+                          onChange={e => handleUpdateIngredient(idx, 'ingredient', e.target.value)}
+                          className="input-neu"
+                          style={{ padding: '6px 8px', fontSize: '0.78rem' }}
+                        />
+                        <input
+                          type="text"
+                          placeholder="Gramaje (ej. 1000g)"
+                          value={it.quantity}
+                          onChange={e => handleUpdateIngredient(idx, 'quantity', e.target.value)}
+                          className="input-neu"
+                          style={{ padding: '6px 8px', fontSize: '0.78rem' }}
+                        />
+                        <input
+                          type="number"
+                          placeholder="Costo"
+                          value={it.cost}
+                          onChange={e => handleUpdateIngredient(idx, 'cost', Number(e.target.value))}
+                          className="input-neu"
+                          style={{ padding: '6px 8px', fontSize: '0.78rem' }}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveIngredient(idx)}
+                          className="btn-neu btn-ghost"
+                          style={{ padding: 6, color: 'var(--accent-coral)' }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Instrucciones de Amasado y Fermentación</label>
+                  <textarea
+                    rows={2}
+                    value={recipeForm.instructions}
+                    onChange={e => setRecipeForm({ ...recipeForm, instructions: e.target.value })}
                     className="input-neu"
                     style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
                   />
                 </div>
-
-                <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Categoría</label>
-                  <input
-                    type="text"
-                    placeholder="Panadería Salada, Dulce..."
-                    value={recipeForm.category}
-                    onChange={e => setRecipeForm({ ...recipeForm, category: e.target.value })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                  />
-                </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Rendimiento Tanda</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={recipeForm.yield_quantity}
-                    onChange={e => setRecipeForm({ ...recipeForm, yield_quantity: Number(e.target.value) })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 10px', fontSize: '0.82rem' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Temp Horno (°C)</label>
-                  <input
-                    type="number"
-                    value={recipeForm.baking_temp_celsius}
-                    onChange={e => setRecipeForm({ ...recipeForm, baking_temp_celsius: Number(e.target.value) })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 10px', fontSize: '0.82rem' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Precio Venta (COP)</label>
-                  <input
-                    type="number"
-                    value={recipeForm.suggested_sale_price}
-                    onChange={e => setRecipeForm({ ...recipeForm, suggested_sale_price: Number(e.target.value) })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 10px', fontSize: '0.82rem' }}
-                  />
-                </div>
-              </div>
-
-              {/* Ingredients List */}
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Ingredientes de la Tanda</label>
-                  <button type="button" onClick={handleAddIngredient} className="btn-neu" style={{ padding: '3px 8px', fontSize: '0.72rem' }}>
-                    + Ingrediente
-                  </button>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {recipeForm.ingredients.map((it, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr auto', gap: 6, alignItems: 'center' }}>
-                      <input
-                        type="text"
-                        placeholder="Ingrediente (ej. Harina)"
-                        value={it.ingredient}
-                        onChange={e => handleUpdateIngredient(idx, 'ingredient', e.target.value)}
-                        className="input-neu"
-                        style={{ padding: '6px 8px', fontSize: '0.78rem' }}
-                      />
-                      <input
-                        type="text"
-                        placeholder="Gramaje (ej. 1000g)"
-                        value={it.quantity}
-                        onChange={e => handleUpdateIngredient(idx, 'quantity', e.target.value)}
-                        className="input-neu"
-                        style={{ padding: '6px 8px', fontSize: '0.78rem' }}
-                      />
-                      <input
-                        type="number"
-                        placeholder="Costo"
-                        value={it.cost}
-                        onChange={e => handleUpdateIngredient(idx, 'cost', Number(e.target.value))}
-                        className="input-neu"
-                        style={{ padding: '6px 8px', fontSize: '0.78rem' }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveIngredient(idx)}
-                        className="btn-neu btn-ghost"
-                        style={{ padding: 6, color: 'var(--accent-coral)' }}
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Instrucciones de Amasado y Fermentación</label>
-                <textarea
-                  rows={2}
-                  value={recipeForm.instructions}
-                  onChange={e => setRecipeForm({ ...recipeForm, instructions: e.target.value })}
-                  className="input-neu"
-                  style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <button type="button" onClick={() => setShowRecipeModal(false)} className="btn-neu" style={{ flex: 1, padding: 9 }}>Cancelar</button>
-                <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ flex: 2, padding: 9 }}>
+              {/* Fixed Footer */}
+              <div style={{ display: 'flex', gap: 8, padding: '12px 18px', borderTop: '1px solid #E2E8F0', background: '#F8FAFC', flexShrink: 0 }}>
+                <button type="button" onClick={() => setShowRecipeModal(false)} className="btn-neu" style={{ flex: 1, padding: 10 }}>Cancelar</button>
+                <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ flex: 2, padding: 10, fontWeight: 800 }}>
                   {submitting ? 'Guardando...' : 'Guardar Ficha Técnica'}
                 </button>
               </div>

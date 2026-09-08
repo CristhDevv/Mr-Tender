@@ -142,22 +142,8 @@ export default function VetClinicalPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/veterinary/pets"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Dog size={15} />
-            <span>Pacientes Mascotas</span>
-          </Link>
-          <Link
-            href="/veterinary/vaccines"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)' }}
-          >
-            <HeartPulse size={15} />
-            <span>Vacunación</span>
-          </Link>
+          
+          
         </div>
       </div>
 

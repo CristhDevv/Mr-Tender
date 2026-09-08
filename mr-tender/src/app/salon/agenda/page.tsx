@@ -185,14 +185,7 @@ export default function SalonAgendaPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/salon/commissions"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-green)' }}
-          >
-            <Percent size={15} />
-            <span>Liquidación de Comisiones</span>
-          </Link>
+          
           <button
             onClick={() => setShowModal(true)}
             className="btn-neu btn-primary"

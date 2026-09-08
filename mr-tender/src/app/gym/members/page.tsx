@@ -204,22 +204,8 @@ export default function GymMembersPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/gym/checkin"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Activity size={15} />
-            <span>Terminal Check-in QR</span>
-          </Link>
-          <Link
-            href="/gym/classes"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-purple)' }}
-          >
-            <Users size={15} />
-            <span>Clases & Aforo</span>
-          </Link>
+          
+          
           <button
             onClick={() => setShowMemberModal(true)}
             className="btn-neu btn-primary"

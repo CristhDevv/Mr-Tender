@@ -170,22 +170,8 @@ export default function GymClassesPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/gym/checkin"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Activity size={15} />
-            <span>Terminal Check-in QR</span>
-          </Link>
-          <Link
-            href="/gym/members"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Dumbbell size={15} />
-            <span>Socios</span>
-          </Link>
+          
+          
           <button
             onClick={() => setShowClassModal(true)}
             className="btn-neu btn-primary"

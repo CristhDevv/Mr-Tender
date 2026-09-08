@@ -31,6 +31,63 @@ export function calculateLineTotal(item: CartItem): number {
   return base * (1 - discount / 100)
 }
 
+/**
+ * Adds or increments an item in the cart, always positioning the newly added or updated item
+ * at the top of the cart array (index 0) so the cashier always sees the latest item without scrolling.
+ */
+export function addItemToCart<T extends CartItem>(cart: T[], product: T, quantity = 1): T[] {
+  const existing = cart.find(i => i.id === product.id)
+  if (existing) {
+    const newQty = (existing.quantity || 0) + quantity
+    const { unitPrice } = getEffectiveUnitPrice({ ...existing, quantity: newQty })
+    const discount = Math.max(0, Math.min(100, Number(existing.discount) || 0))
+    const updatedItem: T = {
+      ...existing,
+      quantity: newQty,
+      lineTotal: newQty * unitPrice * (1 - discount / 100)
+    }
+    const rest = cart.filter(i => i.id !== product.id)
+    return [updatedItem, ...rest]
+  }
+
+  const discount = Math.max(0, Math.min(100, Number(product.discount) || 0))
+  const initialItem: T = {
+    ...product,
+    quantity,
+    discount,
+    lineTotal: 0
+  }
+  const { unitPrice } = getEffectiveUnitPrice(initialItem)
+  const newItem: T = {
+    ...initialItem,
+    lineTotal: quantity * unitPrice * (1 - discount / 100)
+  }
+  return [newItem, ...cart]
+}
+
+/**
+ * Updates item quantity in the cart. When quantity is incremented or updated, moves it to the top (index 0).
+ * If quantity <= 0, removes it.
+ */
+export function updateCartItemQuantity<T extends CartItem>(cart: T[], id: string, qty: number): T[] {
+  if (qty <= 0) {
+    return cart.filter(i => i.id !== id)
+  }
+  const rounded = Math.round(qty * 1000) / 1000
+  const target = cart.find(i => i.id === id)
+  if (!target) return cart
+
+  const { unitPrice } = getEffectiveUnitPrice({ ...target, quantity: rounded })
+  const discount = Math.max(0, Math.min(100, Number(target.discount) || 0))
+  const updatedItem: T = {
+    ...target,
+    quantity: rounded,
+    lineTotal: rounded * unitPrice * (1 - discount / 100)
+  }
+  const rest = cart.filter(i => i.id !== id)
+  return [updatedItem, ...rest]
+}
+
 export function calculateCartTotals(items: CartItem[], globalDiscountPercent = 0) {
   const subtotal = items.reduce((sum, item) => sum + calculateLineTotal(item), 0)
   const safeDiscountPercent = Math.max(0, Math.min(100, globalDiscountPercent || 0))

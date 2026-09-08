@@ -77,14 +77,14 @@ export async function middleware(request: NextRequest) {
     }
 
     if (user && (pathname === '/login' || pathname === '/register')) {
-      const role = user.app_metadata?.role || user.user_metadata?.role
+      const role = user.app_metadata?.role
       const isSuperadmin = role === 'superadmin'
       return NextResponse.redirect(new URL(isSuperadmin ? '/superadmin' : '/dashboard', request.url))
     }
 
     // Protect superadmin routes
     if (pathname.startsWith('/superadmin')) {
-      const role = user?.app_metadata?.role || user?.user_metadata?.role
+      const role = user?.app_metadata?.role
       if (role !== 'superadmin') {
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }

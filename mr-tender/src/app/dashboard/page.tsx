@@ -32,7 +32,7 @@ const QUICK_ACTIONS = [
   { Icon: Package, label: 'Nuevo Producto', href: '/products/new', color: 'var(--accent-green)' },
   { Icon: Users, label: 'Nuevo Cliente', href: '/customers', color: 'var(--accent-purple)' },
   { Icon: Truck, label: 'Orden de Compra', href: '/purchases', color: 'var(--accent-amber)' },
-  { Icon: DollarSign, label: 'Abrir Caja', href: '/cash', color: 'var(--accent-coral)' },
+  { Icon: DollarSign, label: 'Abrir Caja', href: '/cash', color: 'var(--accent-blue)' },
   { Icon: BarChart3, label: 'Ver Reportes', href: '/reports', color: 'var(--text-secondary)' },
 ]
 
@@ -76,23 +76,26 @@ export default function DashboardPage() {
         const todayStr = new Date().toISOString().split('T')[0]
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-        // 1. Fetch sales today with items for margin calculation
+        // 1. Fetch sales today with items for margin calculation (excluding cancelled sales)
         const [salesTodayRes, allSalesRes, custRes, regRes, invRes, topItemsRes] = await Promise.all([
           supabase
             .from('sales')
             .select(`
-              total, created_at,
+              id, number, total, status, created_at,
               sale_payments (payment_method),
               customers (full_name),
               sale_items (quantity, cost_price, total)
             `)
             .eq('tenant_id', tenant_id)
+            .neq('status', 'cancelled')
             .gte('created_at', todayStr + 'T00:00:00')
-            .lte('created_at', todayStr + 'T23:59:59'),
+            .lte('created_at', todayStr + 'T23:59:59')
+            .order('created_at', { ascending: false }),
           supabase
             .from('sales')
             .select('total, created_at')
             .eq('tenant_id', tenant_id)
+            .neq('status', 'cancelled')
             .gte('created_at', sevenDaysAgo)
             .order('created_at', { ascending: true }),
           supabase
@@ -110,8 +113,9 @@ export default function DashboardPage() {
             .eq('tenant_id', tenant_id),
           supabase
             .from('sale_items')
-            .select('product_name, quantity, total, sales!inner(tenant_id)')
+            .select('product_name, quantity, total, sales!inner(tenant_id, status)')
             .eq('sales.tenant_id', tenant_id)
+            .neq('sales.status', 'cancelled')
             .limit(100)
         ])
 
@@ -279,20 +283,18 @@ export default function DashboardPage() {
       {/* Vertical Operational Contextual Widgets */}
       <VerticalDashboardWidgets />
 
-      {/* KPIs Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+      {/* Standardized Dashboard KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         {kpis.map(kpi => {
           const Icon = kpi.Icon
           return (
-            <div key={kpi.label} className="kpi-card animate-fade-in" style={{ padding: '14px 16px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{kpi.label}</div>
-                  <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>{kpi.value}</div>
-                </div>
-                <div className="kpi-icon-wrap" style={{ background: kpi.bg, width: 34, height: 34 }}>
-                  <Icon size={16} strokeWidth={2} style={{ color: kpi.color }} />
-                </div>
+            <div key={kpi.label} className="neu-card animate-fade-in" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{kpi.label}</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0F172A' }}>{kpi.value}</div>
+              </div>
+              <div style={{ background: kpi.bg, width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: kpi.color, flexShrink: 0 }}>
+                <Icon size={18} strokeWidth={2} />
               </div>
             </div>
           )

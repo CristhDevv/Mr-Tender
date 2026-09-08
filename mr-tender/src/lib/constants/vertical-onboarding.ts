@@ -52,7 +52,7 @@ export const VERTICAL_ONBOARDINGS: Record<string, VerticalOnboardingConfig> = {
 
   restaurant: {
     title: 'Tu Restaurante está listo para el servicio',
-    subtitle: 'Configuramos POS rápido, mapa de mesas, comandas a cocina (KDS) y escandallo de recetas.',
+    subtitle: 'Configuramos POS rápido, mapa de mesas, comandas a cocina (KDS) y costeo de recetas.',
     badgeText: 'GASTRONOMÍA',
     checklist: [
       {
@@ -78,7 +78,7 @@ export const VERTICAL_ONBOARDINGS: Record<string, VerticalOnboardingConfig> = {
       },
       {
         id: 'restaurant_recipes',
-        label: 'Estructura tus Recetas y Escandallo',
+        label: 'Estructura tus Recetas y Costos',
         description: 'Asocia insumos de inventario a cada plato para costeo automático por porción.',
         href: '/restaurant/recipes',
         buttonText: 'Ver Recetas'

@@ -264,22 +264,8 @@ export default function PharmacyMedicinesPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/pharmacy/lots"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-amber)' }}
-          >
-            <Clock size={15} />
-            <span>Control de Lotes & FEFO</span>
-          </Link>
-          <Link
-            href="/pharmacy/temperature"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-green)' }}
-          >
-            <Thermometer size={15} />
-            <span>Termohigrometría</span>
-          </Link>
+          
+          
           <button
             onClick={() => {
               setEditingMedId(null)

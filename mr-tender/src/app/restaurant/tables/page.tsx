@@ -364,22 +364,8 @@ export default function RestaurantTablesPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/restaurant/kds"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-amber)' }}
-          >
-            <Flame size={15} />
-            <span>Ir a Cocina KDS</span>
-          </Link>
-          <Link
-            href="/restaurant/recipes"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-green)' }}
-          >
-            <UtensilsCrossed size={15} />
-            <span>Recetas & Escandallo</span>
-          </Link>
+          
+          
           <button
             onClick={() => setShowNewTableModal(true)}
             className="btn-neu btn-primary"

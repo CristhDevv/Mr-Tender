@@ -110,14 +110,14 @@ export default function CustomerDisplayPage() {
               width: 44,
               height: 44,
               borderRadius: 12,
-              background: 'linear-gradient(135deg, #2563eb, #38bdf8)',
+              background: 'linear-gradient(135deg, #00B19D, #008F7E)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               fontWeight: 900,
               fontSize: '1.2rem',
               color: '#fff',
-              boxShadow: '0 0 15px rgba(37,99,235,0.4)'
+              boxShadow: '0 0 15px rgba(0,177,157,0.4)'
             }}
           >
             🏪
@@ -266,11 +266,11 @@ export default function CustomerDisplayPage() {
                 style={{
                   marginTop: 24,
                   background: 'linear-gradient(135deg, #1e293b, #0f172a)',
-                  border: '2px solid #2563eb',
+                  border: '2px solid #00B19D',
                   borderRadius: 20,
                   padding: 24,
                   textAlign: 'center',
-                  boxShadow: '0 0 30px rgba(37,99,235,0.2)'
+                  boxShadow: '0 0 30px rgba(0,177,157,0.2)'
                 }}
               >
                 <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#38bdf8', textTransform: 'uppercase', letterSpacing: '0.1em' }}>

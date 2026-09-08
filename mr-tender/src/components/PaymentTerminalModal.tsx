@@ -123,7 +123,7 @@ export default function PaymentTerminalModal({
                 width: 42,
                 height: 42,
                 borderRadius: 12,
-                background: 'linear-gradient(135deg, var(--accent-blue, #2563eb), #60a5fa)',
+                background: 'linear-gradient(135deg, var(--accent-blue, #00B19D), #60a5fa)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

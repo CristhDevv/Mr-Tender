@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/auth-client'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
 import CopilotWidget from '@/components/CopilotWidget'
@@ -58,7 +59,13 @@ import {
   RotateCcw,
   GlassWater,
   Stethoscope,
-  Syringe
+  Syringe,
+  Beef,
+  Printer,
+  Carrot,
+  Flower2,
+  Candy,
+  Scale
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -93,8 +100,13 @@ const NAV_SECTIONS: NavSection[] = [
     Icon: ShoppingCart,
     items: [
       { href: '/pos',                   Icon: ShoppingCart,    label: 'POS',          moduleKey: 'pos',            requiredPermission: 'pos.view' },
+      { href: '/sales',                 Icon: Receipt,         label: 'Historial',    moduleKey: 'pos',            requiredPermission: 'pos.view' },
       { href: '/cash',                  Icon: DollarSign,      label: 'Caja',         moduleKey: 'cash',           requiredPermission: 'cash.view' },
       { href: '/hardware/quotes',       Icon: FileText,        label: 'Cotizaciones', moduleKey: 'hardware',       requiredPermission: 'pos.view' },
+      { href: '/stationery/school-kits', Icon: BookOpen,        label: 'Listas',       moduleKey: 'stationery',     requiredPermission: 'pos.view' },
+      { href: '/greengrocer/bundles',    Icon: Carrot,          label: 'Canastas',     moduleKey: 'greengrocer',    requiredPermission: 'pos.view' },
+      { href: '/florist/arrangements',   Icon: Flower2,         label: 'Arreglos',     moduleKey: 'florist',        requiredPermission: 'pos.view' },
+      { href: '/candy/party-kits',       Icon: Candy,           label: 'Fiestas',      moduleKey: 'candy',          requiredPermission: 'pos.view' },
       { href: '/crm',                   Icon: TrendingUp,      label: 'CRM',          moduleKey: 'crm',            requiredPermission: 'pos.view' },
       { href: '/ecommerce',             Icon: Globe,           label: 'E-commerce',   moduleKey: 'ecommerce',      requiredPermission: 'settings.view' },
       { href: '/restaurant/tables',     Icon: UtensilsCrossed, label: 'Mesas',        moduleKey: 'restaurant',     requiredPermission: 'pos.view' },
@@ -104,7 +116,7 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/bakery/custom-orders',  Icon: Croissant,       label: 'Encargos',     moduleKey: 'bakery',         requiredPermission: 'pos.view' },
       { href: '/gym/classes',           Icon: Users,           label: 'Clases',       moduleKey: 'gym',            requiredPermission: 'pos.view' },
       { href: '/estanco/combos',        Icon: Sparkles,        label: 'Combos',       moduleKey: 'liquor_tobacco', requiredPermission: 'pos.view' },
-      { href: '/apparel/lookbooks',     Icon: Sparkles,        label: 'Lookbooks',    moduleKey: 'apparel',        requiredPermission: 'pos.view' }
+      { href: '/apparel/lookbooks',     Icon: Sparkles,        label: 'Catálogos',    moduleKey: 'apparel',        requiredPermission: 'pos.view' }
     ]
   },
 
@@ -114,8 +126,8 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Facturación',
     Icon: Receipt,
     items: [
-      { href: '/invoices',              Icon: Receipt,         label: 'Facturas',     moduleKey: 'pos',            requiredPermission: 'pos.view' },
-      { href: '/purchases/support-doc', Icon: FileText,        label: 'Soportes',     moduleKey: 'purchases',      requiredPermission: 'purchases.view' }
+      { href: '/invoices',              Icon: Receipt,         label: 'Facturas',     moduleKey: 'invoicing',      requiredPermission: 'pos.view' },
+      { href: '/purchases/support-doc', Icon: FileText,        label: 'Soportes',     moduleKey: 'invoicing',      requiredPermission: 'purchases.view' }
     ]
   },
 
@@ -126,13 +138,15 @@ const NAV_SECTIONS: NavSection[] = [
     Icon: Package,
     items: [
       { href: '/products',              Icon: Package,         label: 'Productos',    moduleKey: 'inventory',      requiredPermission: 'products.view' },
-      { href: '/inventory',             Icon: Boxes,           label: 'Kardex',       moduleKey: 'inventory',      requiredPermission: 'inventory.view' },
+      { href: '/inventory',             Icon: Boxes,           label: 'Movimientos',       moduleKey: 'inventory',      requiredPermission: 'inventory.view' },
       { href: '/warehouses',            Icon: Building2,       label: 'Bodegas',      moduleKey: 'inventory',      requiredPermission: 'inventory.view' },
       { href: '/pharmacy/medicines',    Icon: Pill,            label: 'Medicamentos', moduleKey: 'pharmacy',       requiredPermission: 'products.view' },
-      { href: '/pharmacy/lots',         Icon: Clock,           label: 'Lotes',        moduleKey: 'pharmacy',       requiredPermission: 'inventory.view' },
+      { href: '/pharmacy/lots',         Icon: Clock,           label: 'Vencimientos',        moduleKey: 'pharmacy',       requiredPermission: 'inventory.view' },
+      { href: '/butchery/cuts',          Icon: Beef,            label: 'Cortes Carne',     moduleKey: 'butchery',       requiredPermission: 'inventory.view' },
+      { href: '/butchery/recipes',       Icon: Flame,           label: 'Embutidos',    moduleKey: 'butchery',       requiredPermission: 'products.view' },
       { href: '/restaurant/recipes',    Icon: UtensilsCrossed, label: 'Recetas',      moduleKey: 'restaurant',     requiredPermission: 'products.view' },
-      { href: '/bakery/recipes',        Icon: Croissant,       label: 'Fichas',       moduleKey: 'bakery',         requiredPermission: 'products.view' },
-      { href: '/apparel/matrix',        Icon: Shirt,           label: 'Variantes',    moduleKey: 'apparel',        requiredPermission: 'products.view' },
+      { href: '/bakery/recipes',        Icon: Croissant,       label: 'Recetas',       moduleKey: 'bakery',         requiredPermission: 'products.view' },
+      { href: '/apparel/matrix',        Icon: Shirt,           label: 'Tallas & Color',    moduleKey: 'apparel',        requiredPermission: 'products.view' },
       { href: '/estanco/returns',       Icon: RotateCcw,       label: 'Retornables',  moduleKey: 'liquor_tobacco', requiredPermission: 'products.view' }
     ]
   },
@@ -168,8 +182,8 @@ const NAV_SECTIONS: NavSection[] = [
     label: 'Operaciones',
     Icon: ChefHat,
     items: [
-      { href: '/restaurant/kds',        Icon: Flame,           label: 'Cocina',       moduleKey: 'restaurant',     requiredPermission: 'pos.view' },
-      { href: '/bakery/production',     Icon: Clock,           label: 'Producción',   moduleKey: 'bakery',         requiredPermission: 'inventory.view' },
+      { href: '/restaurant/kds',        Icon: Flame,           label: 'Pantalla Cocina',       moduleKey: 'restaurant',     requiredPermission: 'pos.view' },
+      { href: '/bakery/production',     Icon: Clock,           label: 'Horneadas',   moduleKey: 'bakery',         requiredPermission: 'inventory.view' },
       { href: '/gym/checkin',           Icon: Activity,        label: 'Check-in',     moduleKey: 'gym',            requiredPermission: 'pos.view' },
       { href: '/automotive/wash',       Icon: Sparkles,        label: 'Lavado',       moduleKey: 'automotive',     requiredPermission: 'pos.view' },
       { href: '/laundry/rack',          Icon: Boxes,           label: 'Percheros',    moduleKey: 'laundry',        requiredPermission: 'inventory.view' },
@@ -177,7 +191,13 @@ const NAV_SECTIONS: NavSection[] = [
       { href: '/hardware/rentals',      Icon: Wrench,          label: 'Alquileres',   moduleKey: 'hardware',       requiredPermission: 'inventory.view' },
       { href: '/estanco/bar',           Icon: GlassWater,      label: 'Barra',        moduleKey: 'liquor_tobacco', requiredPermission: 'inventory.view' },
       { href: '/apparel/fitting-rooms', Icon: Footprints,      label: 'Probadores',   moduleKey: 'apparel',        requiredPermission: 'pos.view' },
-      { href: '/veterinary/grooming',   Icon: Scissors,        label: 'Peluquería',   moduleKey: 'veterinary',     requiredPermission: 'pos.view' }
+      { href: '/veterinary/grooming',   Icon: Scissors,        label: 'Peluquería',   moduleKey: 'veterinary',     requiredPermission: 'pos.view' },
+      { href: '/butchery/cold-chain',    Icon: Thermometer,     label: 'Refrigeración',   moduleKey: 'butchery',       requiredPermission: 'inventory.view' },
+      { href: '/stationery/printing',    Icon: Printer,         label: 'Impresiones',  moduleKey: 'stationery',     requiredPermission: 'pos.view' },
+      { href: '/stationery/services',    Icon: Globe,           label: 'Servicios',     moduleKey: 'stationery',     requiredPermission: 'pos.view' },
+      { href: '/greengrocer/shrinkage',   Icon: Carrot,          label: 'Desperdicios',       moduleKey: 'greengrocer',    requiredPermission: 'inventory.view' },
+      { href: '/florist/deliveries',     Icon: Truck,           label: 'Entregas',     moduleKey: 'florist',        requiredPermission: 'pos.view' },
+      { href: '/candy/bulk',             Icon: Scale,           label: 'Venta por Peso',       moduleKey: 'candy',          requiredPermission: 'pos.view' }
     ]
   },
 
@@ -193,13 +213,20 @@ const NAV_SECTIONS: NavSection[] = [
     ]
   },
 
-  // 9. FINANZAS
+  // 9. REPORTES
+  {
+    id: 'reports',
+    label: 'Reportes',
+    Icon: BarChart3,
+    href: '/reports'
+  },
+
+  // 10. FINANZAS
   {
     id: 'finance',
     label: 'Finanzas',
-    Icon: BarChart3,
+    Icon: Landmark,
     items: [
-      { href: '/reports',               Icon: BarChart3,       label: 'Reportes',     moduleKey: 'reports',        requiredPermission: 'reports.sales' },
       { href: '/treasury',              Icon: Landmark,        label: 'Tesorería',    moduleKey: 'treasury',       requiredPermission: 'accounting.view' },
       { href: '/accounting',            Icon: BookOpen,        label: 'Contabilidad', moduleKey: 'accounting',     requiredPermission: 'accounting.view' }
     ]
@@ -227,6 +254,9 @@ const NAV_SECTIONS: NavSection[] = [
   }
 ]
 
+// Global in-memory cache to prevent flashing across layout unmounts
+let globalCachedModules: Record<string, boolean> | null = null
+
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
@@ -239,12 +269,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
   const [user, setUser] = useState<{ full_name?: string; email?: string } | null>(null)
   const [enabledModules, setEnabledModules] = useState<Record<string, boolean>>(() => {
+    if (globalCachedModules) return globalCachedModules
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mr_tender_cached_modules')
+        if (cached) {
+          const parsed = JSON.parse(cached)
+          globalCachedModules = parsed
+          return parsed
+        }
+      } catch {}
+    }
     const defaultMods: Record<string, boolean> = {}
     ALL_SYSTEM_MODULES.forEach(m => {
       defaultMods[m.id] = m.defaultEnabled
     })
     return defaultMods
   })
+  const [modulesLoading, setModulesLoading] = useState(!globalCachedModules)
 
   // Load user, module settings & saved collapsed preference
   useEffect(() => {
@@ -292,8 +334,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           if (tData?.[0]?.enabled_modules) {
             const defaultMods: Record<string, boolean> = {}
             ALL_SYSTEM_MODULES.forEach(m => { defaultMods[m.id] = m.defaultEnabled })
-            setEnabledModules({ ...defaultMods, ...tData[0].enabled_modules })
+            const merged = { ...defaultMods, ...tData[0].enabled_modules }
+            globalCachedModules = merged
+            try { localStorage.setItem('mr_tender_cached_modules', JSON.stringify(merged)) } catch {}
+            setEnabledModules(merged)
           }
+          setModulesLoading(false)
         }
       }
     }
@@ -345,9 +391,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isRoleAuthorized = isAdmin || !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
   const isPageAuthorized = isModuleEnabled && isRoleAuthorized
 
+  const [loggingOut, setLoggingOut] = useState(false)
+
   async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/login')
+    setLoggingOut(true)
+    await performLogout(supabase, '/login')
   }
 
   const getInitials = (name?: string) => name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : 'U'
@@ -373,14 +421,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             href="/dashboard"
             onClick={() => setSidebarOpen(false)}
             title="Mr Tender - Panel Principal"
-            style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}
+            style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, overflow: 'hidden' }}
           >
-            <img src="/logo.png" alt="Mr Tender" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain', flexShrink: 0 }} />
-            <div className="sidebar-brand-text" style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
-                  Mr Tender
-                </div>
+            {collapsed ? (
+              <img
+                src="/logo-isotipo.png"
+                alt="Mr Tender"
+                style={{ width: 34, height: 34, objectFit: 'contain', flexShrink: 0, display: 'block' }}
+              />
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                <img
+                  src="/logo-full.png"
+                  alt="Mr Tender"
+                  style={{ height: 34, width: 'auto', maxWidth: 145, objectFit: 'contain', flexShrink: 0, display: 'block' }}
+                />
                 {verticalConfig && (
                   <span style={{
                     fontSize: '0.58rem',
@@ -390,16 +445,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     border: '1px solid var(--border-color)',
                     fontWeight: 700,
                     color: verticalConfig.accentColor,
-                    letterSpacing: '0.02em'
+                    letterSpacing: '0.02em',
+                    flexShrink: 0
                   }}>
                     {verticalConfig.singleWordTitle}
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                Gestión Empresarial
-              </div>
-            </div>
+            )}
           </Link>
 
           {/* Desktop Collapse Button */}
@@ -580,24 +633,39 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
           <button
             className="btn-neu btn-ghost"
-            onClick={handleLogout}
+            onClick={handleLogout} disabled={loggingOut}
             title="Cerrar sesión"
             style={{
               width: '100%',
               padding: collapsed ? '6px 0' : '6px 8px',
               fontSize: '0.75rem',
               justifyContent: 'center',
-              color: 'var(--accent-coral)',
+              color: 'var(--text-secondary)',
               display: 'flex',
               alignItems: 'center',
               gap: 6
             }}
           >
             <LogOut size={14} strokeWidth={2} />
-            <span className="role-pill-text">Cerrar sesión</span>
+            <span className="role-pill-text">{loggingOut ? 'Cerrando...' : 'Cerrar sesión'}</span>
           </button>
         </div>
       </aside>
+
+      {/* Mobile Backdrop */}
+      {sidebarOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.45)',
+            backdropFilter: 'blur(2px)',
+            zIndex: 998
+          }}
+        />
+      )}
 
       {/* ── MAIN CONTENT ── */}
       <div className={`app-content ${collapsed ? 'collapsed' : ''}`}>
@@ -611,30 +679,47 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <span>Menú</span>
             </button>
 
-            {/* Clickable Brand Logo in Topbar */}
-            <Link href="/dashboard" title="Mr Tender - Ir a Inicio" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <img src="/logo.png" alt="Mr Tender" style={{ width: 30, height: 30, borderRadius: 8, objectFit: 'contain' }} />
-            </Link>
-
-            <div style={{ width: 1, height: 16, background: 'var(--border-color)', margin: '0 2px', flexShrink: 0 }} />
-
-            {/* Current Page Title */}
-            <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {allSubItems.find(i => i.href === pathname)?.label || 'Panel de Control'}
+            {/* Clean Breadcrumb in Topbar */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              <span style={{ color: '#94A3B8', fontWeight: 500 }}>Inicio</span>
+              <span style={{ color: '#CBD5E1' }}>/</span>
+              <span style={{ fontWeight: 800, color: '#0F172A' }}>
+                {allSubItems.find(i => i.href === pathname)?.label || 'Panel de Control'}
+              </span>
             </div>
           </div>
 
-          {pathname !== '/pos' && hasPermission('pos.create_sale') && (
-            <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '7px 12px', fontSize: '0.78rem', flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={14} strokeWidth={2.5} />
-              <span>Nueva venta</span>
-            </Link>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('toggle-copilot'))}
+              className="btn-neu btn-ghost"
+              title="Abrir Asistente Copilot AI"
+              style={{
+                padding: '7px 12px',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 5,
+                color: 'var(--text-secondary)'
+              }}
+            >
+              <Sparkles size={14} style={{ color: '#714AD9' }} />
+              <span className="hide-on-mobile">Copilot AI</span>
+            </button>
+
+            {pathname !== '/pos' && hasPermission('pos.create_sale') && (
+              <Link href="/pos" className="btn-neu btn-primary" style={{ padding: '7px 12px', fontSize: '0.78rem', flexShrink: 0, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Plus size={14} strokeWidth={2.5} />
+                <span className="hide-on-mobile">Nueva venta</span>
+              </Link>
+            )}
+          </div>
         </header>
 
         {/* Page or Access Denied Guard */}
         <main style={{ flex: 1, padding: '20px 24px', maxWidth: 1400, width: '100%', overflowX: 'hidden' }}>
-          {!permsLoading && !isPageAuthorized ? (
+          {!permsLoading && !modulesLoading && !isPageAuthorized ? (
             <div className="neu-card animate-scale-in" style={{ padding: 32, textAlign: 'center', maxWidth: 480, margin: '60px auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
               <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--accent-coral-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-coral)' }}>
                 <Lock size={28} />

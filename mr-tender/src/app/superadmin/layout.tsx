@@ -3,6 +3,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/auth-client'
 import {
   LayoutDashboard,
   Store,
@@ -33,9 +34,11 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
   const supabase = createClient()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
+  const [loggingOut, setLoggingOut] = useState(false)
+
   async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/login')
+    setLoggingOut(true)
+    await performLogout(supabase, '/login')
   }
 
   return (

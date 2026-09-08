@@ -268,7 +268,7 @@ El menú lateral (Sidebar) de Mr. Tender está organizado en menús y submenús 
    - **Bodegas & Almacenes** ➔ Gestión de múltiples sucursales y depósitos: \`[Ver Bodegas ➔](/warehouses)\`
    - **Medicamentos & INVIMA** ➔ Fármacos, principios activos y precios por fracción: \`[Ver Medicamentos ➔](/pharmacy/medicines)\`
    - **Control de Lotes & FEFO** ➔ Semáforo de caducidad y lotes farmacéuticos: \`[Ver Lotes FEFO ➔](/pharmacy/lots)\`
-   - **Recetas & Escandallo** ➔ Fichas técnicas, costo por porción y recetas gastronómicas: \`[Ver Recetas ➔](/restaurant/recipes)\`
+   - **Recetas & Costos de Preparación** ➔ Fichas técnicas, costo por porción y recetas gastronómicas: \`[Ver Recetas ➔](/restaurant/recipes)\`
    - **Fichas Panadería** ➔ Gramajes, costos de horneada y recetas de pan: \`[Ver Fichas Panadería ➔](/bakery/recipes)\`
    - **Matriz Talla/Color** ➔ Matriz de tallas, colores y colecciones de ropa: \`[Ver Matriz Moda ➔](/apparel/matrix)\`
    - **Envases Retornables** ➔ Control de cascos, canastas y depósitos (Licorera): \`[Ver Envases Retornables ➔](/estanco/returns)\`
@@ -391,6 +391,7 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
           .from('sales')
           .select('id, number, total, subtotal, tax_amount, created_at')
           .eq('tenant_id', tenant_id)
+          .neq('status', 'cancelled')
           .gte('created_at', startDate)
 
         if (funcArgs.period === 'today') {
@@ -639,6 +640,7 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
           .from('sales')
           .select('id, total, discount_amount')
           .eq('tenant_id', tenant_id)
+          .neq('status', 'cancelled')
           .gte('created_at', startDate)
 
         const saleIds = sales?.map(s => s.id) || []

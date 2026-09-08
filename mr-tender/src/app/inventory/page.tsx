@@ -22,6 +22,7 @@ import {
   Edit2,
   FileSpreadsheet,
   Plus,
+  Sparkles,
   Check,
   X,
   MapPin,
@@ -48,7 +49,7 @@ interface DBInventory {
   } | null
 }
 
-type TabKey = 'stock' | 'warehouses' | 'movements' | 'adjustments' | 'transfers'
+type TabKey = 'stock' | 'movements' | 'adjustments' | 'transfers'
 
 export default function InventoryPage() {
   const supabase = createClient()
@@ -92,6 +93,20 @@ export default function InventoryPage() {
   const [trfForm, setTrfForm] = useState({ from_warehouse_id: '', to_warehouse_id: '', product_id: '', quantity: '1', notes: '' })
   const [submittingAction, setSubmittingAction] = useState(false)
 
+  // Supply / Raw Material Modal State
+  const [showSupplyModal, setShowSupplyModal] = useState(false)
+  const [savingSupply, setSavingSupply] = useState(false)
+  const [supplyForm, setSupplyForm] = useState({
+    name: '',
+    sku: '',
+    unit: 'Kilogramos (kg)',
+    cost_price: '',
+    initial_quantity: '10',
+    min_stock: '5',
+    warehouse_id: '',
+    notes: ''
+  })
+
   useEffect(() => {
     loadInventory()
   }, [])
@@ -103,7 +118,7 @@ export default function InventoryPage() {
       const pageSize = 50
       let query = supabase
         .from('stock_movements')
-        .select(`id, created_at, movement_type, quantity, unit_cost, total_cost, balance_after, notes, products (id, name, sku), warehouses (id, name)`)
+        .select(`id, created_at, movement_type, quantity, unit_cost, total_cost, balance_after, notes, reference_type, reference_id, products (id, name, sku), warehouses (id, name), users:created_by (id, full_name, email)`)
         .eq('tenant_id', tid)
         .order('created_at', { ascending: false })
         .range(page * pageSize, (page + 1) * pageSize - 1)
@@ -133,6 +148,142 @@ export default function InventoryPage() {
       console.error('Error loading kardex movements:', err)
     } finally {
       if (append) setLoadingMoreMovs(false)
+    }
+  }
+
+  async function handleCreateSupply(e: React.FormEvent) {
+    e.preventDefault()
+    if (!tenantId || !supplyForm.name.trim() || savingSupply) return
+    setSavingSupply(true)
+    try {
+      const whId = supplyForm.warehouse_id || warehouses[0]?.id
+      if (!whId) throw new Error('Debes seleccionar una bodega de almacenamiento')
+
+      // 1. Insert into products
+      const skuVal = supplyForm.sku.trim() || `INS-${Math.floor(1000 + Math.random() * 9000)}`
+      const costVal = parseFloat(supplyForm.cost_price) || 0
+      const initQty = parseFloat(supplyForm.initial_quantity) || 0
+      const minStockVal = parseFloat(supplyForm.min_stock) || 0
+
+      const { data: newProd, error: prodErr } = await supabase
+        .from('products')
+        .insert({
+          tenant_id: tenantId,
+          name: supplyForm.name.trim(),
+          sku: skuVal,
+          product_type: 'raw_material',
+          cost_price: costVal,
+          purchase_price: costVal,
+          sale_price: 0,
+          min_stock: minStockVal,
+          track_inventory: true,
+          is_active: true,
+          metadata: { unit: supplyForm.unit, notes: supplyForm.notes }
+        })
+        .select()
+        .single()
+
+      if (prodErr) throw prodErr
+
+      // 2. Insert into inventory
+      const { error: invErr } = await supabase.from('inventory').insert({
+        tenant_id: tenantId,
+        warehouse_id: whId,
+        product_id: newProd.id,
+        quantity: initQty,
+        avg_cost: costVal
+      })
+      if (invErr) throw invErr
+
+      // 3. Log initial stock movement if quantity > 0
+      if (initQty > 0) {
+        await supabase.from('stock_movements').insert({
+          tenant_id: tenantId,
+          warehouse_id: whId,
+          product_id: newProd.id,
+          movement_type: 'initial_stock',
+          quantity: initQty,
+          unit_cost: costVal,
+          total_cost: initQty * costVal,
+          balance_after: initQty,
+          notes: supplyForm.notes ? `Ingreso inicial: ${supplyForm.notes}` : 'Ingreso inicial al crear insumo'
+        })
+      }
+
+      setShowSupplyModal(false)
+      await loadInventory()
+    } catch (err: any) {
+      alert(err.message || 'Error al crear el insumo')
+    } finally {
+      setSavingSupply(false)
+    }
+  }
+
+  async function handleSeedBakerySupplies() {
+    if (!tenantId || savingSupply) return
+    setSavingSupply(true)
+    try {
+      const whId = warehouses[0]?.id
+      if (!whId) throw new Error('No hay bodegas disponibles')
+
+      const demoSupplies = [
+        { name: 'Harina de Trigo Especial (Bulto 50kg)', sku: 'INS-HAR-01', unit: 'Bulto (50kg)', cost: 140000, qty: 15, min: 3 },
+        { name: 'Levadura Fresca Instantánea (500g)', sku: 'INS-LEV-01', unit: 'Gramos (g)', cost: 12000, qty: 25, min: 5 },
+        { name: 'Mantequilla Industrial Sin Sal (1kg)', sku: 'INS-MAN-01', unit: 'Kilogramos (kg)', cost: 24000, qty: 20, min: 4 },
+        { name: 'Azúcar Refinada (Bulto 25kg)', sku: 'INS-AZU-01', unit: 'Bulto (25kg)', cost: 95000, qty: 10, min: 2 },
+        { name: 'Sal Marina Fina (1kg)', sku: 'INS-SAL-01', unit: 'Kilogramos (kg)', cost: 2500, qty: 30, min: 5 },
+        { name: 'Queso Costeño Rallado (5kg)', sku: 'INS-QUE-01', unit: 'Kilogramos (kg)', cost: 85000, qty: 8, min: 2 },
+        { name: 'Huevos Frescos AA (Panal 30 unds)', sku: 'INS-HUE-01', unit: 'Panal (30 unds)', cost: 18000, qty: 12, min: 3 },
+        { name: 'Bolsas Kraft para Pan (Paquete 100u)', sku: 'INS-EMP-01', unit: 'Paquete', cost: 15000, qty: 30, min: 5 }
+      ]
+
+      for (const item of demoSupplies) {
+        const { data: p } = await supabase
+          .from('products')
+          .insert({
+            tenant_id: tenantId,
+            name: item.name,
+            sku: item.sku,
+            product_type: 'raw_material',
+            cost_price: item.cost,
+            purchase_price: item.cost,
+            sale_price: 0,
+            min_stock: item.min,
+            track_inventory: true,
+            is_active: true,
+            metadata: { unit: item.unit }
+          })
+          .select()
+          .single()
+
+        if (p) {
+          await supabase.from('inventory').insert({
+            tenant_id: tenantId,
+            warehouse_id: whId,
+            product_id: p.id,
+            quantity: item.qty,
+            avg_cost: item.cost
+          })
+
+          await supabase.from('stock_movements').insert({
+            tenant_id: tenantId,
+            warehouse_id: whId,
+            product_id: p.id,
+            movement_type: 'initial_stock',
+            quantity: item.qty,
+            unit_cost: item.cost,
+            total_cost: item.qty * item.cost,
+            balance_after: item.qty,
+            notes: 'Carga inicial de insumos de panadería demo'
+          })
+        }
+      }
+
+      await loadInventory()
+    } catch (err: any) {
+      alert(err.message || 'Error al cargar insumos')
+    } finally {
+      setSavingSupply(false)
     }
   }
 
@@ -312,7 +463,7 @@ export default function InventoryPage() {
     let csvContent = '\uFEFF'
     csvContent += `KARDEX Y MOVIMIENTOS DE INVENTARIO - MR TENDER\n`
     csvContent += `Generado: ${new Date().toLocaleString('es-CO')}\n\n`
-    csvContent += 'Fecha,Producto,SKU,Almacen,TipoMovimiento,Cantidad,CostoUnitario,CostoTotal,SaldoFinal,Detalle\n'
+    csvContent += 'Fecha_Hora,Producto,SKU,Almacen,TipoMovimiento,Cantidad,CostoUnitario,CostoTotal,SaldoFinal,Responsable,Detalle\n'
 
     filteredKardex.forEach(m => {
       const date = new Date(m.created_at).toLocaleString('es-CO').replace(/,/g, ' ')
@@ -324,9 +475,10 @@ export default function InventoryPage() {
       const unitCost = m.unit_cost || 0
       const totalCost = m.total_cost || 0
       const balance = m.balance_after || 0
+      const resp = (m.users?.full_name || m.users?.email || 'Sistema').replace(/,/g, ' ')
       const notes = (m.notes || '-').replace(/,/g, ' ')
 
-      csvContent += `"${date}","${prod}","${sku}","${wh}","${type}",${qty},${unitCost},${totalCost},${balance},"${notes}"\n`
+      csvContent += `"${date}","${prod}","${sku}","${wh}","${type}",${qty},${unitCost},${totalCost},${balance},"${resp}","${notes}"\n`
     })
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
@@ -367,10 +519,9 @@ export default function InventoryPage() {
   const totalValue = inventory.reduce((s, i) => s + Number(i.quantity) * Number(i.avg_cost), 0)
 
   const TABS: { key: TabKey; label: string; Icon: any }[] = [
-    { key: 'stock', label: 'Stock actual', Icon: Package },
-    { key: 'warehouses', label: 'Bodegas', Icon: Building2 },
-    { key: 'movements', label: 'Kardex', Icon: Boxes },
-    { key: 'adjustments', label: 'Ajustes', Icon: Wrench },
+    { key: 'stock', label: 'Stock Actual', Icon: Package },
+    { key: 'movements', label: 'Movimientos de Stock', Icon: History },
+    { key: 'adjustments', label: 'Ajustes & Pérdidas', Icon: Wrench },
     { key: 'transfers', label: 'Transferencias', Icon: ArrowLeftRight },
   ]
 
@@ -484,58 +635,94 @@ export default function InventoryPage() {
       {/* Header & Actions */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Inventario & Kardex</h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: 0 }}>Control de stock, mermas, transferencias y trazabilidad</p>
+          <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', letterSpacing: '-0.02em', margin: 0 }}>Inventario & Movimientos de Stock</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', margin: 0 }}>Control de existencias físicas, bodegas, transferencias y trazabilidad</p>
         </div>
 
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Link href="/inventory/import" className="btn-neu" style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
             <FileSpreadsheet size={15} strokeWidth={2} />
             <span>Importar Excel / CSV</span>
           </Link>
-          <button className="btn-neu" onClick={() => setShowAdjModal(true)} style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-coral)' }}>
+          <button className="btn-neu" onClick={() => setShowAdjModal(true)} style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--text-secondary)' }}>
             <Wrench size={15} strokeWidth={2} />
-            <span>Ajuste / Merma</span>
+            <span>Ajuste de Stock</span>
           </button>
-          <button className="btn-neu btn-primary" onClick={() => setShowTrfModal(true)} style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button className="btn-neu" onClick={() => setShowTrfModal(true)} style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
             <ArrowLeftRight size={15} strokeWidth={2} />
             <span>Transferir</span>
+          </button>
+          <button
+            onClick={() => {
+              setSupplyForm({
+                name: '',
+                sku: `INS-${Math.floor(100 + Math.random() * 900)}`,
+                unit: 'Kilogramos (kg)',
+                cost_price: '',
+                initial_quantity: '10',
+                min_stock: '5',
+                warehouse_id: warehouses[0]?.id || '',
+                notes: ''
+              })
+              setShowSupplyModal(true)
+            }}
+            className="btn-neu btn-primary"
+            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, fontWeight: 800 }}
+          >
+            <Plus size={15} strokeWidth={2.5} />
+            <span>+ Nuevo Insumo</span>
           </button>
         </div>
       </div>
 
       {/* KPI Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         {[
-          { label: 'Valor total', value: formatCurrency(totalValue), Icon: DollarSign, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
-          { label: 'En stock', value: `${inventory.length} prods`, Icon: Package, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
-          { label: 'Stock bajo', value: lowStock, Icon: AlertTriangle, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
-          { label: 'Sin stock', value: outOfStock, Icon: XCircle, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+          { label: 'Valor Total Stock', value: formatCurrency(totalValue), Icon: DollarSign, color: '#008F7E', bg: '#E6F7F5' },
+          { label: 'Productos en Stock', value: `${inventory.length} prods`, Icon: Package, color: '#059669', bg: '#ECFDF5' },
+          { label: 'Stock Bajo', value: `${lowStock} prods`, Icon: AlertTriangle, color: '#714AD9', bg: '#F0EDFC' },
+          { label: 'Agotados / Sin Stock', value: `${outOfStock} prods`, Icon: XCircle, color: '#DC2626', bg: '#FEE2E2' },
         ].map(s => {
           const StatIcon = s.Icon
           return (
-            <div key={s.label} className="kpi-card" style={{ padding: '12px 14px', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <div className="kpi-icon-wrap" style={{ background: s.bg, width: 32, height: 32, flexShrink: 0 }}>
-                <StatIcon size={16} strokeWidth={2} style={{ color: s.color }} />
+            <div key={s.label} className="neu-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{s.label}</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0F172A' }}>{s.value}</div>
               </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{s.label}</div>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: s.color }}>{s.value}</div>
+              <div style={{ background: s.bg, width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, flexShrink: 0 }}>
+                <StatIcon size={18} strokeWidth={2} />
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* Segmented Tabs */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '4px', background: 'var(--bg-deep)', borderRadius: 'var(--radius-md)', boxShadow: 'var(--neu-pressed)' }}>
+      {/* Navigation Tabs */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {TABS.map(t => {
           const TabIcon = t.Icon
           const isActive = tab === t.key
           return (
-            <button key={t.key} className="btn-neu" onClick={() => setTab(t.key)}
-              style={{ flex: '1 1 auto', minWidth: 100, padding: '7px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, background: isActive ? 'var(--bg)' : 'transparent', boxShadow: isActive ? 'var(--neu-raised)' : 'none', color: isActive ? 'var(--text-primary)' : 'var(--text-muted)', fontWeight: isActive ? 800 : 500 }}>
-              <TabIcon size={14} strokeWidth={2} style={{ color: isActive ? 'var(--accent-blue)' : 'inherit' }} />
+            <button
+              key={t.key}
+              type="button"
+              className="btn-neu"
+              onClick={() => setTab(t.key)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '8px 14px',
+                fontSize: '0.8rem',
+                fontWeight: isActive ? 800 : 600,
+                background: isActive ? '#00B19D' : '#FFFFFF',
+                color: isActive ? '#FFFFFF' : '#64748B',
+                border: isActive ? '1px solid #009E8C' : '1px solid #E2E8F0',
+                cursor: 'pointer'
+              }}
+            >
+              <TabIcon size={14} style={{ color: isActive ? '#FFFFFF' : '#64748B' }} />
               <span>{t.label}</span>
             </button>
           )
@@ -557,7 +744,7 @@ export default function InventoryPage() {
               onChange={e => setSelectedStockWh(e.target.value)}
               style={{ fontSize: '0.8rem', padding: '6px 12px', minWidth: 180, fontWeight: 700 }}
             >
-              <option value="all">📦 Todas las Bodegas ({warehouses.length})</option>
+              <option value="all">Todas las Bodegas ({warehouses.length})</option>
               {warehouses.map(w => (
                 <option key={w.id} value={w.id}>
                   {w.is_main ? '★ ' : ''}{w.name} {w.code ? `(${w.code})` : ''}
@@ -615,7 +802,7 @@ export default function InventoryPage() {
                       <button
                         onClick={() => openAdjustmentForProduct(item)}
                         className="btn-neu btn-ghost"
-                        style={{ padding: '5px 9px', fontSize: '0.72rem', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 4 }}
+                        style={{ padding: '5px 9px', fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}
                         title="Registrar merma o ajuste para este producto"
                       >
                         <Wrench size={13} />
@@ -648,155 +835,51 @@ export default function InventoryPage() {
             })}
 
             {filtered.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '32px 16px', color: 'var(--text-muted)' }}>
-                <Boxes size={32} strokeWidth={1.5} style={{ margin: '0 auto 8px', color: 'var(--text-muted)' }} />
-                <div style={{ fontSize: '0.85rem' }}>No se encontraron productos en el inventario</div>
+              <div className="neu-card" style={{ padding: 48, textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#E6F7F5', color: '#008F7E', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Package size={28} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0, color: '#0F172A' }}>
+                    No hay insumos o materias primas registradas
+                  </h3>
+                  <p style={{ fontSize: '0.84rem', color: '#64748B', maxWidth: 460, margin: '4px auto 0' }}>
+                    Crea los ingredientes (harinas, levaduras, quesos) para controlar costos de recetas y descontar stock automáticamente en cada horneada.
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 4 }}>
+                  <button
+                    onClick={() => {
+                      setSupplyForm({
+                        name: '',
+                        sku: `INS-${Math.floor(100 + Math.random() * 900)}`,
+                        unit: 'Kilogramos (kg)',
+                        cost_price: '',
+                        initial_quantity: '10',
+                        min_stock: '5',
+                        warehouse_id: warehouses[0]?.id || '',
+                        notes: ''
+                      })
+                      setShowSupplyModal(true)
+                    }}
+                    className="btn-neu btn-primary"
+                    style={{ padding: '9px 18px', fontSize: '0.82rem', fontWeight: 800 }}
+                  >
+                    <Plus size={15} strokeWidth={2.5} />
+                    <span>+ Crear Primer Insumo</span>
+                  </button>
+                  <button
+                    onClick={handleSeedBakerySupplies}
+                    disabled={savingSupply}
+                    className="btn-neu"
+                    style={{ padding: '9px 18px', fontSize: '0.82rem', fontWeight: 700, color: '#008F7E', background: '#E6F7F5', border: '1px solid #99F6E4' }}
+                  >
+                    <Sparkles size={15} />
+                    <span>{savingSupply ? 'Cargando...' : 'Cargar Insumos de Panadería (Demo)'}</span>
+                  </button>
+                </div>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB: Bodegas & Almacenes */}
-      {tab === 'warehouses' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div className="neu-card" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-            <div>
-              <h2 style={{ fontSize: '1rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>
-                Gestión de Bodegas y Almacenes
-              </h2>
-              <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0 }}>
-                Control multi-almacén, puntos de despacho y existencias físicas individualizadas.
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Link
-                href="/warehouses"
-                className="btn-neu"
-                style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)', textDecoration: 'none', fontWeight: 700 }}
-              >
-                <Building2 size={15} />
-                <span>Abrir Módulo Completo de Bodegas ➔</span>
-              </Link>
-
-              <button
-                type="button"
-                className="btn-neu btn-primary"
-                onClick={openCreateWarehouse}
-                style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <Plus size={15} strokeWidth={2.5} />
-                <span>+ Nueva Bodega</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Warehouses Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 12 }}>
-            {warehouses.map(wh => {
-              const whItems = inventory.filter(i => (i.warehouses?.id === wh.id || (i as any).warehouse_id === wh.id))
-              const totalUnits = whItems.reduce((acc, curr) => acc + Number(curr.quantity || 0), 0)
-              const totalVal = whItems.reduce((acc, curr) => acc + (Number(curr.quantity || 0) * Number(curr.avg_cost || 0)), 0)
-
-              return (
-                <div key={wh.id} className="neu-card" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10, position: 'relative' }}>
-                  {/* Header */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <div style={{ width: 36, height: 36, borderRadius: 10, background: wh.is_main ? 'var(--accent-blue-lt)' : 'var(--bg-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Building2 size={18} style={{ color: wh.is_main ? 'var(--accent-blue)' : 'var(--text-secondary)' }} />
-                      </div>
-                      <div>
-                        <div style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)' }}>
-                          {wh.name}
-                        </div>
-                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          Código: {wh.code || 'BOD-001'}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                      {wh.is_main && (
-                        <span className="badge badge-blue" style={{ fontSize: '0.66rem', fontWeight: 800 }}>
-                          ★ Principal
-                        </span>
-                      )}
-                      <span className={`badge ${wh.is_active !== false ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.66rem' }}>
-                        {wh.is_active !== false ? 'Activa' : 'Inactiva'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Address if present */}
-                  {wh.address && (
-                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                      <MapPin size={12} style={{ color: 'var(--text-muted)' }} />
-                      <span>{wh.address}</span>
-                    </div>
-                  )}
-
-                  {/* Metrics */}
-                  <div className="neu-flat" style={{ padding: '8px 12px', borderRadius: 8, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    <div>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>PRODUCTOS / STOCK</div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                        {totalUnits} <span style={{ fontSize: '0.7rem', fontWeight: 500, color: 'var(--text-secondary)' }}>uds ({whItems.length} prods)</span>
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 700 }}>VALORIZACIÓN</div>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 800, color: 'var(--accent-blue)' }}>
-                        {formatCurrency(totalVal)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 8, marginTop: 'auto', gap: 6 }}>
-                    <button
-                      type="button"
-                      className="btn-neu btn-ghost"
-                      onClick={() => {
-                        setSelectedStockWh(wh.id)
-                        setTab('stock')
-                      }}
-                      style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--accent-blue)', display: 'flex', alignItems: 'center', gap: 4 }}
-                    >
-                      <Package size={13} />
-                      <span>Ver Stock</span>
-                    </button>
-
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <button
-                        type="button"
-                        className="btn-neu btn-ghost"
-                        onClick={() => {
-                          setTrfForm(f => ({ ...f, from_warehouse_id: wh.id }))
-                          setShowTrfModal(true)
-                        }}
-                        style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 4 }}
-                        title="Transferir productos desde esta bodega"
-                      >
-                        <ArrowLeftRight size={13} />
-                        <span>Transferir</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="btn-neu btn-ghost"
-                        onClick={() => openEditWarehouse(wh)}
-                        style={{ padding: '4px 8px', fontSize: '0.72rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4 }}
-                      >
-                        <Edit2 size={13} />
-                        <span>Editar</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
           </div>
         </div>
       )}
@@ -830,6 +913,7 @@ export default function InventoryPage() {
               >
                 <option value="all">Todos los movimientos</option>
                 <option value="sale">Ventas</option>
+                <option value="sale_cancellation">Anulaciones de Venta</option>
                 <option value="purchase">Compras / Entradas</option>
                 <option value="adjustment">Ajustes / Mermas</option>
                 <option value="transfer">Transferencias</option>
@@ -882,22 +966,62 @@ export default function InventoryPage() {
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid var(--bg-deep)', textAlign: 'left', color: 'var(--text-secondary)' }}>
-                    <th style={{ padding: '8px 6px' }}>Fecha</th>
+                    <th style={{ padding: '8px 6px' }}>Fecha & Hora</th>
                     <th style={{ padding: '8px 6px' }}>Producto</th>
                     <th style={{ padding: '8px 6px' }}>Bodega</th>
                     <th style={{ padding: '8px 6px' }}>Tipo</th>
                     <th style={{ padding: '8px 6px', textAlign: 'right' }}>Cantidad</th>
                     <th style={{ padding: '8px 6px', textAlign: 'right' }}>Saldo Final</th>
-                    <th style={{ padding: '8px 6px' }}>Detalle</th>
+                    <th style={{ padding: '8px 6px' }}>Responsable</th>
+                    <th style={{ padding: '8px 6px' }}>Detalle / Referencia</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredKardex.map(m => {
                     const isPos = Number(m.quantity) > 0
+                    const isCancel = m.movement_type === 'sale_cancellation'
+                    const isSale = m.movement_type === 'sale'
+                    const isPurchase = m.movement_type === 'purchase'
+                    const isAdj = m.movement_type.includes('adjustment')
+
+                    const typeBadgeClass = isCancel
+                      ? 'badge-purple'
+                      : isSale
+                      ? 'badge-blue'
+                      : isPurchase
+                      ? 'badge-green'
+                      : isAdj
+                      ? 'badge-amber'
+                      : 'badge-neutral'
+
+                    const typeLabel = isCancel
+                      ? 'Anulación Venta'
+                      : isSale
+                      ? 'Venta POS'
+                      : isPurchase
+                      ? 'Entrada Compra'
+                      : isAdj
+                      ? 'Ajuste Stock'
+                      : m.movement_type.includes('transfer')
+                      ? 'Transferencia'
+                      : m.movement_type
+
+                    const formattedDateTime = new Date(m.created_at).toLocaleString('es-CO', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                      second: '2-digit',
+                      hour12: true
+                    })
+
+                    const responsibleName = m.users?.full_name || m.users?.email || 'Administrador'
+
                     return (
                       <tr key={m.id} style={{ borderBottom: '1px solid var(--bg-deep)' }}>
-                        <td style={{ padding: '8px 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
-                          {new Date(m.created_at).toLocaleDateString('es-CO')}
+                        <td style={{ padding: '8px 6px', color: 'var(--text-muted)', whiteSpace: 'nowrap', fontSize: '0.74rem' }}>
+                          {formattedDateTime}
                         </td>
                         <td style={{ padding: '8px 6px', fontWeight: 700, color: 'var(--text-primary)' }}>
                           <div>{m.products?.name || 'Producto'}</div>
@@ -907,20 +1031,25 @@ export default function InventoryPage() {
                           {m.warehouses?.name || 'Principal'}
                         </td>
                         <td style={{ padding: '8px 6px' }}>
-                          <span className={`badge ${m.movement_type.includes('sale') ? 'badge-blue' : isPos ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.68rem' }}>
-                            {m.movement_type === 'sale' ? 'Venta POS' : m.movement_type === 'purchase' ? 'Entrada Compra' : m.movement_type === 'adjustment' ? 'Ajuste Stock' : m.movement_type === 'transfer' ? 'Transferencia' : m.movement_type}
+                          <span className={`badge ${typeBadgeClass}`} style={{ fontSize: '0.68rem', fontWeight: 700 }}>
+                            {typeLabel}
                           </span>
                         </td>
                         <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 800, color: isPos ? 'var(--accent-green)' : 'var(--accent-coral)' }}>
                           {isPos ? `+${m.quantity}` : m.quantity}
                         </td>
                         <td style={{ padding: '8px 6px', textAlign: 'right', fontWeight: 800, color: 'var(--accent-blue)' }}>{m.balance_after}</td>
-                        <td style={{ padding: '8px 6px', color: 'var(--text-secondary)', fontSize: '0.75rem' }}>{m.notes || '-'}</td>
+                        <td style={{ padding: '8px 6px', color: 'var(--text-primary)', fontSize: '0.75rem' }}>
+                          <div style={{ fontWeight: 600 }}>{responsibleName}</div>
+                        </td>
+                        <td style={{ padding: '8px 6px', color: 'var(--text-secondary)', fontSize: '0.74rem', maxWidth: 220, wordBreak: 'break-word' }}>
+                          {m.notes || '-'}
+                        </td>
                       </tr>
                     )
                   })}
                   {filteredKardex.length === 0 && (
-                    <tr><td colSpan={7} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>No hay movimientos que coincidan con el filtro</td></tr>
+                    <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>No hay movimientos que coincidan con el filtro</td></tr>
                   )}
                 </tbody>
               </table>
@@ -1239,6 +1368,195 @@ export default function InventoryPage() {
                 <button type="button" className="btn-neu" onClick={() => setShowTrfModal(false)} style={{ flex: 1, padding: 10 }}>Cancelar</button>
                 <button type="submit" className="btn-neu btn-primary" disabled={submittingAction} style={{ flex: 1, padding: 10 }}>
                   {submittingAction ? 'Moviendo...' : 'Confirmar Traslado'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
+      {/* Modal: Crear Nuevo Insumo / Materia Prima */}
+      {showSupplyModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 480, padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0', paddingBottom: 10 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#0F172A' }}>
+                  Nuevo Insumo / Ingrediente
+                </h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.76rem', color: '#64748B' }}>
+                  Registra materias primas e ingredientes para el control de recetas y stock
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-neu"
+                onClick={() => setShowSupplyModal(false)}
+                style={{ width: 28, height: 28, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateSupply} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {/* Nombre del Insumo */}
+              <div>
+                <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 3 }}>
+                  Nombre del Insumo / Ingrediente *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ej: Harina de Trigo Especial, Levadura Fresca, Queso Costeño..."
+                  value={supplyForm.name}
+                  onChange={e => setSupplyForm({ ...supplyForm, name: e.target.value })}
+                  className="input-neu"
+                  style={{ width: '100%', fontSize: '0.88rem' }}
+                />
+              </div>
+
+              {/* SKU & Unidad de Medida */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 3 }}>
+                    Código / SKU
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: INS-001"
+                    value={supplyForm.sku}
+                    onChange={e => setSupplyForm({ ...supplyForm, sku: e.target.value })}
+                    className="input-neu"
+                    style={{ width: '100%', fontSize: '0.84rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 3 }}>
+                    Unidad de Medida
+                  </label>
+                  <select
+                    className="input-neu"
+                    value={supplyForm.unit}
+                    onChange={e => setSupplyForm({ ...supplyForm, unit: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.84rem', background: '#FFFFFF' }}
+                  >
+                    <option value="Kilogramos (kg)">Kilogramos (kg)</option>
+                    <option value="Gramos (g)">Gramos (g)</option>
+                    <option value="Litros (L)">Litros (L)</option>
+                    <option value="Mililitros (ml)">Mililitros (ml)</option>
+                    <option value="Unidades (und)">Unidades (und)</option>
+                    <option value="Bulto (50kg)">Bulto (50kg)</option>
+                    <option value="Bulto (25kg)">Bulto (25kg)</option>
+                    <option value="Panal (30 unds)">Panal (30 unds)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Costo Unitario & Stock Inicial */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 3 }}>
+                    Costo de Compra ($) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    required
+                    placeholder="0"
+                    value={supplyForm.cost_price}
+                    onChange={e => setSupplyForm({ ...supplyForm, cost_price: e.target.value })}
+                    className="input-neu"
+                    style={{ width: '100%', fontSize: '0.88rem', fontWeight: 800, color: '#008F7E' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 3 }}>
+                    Cantidad Inicial a Ingresar *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    required
+                    value={supplyForm.initial_quantity}
+                    onChange={e => setSupplyForm({ ...supplyForm, initial_quantity: e.target.value })}
+                    className="input-neu"
+                    style={{ width: '100%', fontSize: '0.88rem', fontWeight: 800, color: '#059669' }}
+                  />
+                </div>
+              </div>
+
+              {/* Bodega & Alerta de Stock Mínimo */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 3 }}>
+                    Bodega de Destino
+                  </label>
+                  <select
+                    className="input-neu"
+                    value={supplyForm.warehouse_id}
+                    onChange={e => setSupplyForm({ ...supplyForm, warehouse_id: e.target.value })}
+                    style={{ width: '100%', fontSize: '0.84rem', background: '#FFFFFF' }}
+                  >
+                    {warehouses.map(w => (
+                      <option key={w.id} value={w.id}>
+                        {w.is_main ? '★ ' : ''}{w.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 3 }}>
+                    Alerta de Stock Mínimo
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    placeholder="5"
+                    value={supplyForm.min_stock}
+                    onChange={e => setSupplyForm({ ...supplyForm, min_stock: e.target.value })}
+                    className="input-neu"
+                    style={{ width: '100%', fontSize: '0.84rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Notas */}
+              <div>
+                <label style={{ fontSize: '0.74rem', fontWeight: 700, color: '#334155', display: 'block', marginBottom: 3 }}>
+                  Notas / Proveedor
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej: Proveedor Molinos del Valle, lote fresco..."
+                  value={supplyForm.notes}
+                  onChange={e => setSupplyForm({ ...supplyForm, notes: e.target.value })}
+                  className="input-neu"
+                  style={{ width: '100%', fontSize: '0.84rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <button
+                  type="button"
+                  className="btn-neu"
+                  onClick={() => setShowSupplyModal(false)}
+                  style={{ flex: 1, padding: 10, fontSize: '0.84rem' }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingSupply}
+                  className="btn-neu btn-primary"
+                  style={{ flex: 1.5, padding: 10, fontSize: '0.84rem', fontWeight: 800 }}
+                >
+                  {savingSupply ? 'Guardando...' : 'Guardar e Ingresar Stock'}
                 </button>
               </div>
             </form>

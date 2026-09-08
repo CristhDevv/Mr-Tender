@@ -108,14 +108,7 @@ export default function LaundryRackPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/laundry/orders"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Shirt size={15} />
-            <span>Recepción & Tickets</span>
-          </Link>
+          
           <button
             onClick={loadRackItems}
             className="btn-neu btn-primary"

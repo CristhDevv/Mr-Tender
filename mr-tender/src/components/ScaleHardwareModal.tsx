@@ -242,7 +242,7 @@ export default function ScaleHardwareModal({
                   padding: '6px 10px',
                   fontSize: '0.78rem',
                   fontWeight: 700,
-                  background: weightKg === w ? 'var(--accent-blue, #2563eb)' : 'var(--bg-card, #ffffff)',
+                  background: weightKg === w ? 'var(--accent-blue, #00B19D)' : 'var(--bg-card, #ffffff)',
                   color: weightKg === w ? '#fff' : 'var(--text-primary)'
                 }}
               >

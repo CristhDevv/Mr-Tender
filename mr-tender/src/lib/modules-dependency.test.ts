@@ -9,8 +9,14 @@ import {
 } from './constants/modules'
 
 describe('Module Dependency Graph (DAG) & Integrity', () => {
-  it('should have all 25 system modules registered', () => {
-    expect(ALL_SYSTEM_MODULES.length).toBe(25)
+  it('should have all 26 system modules registered', () => {
+    expect(ALL_SYSTEM_MODULES.length).toBe(31)
+    expect(getModuleById('invoicing')).toBeDefined()
+    expect(getModuleById('candy')).toBeDefined()
+    expect(getModuleById('florist')).toBeDefined()
+    expect(getModuleById('greengrocer')).toBeDefined()
+    expect(getModuleById('stationery')).toBeDefined()
+    expect(getModuleById('butchery')).toBeDefined()
   })
 
   it('should have valid requires references for every module', () => {

@@ -174,14 +174,7 @@ export default function AutomotiveWashPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/automotive/orders"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Car size={15} />
-            <span>Órdenes de Taller</span>
-          </Link>
+          
           <button
             onClick={() => setShowModal(true)}
             className="btn-neu btn-primary"

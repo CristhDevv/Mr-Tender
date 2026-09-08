@@ -160,7 +160,7 @@ export default function MassPriceUpdaterModal({
                 width: 42,
                 height: 42,
                 borderRadius: 12,
-                background: 'linear-gradient(135deg, var(--accent-blue, #2563eb), #60a5fa)',
+                background: 'linear-gradient(135deg, var(--accent-blue, #00B19D), #60a5fa)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -257,7 +257,7 @@ export default function MassPriceUpdaterModal({
                         padding: '8px 6px',
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        background: updateMode === 'percent' ? 'var(--accent-blue, #2563eb)' : 'transparent',
+                        background: updateMode === 'percent' ? 'var(--accent-blue, #00B19D)' : 'transparent',
                         color: updateMode === 'percent' ? '#fff' : 'var(--text-secondary)'
                       }}
                     >
@@ -272,7 +272,7 @@ export default function MassPriceUpdaterModal({
                         padding: '8px 6px',
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        background: updateMode === 'fixed' ? 'var(--accent-blue, #2563eb)' : 'transparent',
+                        background: updateMode === 'fixed' ? 'var(--accent-blue, #00B19D)' : 'transparent',
                         color: updateMode === 'fixed' ? '#fff' : 'var(--text-secondary)'
                       }}
                     >
@@ -287,7 +287,7 @@ export default function MassPriceUpdaterModal({
                         padding: '8px 6px',
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        background: updateMode === 'margin' ? 'var(--accent-blue, #2563eb)' : 'transparent',
+                        background: updateMode === 'margin' ? 'var(--accent-blue, #00B19D)' : 'transparent',
                         color: updateMode === 'margin' ? '#fff' : 'var(--text-secondary)'
                       }}
                     >
@@ -320,7 +320,7 @@ export default function MassPriceUpdaterModal({
                       borderRadius: 10,
                       border: '1px solid var(--border-color, #cbd5e1)',
                       background: 'var(--bg-card, #ffffff)',
-                      color: 'var(--accent-blue, #2563eb)'
+                      color: 'var(--accent-blue, #00B19D)'
                     }}
                   />
                 </div>
@@ -331,7 +331,7 @@ export default function MassPriceUpdaterModal({
                     type="checkbox"
                     checked={roundToHundreds}
                     onChange={e => setRoundToHundreds(e.target.checked)}
-                    style={{ width: 18, height: 18, accentColor: 'var(--accent-blue, #2563eb)', cursor: 'pointer' }}
+                    style={{ width: 18, height: 18, accentColor: 'var(--accent-blue, #00B19D)', cursor: 'pointer' }}
                   />
                   <label htmlFor="round-hundreds" style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-primary)', cursor: 'pointer' }}>
                     Redondear a centenas ($100 COP)

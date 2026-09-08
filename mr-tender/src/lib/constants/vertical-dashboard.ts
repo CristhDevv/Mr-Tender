@@ -44,7 +44,7 @@ export const VERTICAL_DASHBOARD_CONFIGS: Record<string, {
       {
         id: 'fefo_expiry',
         title: 'Medicamentos x Vencer',
-        subtitle: 'Lotes con vencimiento en menos de 90 días (Semáforo FEFO)',
+        subtitle: 'Lotes con vencimiento en menos de 90 días (Control de Vencimientos)',
         icon: Clock,
         href: '/pharmacy/lots',
         actionLabel: 'Ver Lotes FEFO',
@@ -85,7 +85,7 @@ export const VERTICAL_DASHBOARD_CONFIGS: Record<string, {
         href: '/restaurant/tables',
         actionLabel: 'Abrir Salón',
         badgeText: 'En Vivo',
-        color: '#F59E0B'
+        color: '#714AD9'
       },
       {
         id: 'kitchen_kds',
@@ -99,7 +99,7 @@ export const VERTICAL_DASHBOARD_CONFIGS: Record<string, {
       },
       {
         id: 'recipes_cost',
-        title: 'Escandallo & Recetas',
+        title: 'Recetas & Costos',
         subtitle: 'Fichas técnicas de platos y costo exacto por porción',
         icon: UtensilsCrossed,
         href: '/restaurant/recipes',
@@ -176,7 +176,7 @@ export const VERTICAL_DASHBOARD_CONFIGS: Record<string, {
         icon: Scissors,
         href: '/veterinary/grooming',
         actionLabel: 'Ver Turnos',
-        color: '#F59E0B'
+        color: '#714AD9'
       }
     ]
   },
@@ -207,7 +207,7 @@ export const VERTICAL_DASHBOARD_CONFIGS: Record<string, {
       },
       {
         id: 'lookbooks',
-        title: 'Lookbooks & Outfits',
+        title: 'Catálogos Visuales & Outfits',
         subtitle: 'Combinaciones sugeridas para venta cruzada en caja',
         icon: Shirt,
         href: '/apparel/lookbooks',
@@ -248,7 +248,7 @@ export const VERTICAL_DASHBOARD_CONFIGS: Record<string, {
         icon: Wrench,
         href: '/hardware/quotes',
         actionLabel: 'Cotizar Servicio',
-        color: '#F59E0B'
+        color: '#714AD9'
       }
     ]
   },
@@ -292,7 +292,7 @@ export const VERTICAL_DASHBOARD_CONFIGS: Record<string, {
         href: '/hardware/quotes',
         actionLabel: 'Ver Cotizaciones',
         badgeText: 'Proyectos',
-        color: '#F97316'
+        color: '#714AD9'
       },
       {
         id: 'hw_rentals',
@@ -319,7 +319,7 @@ export const VERTICAL_DASHBOARD_CONFIGS: Record<string, {
         href: '/bakery/custom-orders',
         actionLabel: 'Ver Encargos',
         badgeText: 'Entregas',
-        color: '#D97706'
+        color: '#714AD9'
       },
       {
         id: 'bakery_prod',

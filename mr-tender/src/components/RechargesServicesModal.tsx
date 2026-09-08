@@ -276,7 +276,7 @@ export default function RechargesServicesModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                background: tab === 'recharge' ? 'var(--accent-blue, #2563eb)' : 'transparent',
+                background: tab === 'recharge' ? 'var(--accent-blue, #00B19D)' : 'transparent',
                 color: tab === 'recharge' ? '#fff' : 'var(--text-secondary)'
               }}
             >
@@ -296,7 +296,7 @@ export default function RechargesServicesModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                background: tab === 'services' ? 'var(--accent-blue, #2563eb)' : 'transparent',
+                background: tab === 'services' ? 'var(--accent-blue, #00B19D)' : 'transparent',
                 color: tab === 'services' ? '#fff' : 'var(--text-secondary)'
               }}
             >
@@ -316,7 +316,7 @@ export default function RechargesServicesModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                background: tab === 'pins' ? 'var(--accent-blue, #2563eb)' : 'transparent',
+                background: tab === 'pins' ? 'var(--accent-blue, #00B19D)' : 'transparent',
                 color: tab === 'pins' ? '#fff' : 'var(--text-secondary)'
               }}
             >
@@ -502,7 +502,7 @@ export default function RechargesServicesModal({
                           padding: '6px 12px',
                           fontSize: '0.78rem',
                           fontWeight: 700,
-                          background: rechargeAmount === String(pkg) ? 'var(--accent-blue, #2563eb)' : 'var(--bg-secondary)',
+                          background: rechargeAmount === String(pkg) ? 'var(--accent-blue, #00B19D)' : 'var(--bg-secondary)',
                           color: rechargeAmount === String(pkg) ? '#fff' : 'var(--text-primary)'
                         }}
                       >
@@ -670,7 +670,7 @@ export default function RechargesServicesModal({
                         style={{
                           padding: '10px 6px',
                           borderRadius: 10,
-                          border: selectedPin.id === pin.id ? '2px solid var(--accent-blue, #2563eb)' : '1px solid var(--border-color, #e2e8f0)',
+                          border: selectedPin.id === pin.id ? '2px solid var(--accent-blue, #00B19D)' : '1px solid var(--border-color, #e2e8f0)',
                           background: selectedPin.id === pin.id ? 'rgba(37,99,235,0.06)' : 'var(--bg-card, #ffffff)',
                           cursor: 'pointer',
                           textAlign: 'center',
@@ -706,7 +706,7 @@ export default function RechargesServicesModal({
                           padding: '10px',
                           fontWeight: 800,
                           fontSize: '0.9rem',
-                          background: pinDenom === String(d) ? 'var(--accent-blue, #2563eb)' : 'var(--bg-secondary)',
+                          background: pinDenom === String(d) ? 'var(--accent-blue, #00B19D)' : 'var(--bg-secondary)',
                           color: pinDenom === String(d) ? '#fff' : 'var(--text-primary)'
                         }}
                       >

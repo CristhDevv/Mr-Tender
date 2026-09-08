@@ -23,6 +23,8 @@ import {
   TrendingUp
 } from 'lucide-react'
 import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
+import { uploadProductImage } from '@/lib/image-upload'
+import { Image as ImageIcon } from 'lucide-react'
 import MassPriceUpdaterModal from '@/components/MassPriceUpdaterModal'
 
 interface DBProduct {
@@ -34,6 +36,7 @@ interface DBProduct {
   cost_price: number
   is_active: boolean
   category_id?: string | null
+  image_url?: string | null
   categories?: { name: string } | null
   inventory?: { id?: string; quantity: number; warehouse_id?: string }[]
 }
@@ -71,7 +74,8 @@ export default function ProductsPage() {
     cost_price: '0',
     sale_price: '0',
     stock: '0',
-    is_active: true
+    is_active: true,
+    image_url: ''
   })
 
   // Quick Stock Adjustment State
@@ -103,7 +107,7 @@ export default function ProductsPage() {
         supabase.from('warehouses').select('id, name, is_main').eq('tenant_id', tid).eq('is_active', true).order('is_main', { ascending: false }).order('name', { ascending: true }),
         supabase.from('categories').select('id, name').eq('tenant_id', tid),
         supabase.from('products').select(`
-          id, sku, name, product_type, sale_price, cost_price, is_active, category_id,
+          id, sku, name, product_type, sale_price, cost_price, is_active, category_id, image_url,
           categories (name),
           inventory (id, quantity, warehouse_id)
         `).eq('tenant_id', tid).order('name', { ascending: true })
@@ -154,7 +158,8 @@ export default function ProductsPage() {
       cost_price: String(p.cost_price || 0),
       sale_price: String(p.sale_price || 0),
       stock: String(getStock(p)),
-      is_active: p.is_active
+      is_active: p.is_active,
+      image_url: p.image_url || ''
     })
     setShowEditModal(true)
   }
@@ -180,6 +185,7 @@ export default function ProductsPage() {
             name: productForm.name.trim(),
             sku: productForm.sku.trim() || null,
             category_id: productForm.category_id || null,
+          image_url: productForm.image_url || null,
             cost_price: costP,
             sale_price: saleP,
             is_active: productForm.is_active
@@ -401,23 +407,23 @@ export default function ProductsPage() {
         </div>
       </div>
 
-      {/* Monochromatic KPIs Grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 10 }}>
+      {/* Standardized Modern KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         {[
-          { label: 'Total productos', value: products.length, Icon: Package, color: 'var(--accent-blue)', bg: 'var(--accent-blue-lt)' },
-          { label: 'Activos', value: products.filter(p => p.is_active).length, Icon: CheckCircle2, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
-          { label: 'Stock bajo', value: products.filter(p => getStock(p) <= 5 && getStock(p) > 0).length, Icon: AlertTriangle, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
-          { label: 'Sin stock', value: products.filter(p => getStock(p) === 0).length, Icon: XCircle, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+          { label: 'Total Productos', value: `${products.length} prods`, Icon: Package, color: '#008F7E', bg: '#E6F7F5' },
+          { label: 'Activos en Venta', value: `${products.filter(p => p.is_active).length} prods`, Icon: CheckCircle2, color: '#059669', bg: '#ECFDF5' },
+          { label: 'Stock Bajo', value: `${products.filter(p => getStock(p) <= 5 && getStock(p) > 0).length} prods`, Icon: AlertTriangle, color: '#714AD9', bg: '#F0EDFC' },
+          { label: 'Sin Stock / Agotados', value: `${products.filter(p => getStock(p) === 0).length} prods`, Icon: XCircle, color: '#DC2626', bg: '#FEE2E2' },
         ].map(s => {
           const StatIcon = s.Icon
           return (
-            <div key={s.label} className="neu-card-sm" style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div className="kpi-icon-wrap" style={{ background: s.bg, width: 32, height: 32, flexShrink: 0 }}>
-                <StatIcon size={16} strokeWidth={2} style={{ color: s.color }} />
+            <div key={s.label} className="neu-card" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <div style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{s.label}</div>
+                <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0F172A' }}>{s.value}</div>
               </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: s.color }}>{s.value}</div>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>{s.label}</div>
+              <div style={{ background: s.bg, width: 38, height: 38, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', color: s.color, flexShrink: 0 }}>
+                <StatIcon size={18} strokeWidth={2} />
               </div>
             </div>
           )
@@ -469,8 +475,23 @@ export default function ProductsPage() {
                 style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200, flex: 1, cursor: 'pointer' }}
                 title="Haz clic para editar este producto"
               >
-                <div style={{ width: 34, height: 34, borderRadius: 8, background: 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-blue)', flexShrink: 0 }}>
-                  <Package size={18} strokeWidth={2} />
+                <div style={{ width: 38, height: 38, borderRadius: 8, background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                  {product.image_url ? (
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none'
+                        if (e.currentTarget.nextElementSibling) {
+                          (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'
+                        }
+                      }}
+                    />
+                  ) : null}
+                  <div style={{ display: product.image_url ? 'none' : 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-blue-lt)', color: 'var(--accent-blue)' }}>
+                    <Package size={18} strokeWidth={2} />
+                  </div>
                 </div>
                 <div style={{ minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{product.name}</div>
@@ -549,128 +570,179 @@ export default function ProductsPage() {
 
       {/* ── MODAL: EDIT PRODUCT ── */}
       {showEditModal && editingProduct && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 520, padding: 22 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, overflowY: 'auto' }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 540, maxHeight: 'calc(100dvh - 24px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, borderRadius: 16 }}>
+            {/* Fixed Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg)', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Edit2 size={18} color="var(--accent-blue)" />
                 <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   Editar Producto
                 </h3>
               </div>
-              <button className="btn-neu btn-ghost" onClick={() => setShowEditModal(false)} style={{ padding: '4px 8px' }}>
+              <button className="btn-neu btn-ghost" onClick={() => setShowEditModal(false)} style={{ width: 30, height: 30, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div>
-                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Nombre del Producto *</label>
-                <input
-                  type="text"
-                  className="input-neu"
-                  value={productForm.name}
-                  onChange={e => setProductForm({ ...productForm, name: e.target.value })}
-                  required
-                  style={{ width: '100%', fontSize: '0.82rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleSaveProduct} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 18px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                {/* Imagen del Producto */}
                 <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Código SKU / Barras</label>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>
+                    Foto / Imagen del Producto
+                  </label>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <div style={{ width: 60, height: 60, borderRadius: 8, background: '#F8FAFC', border: '1px dashed #CBD5E1', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+                      {productForm.image_url ? (
+                        <img src={productForm.image_url} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                      ) : (
+                        <ImageIcon size={24} style={{ opacity: 0.35, color: '#64748B' }} />
+                      )}
+                    </div>
+                    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <label className="btn-neu" style={{ padding: '6px 12px', fontSize: '0.74rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+                        <Upload size={12} style={{ color: '#00B19D' }} />
+                        <span>Subir foto</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          style={{ display: 'none' }}
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0]
+                            if (file) {
+                              try {
+                                const url = await uploadProductImage(file, tenantId, supabase)
+                                setProductForm(f => ({ ...f, image_url: url }))
+                              } catch (err) {
+                                console.error(err)
+                              }
+                            }
+                          }}
+                        />
+                      </label>
+                      <input
+                        type="text"
+                        className="input-neu"
+                        value={productForm.image_url}
+                        onChange={e => setProductForm({ ...productForm, image_url: e.target.value })}
+                        placeholder="O pega URL de la foto..."
+                        style={{ fontSize: '0.74rem', height: 30 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Nombre del Producto *</label>
                   <input
                     type="text"
                     className="input-neu"
-                    value={productForm.sku}
-                    onChange={e => setProductForm({ ...productForm, sku: e.target.value })}
-                    placeholder="770123..."
-                    style={{ width: '100%', fontSize: '0.82rem' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Categoría</label>
-                  <select
-                    className="input-neu"
-                    value={productForm.category_id}
-                    onChange={e => setProductForm({ ...productForm, category_id: e.target.value })}
-                    style={{ width: '100%', fontSize: '0.82rem', background: 'var(--bg-deep)', cursor: 'pointer' }}
-                  >
-                    <option value="">General</option>
-                    {categoryList.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, borderTop: '1px solid var(--border-color)', paddingTop: 10 }}>
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Costo Compra ($)</label>
-                  <input
-                    type="number"
-                    className="input-neu"
-                    value={productForm.cost_price}
-                    onChange={e => setProductForm({ ...productForm, cost_price: e.target.value })}
-                    style={{ width: '100%', fontSize: '0.82rem' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Venta ($) *</label>
-                  <input
-                    type="number"
-                    className="input-neu"
-                    value={productForm.sale_price}
-                    onChange={e => setProductForm({ ...productForm, sale_price: e.target.value })}
+                    value={productForm.name}
+                    onChange={e => setProductForm({ ...productForm, name: e.target.value })}
                     required
                     style={{ width: '100%', fontSize: '0.82rem' }}
                   />
                 </div>
 
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Bodega de Almacenamiento *</label>
-                  <select
-                    className="input-neu"
-                    value={productForm.warehouse_id}
-                    onChange={e => setProductForm({ ...productForm, warehouse_id: e.target.value })}
-                    style={{ width: '100%', fontSize: '0.82rem', fontWeight: 700 }}
-                  >
-                    {warehousesList.map(w => (
-                      <option key={w.id} value={w.id}>
-                        📦 {w.name} {w.is_main ? '(Principal)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Código SKU / Barras</label>
+                    <input
+                      type="text"
+                      className="input-neu"
+                      value={productForm.sku}
+                      onChange={e => setProductForm({ ...productForm, sku: e.target.value })}
+                      placeholder="770123..."
+                      style={{ width: '100%', fontSize: '0.82rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Categoría</label>
+                    <select
+                      className="input-neu"
+                      value={productForm.category_id}
+                      onChange={e => setProductForm({ ...productForm, category_id: e.target.value })}
+                      style={{ width: '100%', fontSize: '0.82rem', background: 'var(--bg-deep)', cursor: 'pointer' }}
+                    >
+                      <option value="">General</option>
+                      {categoryList.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                <div>
-                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Stock en Bodega (Uds)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, borderTop: '1px solid var(--border-color)', paddingTop: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Costo Compra ($)</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      value={productForm.cost_price}
+                      onChange={e => setProductForm({ ...productForm, cost_price: e.target.value })}
+                      style={{ width: '100%', fontSize: '0.82rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Precio Venta ($) *</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      value={productForm.sale_price}
+                      onChange={e => setProductForm({ ...productForm, sale_price: e.target.value })}
+                      required
+                      style={{ width: '100%', fontSize: '0.82rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Bodega *</label>
+                    <select
+                      className="input-neu"
+                      value={productForm.warehouse_id}
+                      onChange={e => setProductForm({ ...productForm, warehouse_id: e.target.value })}
+                      style={{ width: '100%', fontSize: '0.82rem', fontWeight: 700 }}
+                    >
+                      {warehousesList.map(w => (
+                        <option key={w.id} value={w.id}>
+                          📦 {w.name} {w.is_main ? '(Principal)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', display: 'block', marginBottom: 4 }}>Stock (Uds)</label>
+                    <input
+                      type="number"
+                      className="input-neu"
+                      value={productForm.stock}
+                      onChange={e => setProductForm({ ...productForm, stock: e.target.value })}
+                      style={{ width: '100%', fontSize: '0.82rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
                   <input
-                    type="number"
-                    className="input-neu"
-                    value={productForm.stock}
-                    onChange={e => setProductForm({ ...productForm, stock: e.target.value })}
-                    style={{ width: '100%', fontSize: '0.82rem' }}
+                    type="checkbox"
+                    id="prod_active"
+                    checked={productForm.is_active}
+                    onChange={e => setProductForm({ ...productForm, is_active: e.target.checked })}
+                    style={{ width: 16, height: 16, cursor: 'pointer' }}
                   />
+                  <label htmlFor="prod_active" style={{ fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                    Producto activo para venta en POS
+                  </label>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                <input
-                  type="checkbox"
-                  id="prod_active"
-                  checked={productForm.is_active}
-                  onChange={e => setProductForm({ ...productForm, is_active: e.target.checked })}
-                  style={{ width: 16, height: 16, cursor: 'pointer' }}
-                />
-                <label htmlFor="prod_active" style={{ fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
-                  Producto activo para venta en POS
-                </label>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
+              {/* Fixed Footer */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-color)', padding: '12px 18px', background: 'var(--bg-deep)', flexShrink: 0 }}>
                 <button type="button" className="btn-neu btn-ghost" onClick={() => setShowEditModal(false)} style={{ padding: '8px 16px', fontSize: '0.8rem' }}>
                   Cancelar
                 </button>

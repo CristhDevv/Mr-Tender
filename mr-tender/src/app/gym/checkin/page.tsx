@@ -117,22 +117,8 @@ export default function GymCheckinPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/gym/members"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Dumbbell size={15} />
-            <span>Socios & Membresías</span>
-          </Link>
-          <Link
-            href="/gym/classes"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-purple)' }}
-          >
-            <Users size={15} />
-            <span>Clases & Aforo</span>
-          </Link>
+          
+          
         </div>
       </div>
 

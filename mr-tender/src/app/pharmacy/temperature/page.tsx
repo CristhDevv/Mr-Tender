@@ -163,14 +163,7 @@ export default function PharmacyTemperaturePage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/pharmacy/medicines"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Pill size={15} />
-            <span>Medicamentos</span>
-          </Link>
+          
           <button
             onClick={() => setShowLogModal(true)}
             className="btn-neu btn-primary"

@@ -267,14 +267,7 @@ export default function HardwareQuotesPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/hardware/rentals"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-amber)' }}
-          >
-            <Wrench size={15} />
-            <span>Alquiler Herramientas</span>
-          </Link>
+          
           <button
             onClick={() => setShowModal(true)}
             className="btn-neu btn-primary"

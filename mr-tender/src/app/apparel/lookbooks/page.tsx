@@ -150,14 +150,14 @@ export default function ApparelLookbooksPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>
             <span>Ventas & Mostrador</span>
             <ChevronRight size={13} />
-            <span style={{ color: 'var(--accent-purple)', fontWeight: 700 }}>Outfits & Lookbooks</span>
+            <span style={{ color: 'var(--accent-purple)', fontWeight: 700 }}>Catálogos & Combos de Ropa</span>
           </div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Sparkles size={24} style={{ color: 'var(--accent-purple)' }} />
-            Lookbooks, Colecciones & Venta de Outfits Completos
+            Catálogo Visual de Colecciones & Combos de Ropa
           </h1>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-            Venta cruzada sugerida para asesores de tienda: viste al maniquí y vende el look completo con descuento en un clic.
+            Combos sugeridos para asesores de tienda: vende el conjunto completo con descuento especial en un clic.
           </p>
         </div>
 

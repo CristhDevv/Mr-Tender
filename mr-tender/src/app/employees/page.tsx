@@ -63,7 +63,7 @@ interface Employee {
 const PRESET_COLORS = [
   '#3B82F6', // Blue
   '#10B981', // Emerald
-  '#F59E0B', // Amber
+  '#714AD9', // Purple
   '#8B5CF6', // Purple
   '#EC4899', // Pink
   '#06B6D4', // Cyan
@@ -82,6 +82,7 @@ const MODULE_LABELS: Record<string, { label: string; icon: string }> = {
   reports: { label: 'Reportes & Finanzas', icon: '📊' },
   accounting: { label: 'Contabilidad', icon: '📖' },
   employees: { label: 'Personal & Empleados', icon: '👤' },
+  bakery: { label: 'Panadería & Producción', icon: '🥐' },
   settings: { label: 'Configuración', icon: '⚙️' },
   users: { label: 'Usuarios del Sistema', icon: '🔐' },
 }
@@ -924,29 +925,29 @@ export default function EmployeesAndRolesPage() {
 
       {/* ── MODAL: ROLE EDITOR & PERMISSION MATRIX ── */}
       {showRoleModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 760, maxHeight: '92vh', display: 'flex', flexDirection: 'column', padding: 20 }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, overflowY: 'auto' }}>
+          <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 760, maxHeight: 'calc(100dvh - 24px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, borderRadius: 16 }}>
             
             {/* Modal Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexShrink: 0 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid var(--border-color)', background: 'var(--bg)', flexShrink: 0 }}>
               <div>
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
                   {editingRoleId ? `Editar Rol: ${roleName}` : 'Crear Nuevo Rol Personalizado'}
                 </h3>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0, marginTop: 2 }}>
+                <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: 0, marginTop: 2 }}>
                   Configura el nombre, color y activa los permisos exactos que tendrá este perfil.
                 </p>
               </div>
 
-              <button className="btn-neu btn-ghost" onClick={() => setShowRoleModal(false)} style={{ padding: '4px 8px' }}>
+              <button className="btn-neu btn-ghost" onClick={() => setShowRoleModal(false)} style={{ width: 30, height: 30, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <X size={16} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveRole} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', gap: 14 }}>
+            <form onSubmit={handleSaveRole} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
               
               {/* Top Settings: Name, Description & Color */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, flexShrink: 0 }}>
+              <div style={{ padding: '12px 18px 8px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, flexShrink: 0, background: 'var(--bg)' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>Nombre del Rol *</label>
                   <input
@@ -997,7 +998,7 @@ export default function EmployeesAndRolesPage() {
               </div>
 
               {/* Permission Matrix Header */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: 10, flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', padding: '10px 18px', flexShrink: 0, background: 'var(--bg)' }}>
                 <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)' }}>
                   Matriz de Permisos ({selectedPermissions.size} seleccionados)
                 </span>
@@ -1023,7 +1024,7 @@ export default function EmployeesAndRolesPage() {
               </div>
 
               {/* Scrollable Permissions List by Module */}
-              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, paddingRight: 4 }}>
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, padding: '10px 18px' }}>
                 {Object.entries(permissionsByModule).map(([module, modulePerms]) => {
                   const info = MODULE_LABELS[module] || { label: module.toUpperCase(), icon: '📁' }
                   const allInModuleSelected = modulePerms.every(p => selectedPermissions.has(p.id))
@@ -1093,7 +1094,7 @@ export default function EmployeesAndRolesPage() {
               </div>
 
               {/* Modal Footer */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-color)', paddingTop: 12, flexShrink: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, borderTop: '1px solid var(--border-color)', padding: '12px 18px', background: 'var(--bg-deep)', flexShrink: 0 }}>
                 <button
                   type="button"
                   className="btn-neu btn-ghost"

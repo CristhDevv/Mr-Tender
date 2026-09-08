@@ -176,11 +176,11 @@ export default function RestaurantRecipesPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>
             <span>Catálogo & Inventario</span>
             <ChevronRight size={13} />
-            <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Recetas & Escandallo</span>
+            <span style={{ color: 'var(--accent-green)', fontWeight: 700 }}>Recetas & Costos</span>
           </div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <UtensilsCrossed size={24} style={{ color: 'var(--accent-green)' }} />
-            Recetas, Fichas Técnicas & Escandallo
+            Recetario & Costos de Preparación
           </h1>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
             Costeo detallado de ingredientes por porción, rentabilidad y fichas de preparación para cocina.
@@ -188,22 +188,8 @@ export default function RestaurantRecipesPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/restaurant/tables"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <UtensilsCrossed size={15} />
-            <span>Mesas & Salón</span>
-          </Link>
-          <Link
-            href="/restaurant/kds"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Flame size={15} />
-            <span>Cocina KDS</span>
-          </Link>
+          
+          
           <button
             onClick={() => setShowRecipeModal(true)}
             className="btn-neu btn-primary"
@@ -302,7 +288,7 @@ export default function RestaurantRecipesPage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
           <div className="neu-card" style={{ maxWidth: 560, width: '100%', padding: 24, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Nueva Receta & Escandallo</h3>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Nueva Receta & Costos</h3>
               <button onClick={() => setShowRecipeModal(false)} className="btn-neu btn-ghost" style={{ padding: 4 }}><X size={16} /></button>
             </div>
 

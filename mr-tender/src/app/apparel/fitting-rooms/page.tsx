@@ -116,14 +116,7 @@ export default function ApparelFittingRoomsPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/apparel/matrix"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Shirt size={15} />
-            <span>Matriz Tallas</span>
-          </Link>
+          
           <button
             onClick={loadRooms}
             className="btn-neu btn-primary"

@@ -96,7 +96,7 @@ export default function ElectronicWalletModal({
                 width: 42,
                 height: 42,
                 borderRadius: 12,
-                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                background: 'linear-gradient(135deg, #8B5CF6, #714AD9)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -133,7 +133,7 @@ export default function ElectronicWalletModal({
             {/* Balance Card */}
             <div
               style={{
-                background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+                background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
                 border: '1px solid #fde68a',
                 borderRadius: 14,
                 padding: 16,
@@ -150,7 +150,7 @@ export default function ElectronicWalletModal({
                   {formatCurrency(availableBalance)}
                 </div>
               </div>
-              <Gift size={36} style={{ color: '#f59e0b', opacity: 0.8 }} />
+              <Gift size={36} style={{ color: '#714AD9', opacity: 0.8 }} />
             </div>
 
             <div>
@@ -172,7 +172,7 @@ export default function ElectronicWalletModal({
                   borderRadius: 10,
                   border: '1px solid var(--border-color, #cbd5e1)',
                   background: 'var(--bg-primary, #f8fafc)',
-                  color: 'var(--accent-blue, #2563eb)'
+                  color: 'var(--accent-blue, #00B19D)'
                 }}
               />
             </div>

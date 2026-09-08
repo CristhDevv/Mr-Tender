@@ -95,7 +95,7 @@ function renderInlineFormatting(text: string, onNavigate?: (href: string) => voi
             gap: 5,
             margin: '3px 2px',
             padding: '4px 10px',
-            background: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)',
+            background: 'linear-gradient(135deg, #3B82F6 0%, #008F7E 100%)',
             color: '#ffffff',
             fontSize: '0.74rem',
             fontWeight: 800,
@@ -170,7 +170,7 @@ function FormattedMessage({ text, role, onNavigate }: { text: string; role: 'use
               key={idx}
               style={{
                 background: 'rgba(245, 158, 11, 0.12)',
-                borderLeft: '3px solid #F59E0B',
+                borderLeft: '3px solid #714AD9',
                 padding: '6px 10px',
                 borderRadius: '0 6px 6px 0',
                 margin: '3px 0',
@@ -239,6 +239,7 @@ export default function CopilotWidget() {
   const [userMetadata, setUserMetadata] = useState<{ id: string; tenant_id: string; full_name: string } | null>(null)
   
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<HTMLInputElement | null>(null)
   const recognitionRef = useRef<any>(null)
   const supabase = createClient()
 
@@ -249,6 +250,23 @@ export default function CopilotWidget() {
       router.push(href)
     }
   }
+
+  // Listen for global toggle-copilot custom event
+  useEffect(() => {
+    function handleToggle() {
+      setIsOpen(prev => !prev)
+    }
+    window.addEventListener('toggle-copilot', handleToggle)
+    return () => window.removeEventListener('toggle-copilot', handleToggle)
+  }, [])
+
+  // Auto scroll and focus input when opened
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+      setTimeout(() => inputRef.current?.focus(), 150)
+    }
+  }, [isOpen, messages])
 
   // Load user data
   useEffect(() => {
@@ -262,13 +280,6 @@ export default function CopilotWidget() {
       }
     })
   }, [])
-
-  // Auto scroll to bottom
-  useEffect(() => {
-    if (isOpen) {
-      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-    }
-  }, [messages, isOpen])
 
   // Initialize Speech Recognition for Copilot Voice input
   useEffect(() => {
@@ -378,34 +389,7 @@ export default function CopilotWidget() {
 
   return (
     <>
-      {/* ── FLOATING TRIGGER PILL ── */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="copilot-trigger-btn animate-scale-in"
-        title="Abrir Asistente Copilot AI"
-        style={{
-          position: 'fixed',
-          bottom: 24,
-          right: 24,
-          zIndex: 9998,
-          background: 'linear-gradient(135deg, #2563EB, #7C3AED, #EC4899)',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 30,
-          padding: '10px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          fontWeight: 800,
-          fontSize: '0.85rem',
-          boxShadow: '0 8px 24px rgba(124, 58, 237, 0.45), 0 0 16px rgba(37, 99, 235, 0.3)',
-          cursor: 'pointer',
-          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)'
-        }}
-      >
-        <Sparkles size={16} strokeWidth={2.5} className="animate-pulse" />
-        <span>Copilot AI</span>
-      </button>
+
 
       {/* ── EXPANDABLE CHAT DRAWER ── */}
       {isOpen && (
@@ -447,13 +431,13 @@ export default function CopilotWidget() {
                 width: 32,
                 height: 32,
                 borderRadius: 10,
-                background: 'linear-gradient(135deg, #3B82F6, #8B5CF6)',
+                background: 'linear-gradient(135deg, #00D6BC, #714AD9)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 12px rgba(59, 130, 246, 0.5)'
+                boxShadow: '0 0 14px rgba(0, 214, 188, 0.4)'
               }}>
-                <Bot size={17} color="#fff" />
+                <Bot size={17} color="#0F172A" />
               </div>
 
               <div>
@@ -461,8 +445,8 @@ export default function CopilotWidget() {
                   <h4 style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800, color: '#fff' }}>
                     Tender Copilot AI
                   </h4>
-                  <span style={{ fontSize: '0.62rem', background: 'rgba(59, 130, 246, 0.25)', color: '#93C5FD', padding: '1px 5px', borderRadius: 4, fontWeight: 700 }}>
-                    Gemini Ultra
+                  <span style={{ fontSize: '0.62rem', background: 'rgba(0, 214, 188, 0.2)', color: '#00D6BC', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>
+                    Activo
                   </span>
                 </div>
 
@@ -572,7 +556,7 @@ export default function CopilotWidget() {
                     padding: '10px 14px',
                     borderRadius: msg.role === 'user' ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
                     background: msg.role === 'user'
-                      ? 'linear-gradient(135deg, #2563EB, #1D4ED8)'
+                      ? 'linear-gradient(135deg, #00B19D, #008F7E)'
                       : 'rgba(30, 41, 59, 0.85)',
                     border: msg.role === 'user' ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
                     color: '#fff',
@@ -663,6 +647,7 @@ export default function CopilotWidget() {
             </button>
 
             <input
+              ref={inputRef}
               type="text"
               placeholder="Pregunta o pide algo a la IA..."
               value={input}
@@ -689,8 +674,8 @@ export default function CopilotWidget() {
                 height: 36,
                 borderRadius: 10,
                 border: 'none',
-                background: input.trim() && !loading ? 'linear-gradient(135deg, #2563EB, #7C3AED)' : 'rgba(255, 255, 255, 0.08)',
-                color: '#fff',
+                background: input.trim() && !loading ? 'linear-gradient(135deg, #00D6BC, #714AD9)' : 'rgba(255, 255, 255, 0.08)',
+                color: '#0F172A',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

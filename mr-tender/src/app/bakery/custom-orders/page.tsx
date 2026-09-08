@@ -293,136 +293,146 @@ export default function BakeryCustomOrdersPage() {
 
       {/* Modal: Nuevo Encargo */}
       {showOrderModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-          <div className="neu-card" style={{ maxWidth: 480, width: '100%', padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1.15rem', fontWeight: 800, margin: 0 }}>Nuevo Encargo / Torta</h3>
-              <button onClick={() => setShowOrderModal(false)} className="btn-neu btn-ghost" style={{ padding: 4 }}><X size={16} /></button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(3px)', zIndex: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 12, overflowY: 'auto' }}>
+          <div className="neu-card animate-scale-in" style={{ maxWidth: 500, width: '100%', maxHeight: 'calc(100dvh - 24px)', display: 'flex', flexDirection: 'column', overflow: 'hidden', padding: 0, borderRadius: 16 }}>
+            {/* Fixed Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid #E2E8F0', background: '#FFFFFF', flexShrink: 0 }}>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0, color: '#0F172A' }}>Nuevo Encargo / Torta</h3>
+                <p style={{ margin: '2px 0 0', fontSize: '0.74rem', color: '#64748B' }}>Registra un pedido personalizado para producción</p>
+              </div>
+              <button onClick={() => setShowOrderModal(false)} className="btn-neu btn-ghost" style={{ width: 30, height: 30, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X size={16} />
+              </button>
             </div>
 
-            <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleCreateOrder} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
+              <div style={{ padding: '14px 18px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Cliente</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Nombre completo"
+                      value={orderForm.customer_name}
+                      onChange={e => setOrderForm({ ...orderForm, customer_name: e.target.value })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Teléfono</label>
+                    <input
+                      type="tel"
+                      placeholder="WhatsApp"
+                      value={orderForm.customer_phone}
+                      onChange={e => setOrderForm({ ...orderForm, customer_phone: e.target.value })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Fecha de Entrega</label>
+                    <input
+                      type="date"
+                      required
+                      value={orderForm.delivery_date}
+                      onChange={e => setOrderForm({ ...orderForm, delivery_date: e.target.value })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Hora</label>
+                    <input
+                      type="time"
+                      required
+                      value={orderForm.delivery_time}
+                      onChange={e => setOrderForm({ ...orderForm, delivery_time: e.target.value })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Tipo de Torta / Sabor</label>
+                    <input
+                      type="text"
+                      required
+                      value={orderForm.cake_type}
+                      onChange={e => setOrderForm({ ...orderForm, cake_type: e.target.value })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Porciones</label>
+                    <input
+                      type="number"
+                      min="1"
+                      required
+                      value={orderForm.portions}
+                      onChange={e => setOrderForm({ ...orderForm, portions: Number(e.target.value) })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Cliente</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="Nombre completo"
-                    value={orderForm.customer_name}
-                    onChange={e => setOrderForm({ ...orderForm, customer_name: e.target.value })}
+                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Detalles de Decoración & Mensaje</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Colores, temática, dedicatoria..."
+                    value={orderForm.decor_details}
+                    onChange={e => setOrderForm({ ...orderForm, decor_details: e.target.value })}
                     className="input-neu"
                     style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
                   />
                 </div>
 
-                <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Teléfono</label>
-                  <input
-                    type="tel"
-                    placeholder="WhatsApp"
-                    value={orderForm.customer_phone}
-                    onChange={e => setOrderForm({ ...orderForm, customer_phone: e.target.value })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Precio Total (COP)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      required
+                      value={orderForm.total_price}
+                      onChange={e => setOrderForm({ ...orderForm, total_price: Number(e.target.value) })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Abono Inicial (COP)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={orderForm.advance_payment}
+                      onChange={e => setOrderForm({ ...orderForm, advance_payment: Number(e.target.value) })}
+                      className="input-neu"
+                      style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Fecha de Entrega</label>
-                  <input
-                    type="date"
-                    required
-                    value={orderForm.delivery_date}
-                    onChange={e => setOrderForm({ ...orderForm, delivery_date: e.target.value })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Hora</label>
-                  <input
-                    type="time"
-                    required
-                    value={orderForm.delivery_time}
-                    onChange={e => setOrderForm({ ...orderForm, delivery_time: e.target.value })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Tipo de Torta / Sabor</label>
-                  <input
-                    type="text"
-                    required
-                    value={orderForm.cake_type}
-                    onChange={e => setOrderForm({ ...orderForm, cake_type: e.target.value })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Porciones</label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={orderForm.portions}
-                    onChange={e => setOrderForm({ ...orderForm, portions: Number(e.target.value) })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Detalles de Decoración & Mensaje</label>
-                <textarea
-                  rows={2}
-                  placeholder="Colores, temática, dedicatoria..."
-                  value={orderForm.decor_details}
-                  onChange={e => setOrderForm({ ...orderForm, decor_details: e.target.value })}
-                  className="input-neu"
-                  style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Precio Total (COP)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required
-                    value={orderForm.total_price}
-                    onChange={e => setOrderForm({ ...orderForm, total_price: Number(e.target.value) })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ fontSize: '0.76rem', fontWeight: 700, color: 'var(--text-secondary)' }}>Abono Inicial (COP)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={orderForm.advance_payment}
-                    onChange={e => setOrderForm({ ...orderForm, advance_payment: Number(e.target.value) })}
-                    className="input-neu"
-                    style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
-                <button type="button" onClick={() => setShowOrderModal(false)} className="btn-neu" style={{ flex: 1, padding: 9 }}>Cancelar</button>
-                <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ flex: 2, padding: 9 }}>
+              {/* Fixed Footer */}
+              <div style={{ display: 'flex', gap: 8, padding: '12px 18px', borderTop: '1px solid #E2E8F0', background: '#F8FAFC', flexShrink: 0 }}>
+                <button type="button" onClick={() => setShowOrderModal(false)} className="btn-neu" style={{ flex: 1, padding: 10 }}>Cancelar</button>
+                <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ flex: 2, padding: 10, fontWeight: 800 }}>
                   {submitting ? 'Guardando...' : 'Agendar Encargo'}
                 </button>
               </div>

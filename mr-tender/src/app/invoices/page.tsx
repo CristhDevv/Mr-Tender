@@ -603,9 +603,9 @@ ${dianUrl}
         <div className="neu-card" style={{ padding: 18, borderRadius: 14, background: '#fff', border: '1px solid #E2E8F0' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', color: '#64748B', fontSize: '0.82rem', fontWeight: 600 }}>
             <span>PENDIENTES / CONTINGENCIA</span>
-            <Clock size={18} color="#F59E0B" />
+            <Clock size={18} color="#714AD9" />
           </div>
-          <div style={{ fontSize: '1.45rem', fontWeight: 800, marginTop: 8, color: '#F59E0B' }}>
+          <div style={{ fontSize: '1.45rem', fontWeight: 800, marginTop: 8, color: '#714AD9' }}>
             {pendingCount}
           </div>
           <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: 4 }}>
@@ -754,7 +754,7 @@ ${dianUrl}
                                 <CheckCircle2 size={12} /> Validada DIAN
                               </span>
                             ) : (
-                              <span style={{ background: '#FEF3C7', color: '#D97706', padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <span style={{ background: '#F0EDFC', color: '#714AD9', padding: '4px 10px', borderRadius: 20, fontSize: '0.72rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                                 <Clock size={12} /> En Contingencia
                               </span>
                             )}
@@ -1110,7 +1110,7 @@ ${dianUrl}
                 padding: '10px 24px',
                 borderRadius: 10,
                 border: 'none',
-                background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                background: 'linear-gradient(135deg, #00B19D, #008F7E)',
                 color: '#fff',
                 fontWeight: 700,
                 cursor: testSetRunning ? 'not-allowed' : 'pointer',

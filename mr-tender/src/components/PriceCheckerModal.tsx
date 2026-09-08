@@ -133,7 +133,7 @@ export default function PriceCheckerModal({
                 width: 42,
                 height: 42,
                 borderRadius: 12,
-                background: 'linear-gradient(135deg, var(--accent-blue, #2563eb), #60a5fa)',
+                background: 'linear-gradient(135deg, var(--accent-blue, #00B19D), #60a5fa)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -181,7 +181,7 @@ export default function PriceCheckerModal({
               fontSize: '1rem',
               fontWeight: 600,
               borderRadius: 14,
-              border: '2px solid var(--accent-blue, #2563eb)',
+              border: '2px solid var(--accent-blue, #00B19D)',
               outline: 'none',
               background: 'var(--bg-primary, #f8fafc)',
               color: 'var(--text-primary)'
@@ -205,7 +205,7 @@ export default function PriceCheckerModal({
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
                 <div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-blue, #2563eb)', letterSpacing: '0.05em' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--accent-blue, #00B19D)', letterSpacing: '0.05em' }}>
                     {selectedProduct.category || 'General'}
                   </span>
                   <h3 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', margin: '4px 0 0 0' }}>
@@ -243,11 +243,11 @@ export default function PriceCheckerModal({
 
               {selectedProduct.wholesale_price && (
                 <div style={{ borderLeft: '1px dashed var(--border-color, #e2e8f0)', paddingLeft: 16 }}>
-                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue, #2563eb)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-blue, #00B19D)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: 4 }}>
                     <Sparkles size={13} />
                     Precio Mayoreo ({selectedProduct.wholesale_min_qty || 3}+ uds)
                   </div>
-                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-blue, #2563eb)', letterSpacing: '-0.03em', marginTop: 2 }}>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 900, color: 'var(--accent-blue, #00B19D)', letterSpacing: '-0.03em', marginTop: 2 }}>
                     {formatCurrency(selectedProduct.wholesale_price)}
                   </div>
                 </div>

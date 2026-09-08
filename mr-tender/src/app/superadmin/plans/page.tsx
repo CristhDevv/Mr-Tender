@@ -71,7 +71,7 @@ const INDUSTRY_PRESETS = [
   {
     name: 'Mr. Tender Gastro Suite',
     slug: 'mr-tender-gastro',
-    description: 'Core Retail + Restaurantes, Bares & Cafés: Mapa de mesas, comandas KDS a cocina/barra y escandallo de recetas.',
+    description: 'Core Retail + Restaurantes, Bares & Cafés: Mapa de mesas, comandas KDS a cocina/barra y costeo de recetas e ingredientes.',
     price_monthly: '149000',
     price_yearly: '1490000',
     currency: 'COP',

@@ -112,7 +112,7 @@ export default function RegisterPage() {
         enabled_modules: initialModules
       }, { onConflict: 'tenant_id' })
 
-      router.push('/dashboard?onboarding=complete')
+      window.location.href = '/dashboard?onboarding=complete'
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Error al crear la cuenta')
       setLoading(false)
@@ -122,12 +122,12 @@ export default function RegisterPage() {
   const steps = ['Tu negocio', 'Tu cuenta', 'Elige tu plan']
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 520, padding: '40px 36px' }}>
+    <div style={{ minHeight: '100vh', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 520, padding: '40px 36px', background: '#FFFFFF' }}>
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 24 }}>
-          <img src="/logo.png" alt="Mr Tender" style={{ width: 56, height: 56, borderRadius: 14, margin: '0 auto 10px', display: 'block', objectFit: 'contain' }} />
+          <img src="/logo-isotipo.jpg" alt="Mr Tender" style={{ width: 60, height: 60, borderRadius: 14, margin: '0 auto 10px', display: 'block', objectFit: 'contain' }} />
           <h1 style={{ fontWeight: 800, fontSize: '1.3rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Crear mi cuenta</h1>
         </div>
 

@@ -206,14 +206,7 @@ export default function AutomotiveOrdersPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/automotive/wash"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-blue)' }}
-          >
-            <Sparkles size={15} />
-            <span>Cola de Autolavado</span>
-          </Link>
+          
           <button
             onClick={() => setShowOrderModal(true)}
             className="btn-neu btn-primary"

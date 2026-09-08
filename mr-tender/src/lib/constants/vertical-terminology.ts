@@ -26,6 +26,11 @@ import {
   Stethoscope,
   Syringe,
   Briefcase,
+  Beef,
+  Carrot,
+  Flower2,
+  Candy,
+  BookOpen,
   LucideIcon
 } from 'lucide-react'
 
@@ -56,16 +61,148 @@ export const GENERIC_TERMS = {
   productsPlural: 'Productos',
   customers: 'Cliente',
   customersPlural: 'Clientes',
-  inventory: 'Kardex',
+  inventory: 'Inventario',
   suppliers: 'Proveedor',
   suppliersPlural: 'Proveedores',
-  orders: 'Pedido',
+  orders: 'Pedidos',
   ordersPlural: 'Pedidos',
   pos: 'POS',
   quoteOrPrescription: 'Cotización'
 }
 
 export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
+  candy: {
+    id: 'candy',
+    name: 'Dulcería & Piñatería',
+    singleWordTitle: 'Dulcería',
+    accentColor: '#714AD9',
+    terms: {
+      products: 'Dulce / Confite',
+      productsPlural: 'Dulces & Piñatería',
+      customers: 'Cliente / Organizador',
+      customersPlural: 'Clientes & Fiestas',
+      inventory: 'Inventario de Dulces',
+      suppliers: 'Fábrica / Distribuidor de Dulces',
+      suppliersPlural: 'Distribuidores de Dulces',
+      orders: 'Combo de Fiesta',
+      ordersPlural: 'Combos de Fiesta',
+      pos: 'Caja & Candy Bar',
+      quoteOrPrescription: 'Cotización Fiesta'
+    },
+    sidebarOverrides: {
+      '/products': 'Dulces & Piñatas',
+      '/inventory': 'Inventario'
+    },
+    icons: {
+      products: Candy
+    }
+  },
+  florist: {
+    id: 'florist',
+    name: 'Floristería & Eventos',
+    singleWordTitle: 'Floristería',
+    accentColor: '#EC4899',
+    terms: {
+      products: 'Flor / Tallo',
+      productsPlural: 'Flores & Diseños',
+      customers: 'Cliente / Destinatario',
+      customersPlural: 'Clientes / Destinatarios',
+      inventory: 'Inventario de Flores',
+      suppliers: 'Cultivo / Exportador',
+      suppliersPlural: 'Cultivos Florales',
+      orders: 'Pedido Floral',
+      ordersPlural: 'Pedidos Florales',
+      pos: 'Taller Floral POS',
+      quoteOrPrescription: 'Cotización Evento'
+    },
+    sidebarOverrides: {
+      '/products': 'Flores & Diseños',
+      '/inventory': 'Inventario'
+    },
+    icons: {
+      products: Flower2
+    }
+  },
+  greengrocer: {
+    id: 'greengrocer',
+    name: 'Verdulería & Frutería',
+    singleWordTitle: 'Verdulería',
+    accentColor: '#10B981',
+    terms: {
+      products: 'Fruta / Verdura',
+      productsPlural: 'Frutas & Verduras',
+      customers: 'Cliente / Comprador',
+      customersPlural: 'Clientes / Hogares',
+      inventory: 'Inventario & Pérdidas',
+      suppliers: 'Productor / Central de Abastos',
+      suppliersPlural: 'Mayoristas & Fincas',
+      orders: 'Canasta de Mercado',
+      ordersPlural: 'Canastas de Mercado',
+      pos: 'Venta por Peso / Balanza',
+      quoteOrPrescription: 'Pedido Canasta'
+    },
+    sidebarOverrides: {
+      '/products': 'Frutas & Verduras',
+      '/inventory': 'Inventario'
+    },
+    icons: {
+      products: Carrot
+    }
+  },
+  stationery: {
+    id: 'stationery',
+    name: 'Papelería & Variedades',
+    singleWordTitle: 'Papelería',
+    accentColor: '#00B19D',
+    terms: {
+      products: 'Útil / Artículo',
+      productsPlural: 'Útiles & Papelería',
+      customers: 'Estudiante / Cliente',
+      customersPlural: 'Estudiantes / Clientes',
+      inventory: 'Stock Escolar',
+      suppliers: 'Editorial / Distribuidor',
+      suppliersPlural: 'Distribuidores',
+      orders: 'Pedido Escolar',
+      ordersPlural: 'Pedidos Escolares',
+      pos: 'Caja & Copias',
+      quoteOrPrescription: 'Cotización Lista'
+    },
+    sidebarOverrides: {
+      '/products': 'Útiles Escolares',
+      '/inventory': 'Stock Papelería'
+    },
+    icons: {
+      products: BookOpen
+    }
+  },
+  butchery: {
+    id: 'butchery',
+    name: 'Carnicería & Salsamentaria',
+    singleWordTitle: 'Carnicería',
+    accentColor: '#00B19D',
+    terms: {
+      products: 'Corte de Carne',
+      productsPlural: 'Cortes de Carne',
+      customers: 'Cliente / Asadero',
+      customersPlural: 'Clientes / Restaurantes',
+      inventory: 'Inventario de Carnes',
+      suppliers: 'Frigorífico / Matadero',
+      suppliersPlural: 'Frigoríficos',
+      orders: 'Pedido de Carne',
+      ordersPlural: 'Pedidos de Carne',
+      pos: 'Balanza POS',
+      quoteOrPrescription: 'Pedido Especial'
+    },
+    sidebarOverrides: {
+      '/products': 'Cortes de Carne',
+      '/inventory': 'Inventario de Carnes',
+      '/suppliers': 'Frigoríficos'
+    },
+    icons: {
+      products: Beef,
+      inventory: Boxes
+    }
+  },
   pharmacy: {
     id: 'pharmacy',
     name: 'Droguería & Farmacia',
@@ -76,12 +213,12 @@ export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
       productsPlural: 'Medicamentos',
       customers: 'Paciente',
       customersPlural: 'Pacientes',
-      inventory: 'Stock INVIMA',
+      inventory: 'Inventario de Medicamentos',
       suppliers: 'Droguería',
       suppliersPlural: 'Droguerías',
-      orders: 'Dispensación',
-      ordersPlural: 'Dispensaciones',
-      pos: 'Despacho',
+      orders: 'Entrega Medicamentos',
+      ordersPlural: 'Entregas Medicamentos',
+      pos: 'Caja & Despacho',
       quoteOrPrescription: 'Fórmula'
     },
     sidebarOverrides: {
@@ -101,25 +238,25 @@ export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
     id: 'restaurant',
     name: 'Restaurante, Café & Bar',
     singleWordTitle: 'Restaurante',
-    accentColor: '#F59E0B', // Amber
+    accentColor: '#6366F1', // Indigo
     terms: {
       products: 'Plato',
       productsPlural: 'Platos',
       customers: 'Comensal',
       customersPlural: 'Comensales',
-      inventory: 'Insumos',
+      inventory: 'Ingredientes',
       suppliers: 'Distribuidor',
       suppliersPlural: 'Distribuidores',
-      orders: 'Comanda',
-      ordersPlural: 'Comandas',
-      pos: 'Comandero',
+      orders: 'Pedido de Cocina',
+      ordersPlural: 'Pedidos de Cocina',
+      pos: 'Punto de Venta',
       quoteOrPrescription: 'Presupuesto'
     },
     sidebarOverrides: {
-      '/products': 'Platos',
+      '/products': 'Menú & Platos',
       '/customers': 'Comensales',
       '/inventory': 'Insumos',
-      '/pos': 'Comandero'
+      '/pos': 'Punto de Venta'
     },
     icons: {
       products: UtensilsCrossed,
@@ -167,18 +304,18 @@ export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
       productsPlural: 'Prendas',
       customers: 'Clienta',
       customersPlural: 'Clientas',
-      inventory: 'Matriz Talla',
+      inventory: 'Tallas y Colores',
       suppliers: 'Confeccionista',
       suppliersPlural: 'Confeccionistas',
       orders: 'Venta',
       ordersPlural: 'Ventas',
       pos: 'Caja Boutique',
-      quoteOrPrescription: 'Lookbook'
+      quoteOrPrescription: 'Catálogo Visual'
     },
     sidebarOverrides: {
       '/products': 'Prendas',
       '/customers': 'Clientas',
-      '/inventory': 'Matriz'
+      '/inventory': 'Tallas & Colores'
     },
     icons: {
       products: Shirt,
@@ -278,7 +415,7 @@ export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
     id: 'hardware',
     name: 'Ferretería & Construcción',
     singleWordTitle: 'Ferretería',
-    accentColor: '#F97316', // Orange
+    accentColor: '#714AD9', // Brand Purple
     terms: {
       products: 'Material / Herramienta',
       productsPlural: 'Materiales',
@@ -307,24 +444,24 @@ export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
     id: 'bakery',
     name: 'Panadería & Repostería',
     singleWordTitle: 'Panadería',
-    accentColor: '#D97706', // Amber dark
+    accentColor: '#714AD9', // Brand Purple
     terms: {
       products: 'Pan / Torta',
-      productsPlural: 'Panes',
+      productsPlural: 'Panes & Pasteles',
       customers: 'Cliente',
       customersPlural: 'Clientes',
-      inventory: 'Materia Prima',
+      inventory: 'Insumos & Ingredientes',
       suppliers: 'Molino / Distribuidor',
       suppliersPlural: 'Distribuidores',
       orders: 'Encargo',
       ordersPlural: 'Encargos',
       pos: 'Caja Panadería',
-      quoteOrPrescription: 'Presupuesto Torta'
+      quoteOrPrescription: 'Cotización'
     },
     sidebarOverrides: {
       '/products': 'Panes',
       '/customers': 'Clientes',
-      '/inventory': 'Harinas'
+      '/inventory': 'Insumos & Ingredientes'
     },
     icons: {
       products: Croissant,

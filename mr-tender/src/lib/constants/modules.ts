@@ -6,6 +6,7 @@ import {
   Users,
   Truck,
   ShoppingBag,
+  Receipt,
   Clock,
   BarChart3,
   BookOpen,
@@ -26,6 +27,10 @@ import {
   TrendingUp,
   Landmark,
   Layers,
+  Beef,
+  Carrot,
+  Flower2,
+  Candy,
   LucideIcon
 } from 'lucide-react'
 
@@ -49,6 +54,7 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
   crm: TrendingUp,
   suppliers: Truck,
   purchases: ShoppingBag,
+  invoicing: Receipt,
   employees: Clock,
   payroll: Briefcase,
   treasury: Landmark,
@@ -67,6 +73,11 @@ export const MODULE_ICONS: Record<string, LucideIcon> = {
   pharmacy: Pill,
   hardware: Wrench,
   bakery: Croissant,
+  butchery: Beef,
+  stationery: BookOpen,
+  greengrocer: Carrot,
+  florist: Flower2,
+  candy: Candy,
 }
 
 export function getModuleIcon(id: string): LucideIcon {
@@ -130,6 +141,16 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     categoryName: 'Abastecimiento',
     description: 'Directorio de proveedores, cuentas por pagar y condiciones comerciales',
     defaultEnabled: true
+  },
+  {
+    id: 'invoicing',
+    name: 'Facturación Electrónica DIAN',
+    iconName: 'Receipt',
+    group: 'base',
+    categoryName: 'Fiscal & Facturación',
+    description: 'Emisión de facturas electrónicas UBL 2.1, CUFE, eventos DIAN y documentos soporte',
+    defaultEnabled: false,
+    requires: ['pos']
   },
   {
     id: 'purchases',
@@ -201,6 +222,56 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
   },
 
   // ── Módulos Verticales Especializados ──
+  {
+    id: 'candy',
+    name: 'Dulcería, Confitería & Piñatería',
+    iconName: 'Candy',
+    group: 'vertical',
+    categoryName: 'Retail & Gastronomía',
+    description: 'Armador de sorpresas por niño, combos de fiesta, piñatería, venta de confites a granel y control térmico',
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
+  },
+  {
+    id: 'florist',
+    name: 'Floristería, Arreglos & Eventos',
+    iconName: 'Flower2',
+    group: 'vertical',
+    categoryName: 'Retail & Servicios',
+    description: 'Diseño floral por tallos, costeo de bases de lujo, agenda de entregas con franja horaria y dedicatorias',
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
+  },
+  {
+    id: 'greengrocer',
+    name: 'Verdulería, Frutería & Granel Perecedero',
+    iconName: 'Carrot',
+    group: 'vertical',
+    categoryName: 'Gastronomía & Alimentos',
+    description: 'Control de merma por maduración, canastas de mercado, clasificación de calidades y balanza PLU',
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
+  },
+  {
+    id: 'stationery',
+    name: 'Papelería, Fotocopias & Variedades',
+    iconName: 'BookOpen',
+    group: 'vertical',
+    categoryName: 'Retail & Servicios',
+    description: 'Tarificador de impresiones, fotocopias, anillados, listas de útiles escolares y trámites',
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
+  },
+  {
+    id: 'butchery',
+    name: 'Carnicería, Charcutería & Salsamentaria',
+    iconName: 'Beef',
+    group: 'vertical',
+    categoryName: 'Gastronomía & Alimentos',
+    description: 'cortes de carne de canales (res/cerdo/pollo), rendimiento cárnico, embutidos y cadena de frío',
+    defaultEnabled: false,
+    requires: ['inventory', 'pos']
+  },
   {
     id: 'optometry',
     name: 'Óptica & Consultorio Visual',
@@ -297,7 +368,7 @@ export const ALL_SYSTEM_MODULES: SystemModule[] = [
     iconName: 'Pill',
     group: 'vertical',
     categoryName: 'Salud & Farma',
-    description: 'Catálogo INVIMA, genéricos, semáforo de lotes FEFO, termohigrometría y controlados',
+    description: 'Catálogo INVIMA, genéricos, semáforo de lotes Vencimientos, termohigrometría y controlados',
     defaultEnabled: false,
     requires: ['inventory', 'purchases']
   },
@@ -423,6 +494,11 @@ export function getDefaultModulesForBusinessType(businessType: string): Record<s
   if (businessType === 'clothing' || businessType === 'apparel') targetVertical = 'apparel'
   if (businessType === 'optometry') targetVertical = 'optometry'
   if (businessType === 'bakery') targetVertical = 'bakery'
+  if (businessType === 'butchery' || businessType === 'carniceria') targetVertical = 'butchery'
+  if (businessType === 'stationery' || businessType === 'papeleria') targetVertical = 'stationery'
+  if (businessType === 'greengrocer' || businessType === 'verduleria' || businessType === 'fruteria') targetVertical = 'greengrocer'
+  if (businessType === 'florist' || businessType === 'floreria' || businessType === 'floristeria') targetVertical = 'florist'
+  if (businessType === 'candy' || businessType === 'dulceria' || businessType === 'confiteria') targetVertical = 'candy'
 
   if (targetVertical) {
     const { updatedModules } = resolveModuleToggle(targetVertical, true, mods)

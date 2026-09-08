@@ -5,7 +5,9 @@ import {
   calculateChange,
   calculateTaxBreakdown,
   parseScaleBarcode,
-  calculateEarnedPoints
+  calculateEarnedPoints,
+  addItemToCart,
+  updateCartItemQuantity
 } from './cart'
 
 describe('calculateLineTotal', () => {
@@ -137,6 +139,61 @@ describe('parseScaleBarcode', () => {
   it('should return false for regular 13-digit EAN barcodes without 20/21/28/29 prefix', () => {
     const res = parseScaleBarcode('7702001001018')
     expect(res.isScaleBarcode).toBe(false)
+  })
+})
+
+describe('addItemToCart (newest at the top)', () => {
+  it('should place newly added products at index 0 of cart', () => {
+    const itemA = { id: 'p1', name: 'Pan Bogotano', price: 4000, quantity: 1, discount: 0 }
+    const itemB = { id: 'p2', name: 'Almojabana', price: 1200, quantity: 1, discount: 0 }
+    
+    let cart = addItemToCart([], itemA, 1)
+    expect(cart[0].id).toBe('p1')
+
+    cart = addItemToCart(cart, itemB, 1)
+    expect(cart[0].id).toBe('p2') // Latest product at index 0!
+    expect(cart[1].id).toBe('p1')
+  })
+
+  it('should move an existing product to index 0 when more quantity is added', () => {
+    const itemA = { id: 'p1', name: 'Pan Bogotano', price: 4000, quantity: 1, discount: 0 }
+    const itemB = { id: 'p2', name: 'Almojabana', price: 1200, quantity: 1, discount: 0 }
+    const itemC = { id: 'p3', name: 'Pan Crema', price: 4000, quantity: 1, discount: 0 }
+
+    let cart = addItemToCart([], itemA, 1)
+    cart = addItemToCart(cart, itemB, 1)
+    cart = addItemToCart(cart, itemC, 1) // Order: [p3, p2, p1]
+    expect(cart.map(i => i.id)).toEqual(['p3', 'p2', 'p1'])
+
+    // Re-add itemA (Pan Bogotano) -> Must jump to index 0 with quantity = 2!
+    cart = addItemToCart(cart, itemA, 1)
+    expect(cart[0].id).toBe('p1')
+    expect(cart[0].quantity).toBe(2)
+    expect(cart.map(i => i.id)).toEqual(['p1', 'p3', 'p2'])
+  })
+})
+
+describe('updateCartItemQuantity', () => {
+  it('should move the updated item to index 0 when quantity changes', () => {
+    const itemA = { id: 'p1', name: 'Pan Bogotano', price: 4000, quantity: 1, discount: 0 }
+    const itemB = { id: 'p2', name: 'Almojabana', price: 1200, quantity: 1, discount: 0 }
+    let cart = [itemA, itemB]
+
+    // Increment itemB quantity -> Must jump to index 0
+    cart = updateCartItemQuantity(cart, 'p2', 3)
+    expect(cart[0].id).toBe('p2')
+    expect(cart[0].quantity).toBe(3)
+    expect(cart[1].id).toBe('p1')
+  })
+
+  it('should remove item when quantity is 0 or negative', () => {
+    const itemA = { id: 'p1', name: 'Pan Bogotano', price: 4000, quantity: 1, discount: 0 }
+    const itemB = { id: 'p2', name: 'Almojabana', price: 1200, quantity: 1, discount: 0 }
+    let cart = [itemA, itemB]
+
+    cart = updateCartItemQuantity(cart, 'p1', 0)
+    expect(cart.length).toBe(1)
+    expect(cart[0].id).toBe('p2')
   })
 })
 

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { performLogout } from '@/lib/auth-client'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import CopilotWidget from '@/components/CopilotWidget'
 import {
@@ -11,7 +12,8 @@ import {
   Minimize,
   LogOut,
   Lock,
-  Store
+  Store,
+  Sparkles
 } from 'lucide-react'
 
 export default function POSPageLayout({ children }: { children: React.ReactNode }) {
@@ -46,9 +48,11 @@ export default function POSPageLayout({ children }: { children: React.ReactNode 
     }
   }
 
+  const [loggingOut, setLoggingOut] = useState(false)
+
   async function handleLogout() {
-    await supabase.auth.signOut()
-    router.push('/login')
+    setLoggingOut(true)
+    await performLogout(supabase, '/login')
   }
 
   const isAuthorized = isAdmin || hasPermission('pos.view')
@@ -71,8 +75,8 @@ export default function POSPageLayout({ children }: { children: React.ReactNode 
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        background: 'var(--bg-deep)',
-        borderBottom: '1px solid var(--border-color)',
+        background: '#FFFFFF',
+        borderBottom: '1px solid #E2E8F0',
         boxShadow: 'var(--neu-subtle)',
         flexShrink: 0,
         zIndex: 30
@@ -80,8 +84,8 @@ export default function POSPageLayout({ children }: { children: React.ReactNode 
         {/* Left: Brand Identity & POS Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <img src="/logo.png" alt="Mr Tender" style={{ width: 28, height: 28, borderRadius: 7, objectFit: 'contain' }} />
-            <span style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+            <img src="/logo-isotipo.png" alt="Mr Tender" style={{ width: 26, height: 26, borderRadius: 6, objectFit: 'contain' }} />
+            <span className="pos-brand-text" style={{ fontWeight: 800, fontSize: '0.92rem', color: 'var(--text-primary)', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
               Mr Tender
             </span>
           </div>
@@ -142,7 +146,26 @@ export default function POSPageLayout({ children }: { children: React.ReactNode 
             }}
           >
             {isFullscreen ? <Minimize size={15} /> : <Maximize size={15} />}
-            <span>{isFullscreen ? 'Ventana' : 'Pantalla Completa'}</span>
+            <span className="pos-topbar-text">{isFullscreen ? 'Ventana' : 'Pantalla Completa'}</span>
+          </button>
+
+          {/* Copilot AI Topbar Button */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-copilot'))}
+            className="btn-neu btn-ghost"
+            title="Abrir Asistente Copilot AI"
+            style={{
+              padding: '6px 9px',
+              fontSize: '0.75rem',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              color: 'var(--text-secondary)'
+            }}
+          >
+            <Sparkles size={14} style={{ color: '#714AD9' }} />
+            <span className="pos-topbar-text">Copilot AI</span>
           </button>
 
           <div className="pos-topbar-divider" style={{ width: 1, height: 18, background: 'var(--border-color)' }} />
@@ -184,7 +207,7 @@ export default function POSPageLayout({ children }: { children: React.ReactNode 
 
           {/* Logout */}
           <button
-            onClick={handleLogout}
+            onClick={handleLogout} disabled={loggingOut}
             className="btn-neu btn-ghost"
             title="Cerrar sesión"
             style={{

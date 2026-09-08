@@ -173,22 +173,8 @@ export default function ApparelMatrixPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/apparel/fitting-rooms"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Footprints size={15} />
-            <span>Probadores</span>
-          </Link>
-          <Link
-            href="/apparel/lookbooks"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-purple)' }}
-          >
-            <Sparkles size={15} />
-            <span>Outfits & Lookbooks</span>
-          </Link>
+          
+          
           <button
             onClick={() => setShowModal(true)}
             className="btn-neu btn-primary"

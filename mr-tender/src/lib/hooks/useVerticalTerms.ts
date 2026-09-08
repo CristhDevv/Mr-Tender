@@ -19,15 +19,29 @@ export interface UseVerticalTermsResult {
   loading: boolean
 }
 
+// Global in-memory cache to prevent flashing across layout unmounts
+let globalCachedVertical: string | null = null
+
 export function useVerticalTerms(): UseVerticalTermsResult {
-  const [activeVertical, setActiveVertical] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [activeVertical, setActiveVertical] = useState<string | null>(() => {
+    if (globalCachedVertical) return globalCachedVertical
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('mr_tender_cached_vertical')
+        if (cached) {
+          globalCachedVertical = cached
+          return cached
+        }
+      } catch {}
+    }
+    return null
+  })
+  const [loading, setLoading] = useState(!globalCachedVertical)
   const supabase = createClient()
 
   useEffect(() => {
     async function loadVertical() {
       try {
-        setLoading(true)
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
           setLoading(false)
@@ -59,6 +73,11 @@ export function useVerticalTerms(): UseVerticalTermsResult {
         const businessType = tenantRes.data?.[0]?.business_type || null
 
         const resolved = resolveActiveVertical(enabledMods, businessType, primaryVert)
+        globalCachedVertical = resolved
+        try {
+          if (resolved) localStorage.setItem('mr_tender_cached_vertical', resolved)
+          else localStorage.removeItem('mr_tender_cached_vertical')
+        } catch {}
         setActiveVertical(resolved)
       } catch (err) {
         console.error('Error loading vertical terms:', err)

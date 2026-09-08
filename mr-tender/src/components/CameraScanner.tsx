@@ -359,7 +359,7 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
                   ? '3px solid #EF4444'
                   : flashSuccess
                   ? '3px solid #22C55E'
-                  : '2px dashed #D97706',
+                  : '2px dashed #714AD9',
                 borderRadius: 14,
                 boxShadow: flashRed
                   ? '0 0 25px rgba(239, 68, 68, 0.9), 0 0 0 9999px rgba(0,0,0,0.5)'
@@ -378,7 +378,7 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
                 style={{
                   width: '92%',
                   height: 2,
-                  background: flashRed ? '#EF4444' : flashSuccess ? '#22C55E' : '#EA580C',
+                  background: flashRed ? '#EF4444' : flashSuccess ? '#22C55E' : '#00D6BC',
                   boxShadow: flashRed
                     ? '0 0 12px #EF4444'
                     : flashSuccess
@@ -472,7 +472,7 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
               ? '#EF4444'
               : flashSuccess
               ? '#22C55E'
-              : 'linear-gradient(135deg, #C26D2D, #D97706)',
+              : 'linear-gradient(135deg, #00B19D, #714AD9)',
             border: 'none',
             borderRadius: 14,
             cursor: 'pointer',

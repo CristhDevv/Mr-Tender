@@ -127,14 +127,7 @@ export default function SalonCommissionsPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/salon/agenda"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Calendar size={15} />
-            <span>Agenda de Citas</span>
-          </Link>
+          
           <button
             onClick={loadCommissions}
             className="btn-neu btn-primary"

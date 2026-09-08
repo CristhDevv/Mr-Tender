@@ -1,42 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
+import { validateTenantAccess } from '@/lib/supabase/auth-helpers'
 import { getVerticalSeedData } from '@/lib/seeds'
 
 export async function POST(req: NextRequest) {
   try {
     const supabase = await createServerSupabase()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 })
-    }
 
-    // Resolve tenant_id securely
-    let tenant_id = user.app_metadata?.tenant_id || user.app_metadata?.tenantId
-    if (!tenant_id) {
-      const { data: userData } = await supabase
-        .from('users')
-        .select('tenant_id')
-        .eq('id', user.id)
-        .limit(1)
-
-      if (userData?.[0]?.tenant_id) {
-        tenant_id = userData[0].tenant_id
-      } else {
-        const { data: ptData } = await supabase
-          .from('platform_tenants')
-          .select('id')
-          .eq('owner_email', user.email)
-          .limit(1)
-
-        if (ptData?.[0]?.id) {
-          tenant_id = ptData[0].id
-        }
-      }
-    }
-
-    if (!tenant_id) {
-      return NextResponse.json({ error: 'No se encontró el comercio asociado' }, { status: 403 })
-    }
+    // SECURITY FIX (HIGH-1): Use validateTenantAccess() which exclusively reads app_metadata
+    // Previous code had unsafe fallbacks including platform_tenants lookup by owner_email
+    const authCheck = validateTenantAccess(user)
+    if (!authCheck.ok) return authCheck.response
+    const tenant_id = authCheck.context.tenantId
 
     const { vertical } = (await req.json()) as { vertical?: string }
     const seedItems = getVerticalSeedData(vertical || 'general')

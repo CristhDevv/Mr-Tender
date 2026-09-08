@@ -148,11 +148,11 @@ export default function PharmacyLotsPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 4 }}>
             <span>Catálogo & Inventario</span>
             <ChevronRight size={13} />
-            <span style={{ color: 'var(--accent-amber)', fontWeight: 700 }}>Control de Lotes & FEFO</span>
+            <span style={{ color: 'var(--accent-amber)', fontWeight: 700 }}>Control de Lotes & Vencimientos</span>
           </div>
           <h1 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, display: 'flex', alignItems: 'center', gap: 10 }}>
             <Clock size={24} style={{ color: 'var(--accent-amber)' }} />
-            Control de Lotes & Despacho FEFO
+            Control de Lotes & Despacho Vencimientos
           </h1>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
             Método First Expired, First Out (Primero en Vencer, Primero en Salir) con semáforo preventivo de auditoría.
@@ -160,22 +160,8 @@ export default function PharmacyLotsPage() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Link
-            href="/pharmacy/medicines"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}
-          >
-            <Pill size={15} />
-            <span>Catálogo Medicamentos</span>
-          </Link>
-          <Link
-            href="/pharmacy/temperature"
-            className="btn-neu"
-            style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent-green)' }}
-          >
-            <Thermometer size={15} />
-            <span>Termohigrometría</span>
-          </Link>
+          
+          
           <button
             onClick={() => setShowLotModal(true)}
             className="btn-neu btn-primary"
@@ -228,7 +214,7 @@ export default function PharmacyLotsPage() {
           </div>
           <h3 style={{ fontSize: '1.1rem', fontWeight: 800, margin: 0 }}>No hay lotes registrados</h3>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', maxWidth: 440, margin: 0 }}>
-            Registra los lotes de tus compras para aplicar el método FEFO y evitar mermas por vencimiento.
+            Registra los lotes de tus compras para aplicar el método Vencimientos y evitar mermas por vencimiento.
           </p>
           <button onClick={() => setShowLotModal(true)} className="btn-neu btn-primary" style={{ padding: '9px 18px', fontSize: '0.82rem', marginTop: 6 }}>
             <Plus size={15} /> Registrar Primer Lote
@@ -243,9 +229,9 @@ export default function PharmacyLotsPage() {
                   <th style={{ padding: '12px 16px' }}>Medicamento</th>
                   <th style={{ padding: '12px 14px' }}>Número de Lote</th>
                   <th style={{ padding: '12px 14px' }}>Fecha Vencimiento</th>
-                  <th style={{ padding: '12px 14px' }}>Semáforo FEFO</th>
+                  <th style={{ padding: '12px 14px' }}>Control de Vencimientos</th>
                   <th style={{ padding: '12px 14px', textAlign: 'right' }}>Stock Disponible</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'center' }}>Prioridad FEFO</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center' }}>Prioridad Vencimientos</th>
                 </tr>
               </thead>
               <tbody>
@@ -370,7 +356,7 @@ export default function PharmacyLotsPage() {
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button type="button" onClick={() => setShowLotModal(false)} className="btn-neu" style={{ flex: 1, padding: 9 }}>Cancelar</button>
                 <button type="submit" disabled={submitting} className="btn-neu btn-primary" style={{ flex: 2, padding: 9 }}>
-                  {submitting ? 'Registrando...' : 'Registrar Lote FEFO'}
+                  {submitting ? 'Registrando...' : 'Registrar Lote Vencimientos'}
                 </button>
               </div>
             </form>

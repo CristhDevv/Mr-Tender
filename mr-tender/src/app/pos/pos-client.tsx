@@ -6,12 +6,15 @@ import CameraScanner from '@/components/CameraScanner'
 import AudioPosHUD from '@/components/AudioPosHUD'
 import RefundModal from '@/components/RefundModal'
 import PriceCheckerModal from '@/components/PriceCheckerModal'
-import RechargesServicesModal from '@/components/RechargesServicesModal'
 import ElectronicWalletModal from '@/components/ElectronicWalletModal'
 import PaymentTerminalModal from '@/components/PaymentTerminalModal'
 import ScaleHardwareModal from '@/components/ScaleHardwareModal'
+import DianCustomerModal, { DianCustomerData } from '@/components/DianCustomerModal'
+import PosAbonoModal from '@/components/PosAbonoModal'
+import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
 import { parseScaleBarcode, getEffectiveUnitPrice, calculateEarnedPoints, kickCashDrawer } from '@/lib/cart'
 import { findMasterProduct } from '@/lib/catalog/colombia-products'
+import { uploadProductImage } from '@/lib/image-upload'
 import { usePermissions } from '@/lib/hooks/usePermissions'
 import {
   Search,
@@ -44,12 +47,14 @@ import {
   Tag,
   Percent,
   Lock,
+  Unlock,
   Building2,
   Receipt,
   ShieldCheck,
   FileText,
   ExternalLink,
-  Copy
+  Copy,
+  HandCoins
 } from 'lucide-react'
 import { generateDianInvoicePdfA4, generateDianInvoicePdfPos } from '@/lib/dian/pdf-dian'
 import { getDianVerificationUrl } from '@/lib/dian/qr'
@@ -145,6 +150,8 @@ interface Product {
   category_id?: string
   warehouse_id?: string
   inventory?: { quantity: number; warehouse_id: string }[]
+  image_url?: string
+  is_favorite?: boolean
   is_pharmacy?: boolean
   generic_name?: string
   concentration?: string
@@ -166,11 +173,20 @@ interface CartItem extends Product {
 interface Customer {
   id: string
   full_name: string
+  tax_id?: string | null
+  tax_name?: string | null
+  tax_regime?: string | null
+  tax_address?: string | null
+  email?: string | null
   phone: string | null
+  address?: string | null
+  city?: string | null
+  state?: string | null
   credit_limit: number
   credit_used: number
   total_purchases?: number
   total_orders?: number
+  metadata?: any
 }
 
 interface HeldCart {
@@ -184,9 +200,19 @@ interface HeldCart {
 }
 
 export default function POSClient() {
+  const [mobileTab, setMobileTab] = useState<'catalog' | 'cart'>('catalog')
   const supabase = createClient()
   const [search, setSearch] = useState('')
   const [cart, setCart] = useState<CartItem[]>([])
+  const cartListRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll cart to top whenever an item is added or quantity updated
+  useEffect(() => {
+    if (cartListRef.current) {
+      cartListRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [cart.length, cart[0]?.id, cart[0]?.quantity])
+
   const [discount, setDiscount] = useState(0)
   const [paymentMethod, setPaymentMethod] = useState('cash')
   const [receivedAmount, setReceivedAmount] = useState('')
@@ -218,8 +244,15 @@ export default function POSClient() {
   // Express product creation modal from POS
   const [showExpressModal, setShowExpressModal] = useState(false)
   const [showRefundModal, setShowRefundModal] = useState(false)
-  const [expressForm, setExpressForm] = useState({ name: '', sku: '', price: '', cost: '', stock: '10' })
+  const [showPosAbonoModal, setShowPosAbonoModal] = useState(false)
+  const [expressForm, setExpressForm] = useState({ name: '', sku: '', price: '', cost: '', stock: '10', image_url: '' })
   const [creatingExpress, setCreatingExpress] = useState(false)
+
+  // Open Shift (Abrir Turno) state
+  const [showOpenShiftModal, setShowOpenShiftModal] = useState(false)
+  const [openingShiftAmount, setOpeningShiftAmount] = useState('50000')
+  const [openingShiftLoading, setOpeningShiftLoading] = useState(false)
+  const [openingShiftError, setOpeningShiftError] = useState('')
 
   // Customers state
   const [customerList, setCustomerList] = useState<Customer[]>([])
@@ -227,6 +260,9 @@ export default function POSClient() {
 
   // DIAN Electronic Invoicing State
   const [emitElectronicInvoice, setEmitElectronicInvoice] = useState(false)
+  const [dianCustomer, setDianCustomer] = useState<DianCustomerData | null>(null)
+  const [dianInvoiceMode, setDianInvoiceMode] = useState<'nominal' | 'final_consumer'>('nominal')
+  const [showDianCustomerModal, setShowDianCustomerModal] = useState(false)
   const [dianCustomerNit, setDianCustomerNit] = useState('')
   const [dianCustomerEmail, setDianCustomerEmail] = useState('')
   const [dianResult, setDianResult] = useState<{ cufe?: string; qrData?: string; dianStatus?: string; invoiceId?: string; number?: string } | null>(null)
@@ -235,6 +271,52 @@ export default function POSClient() {
   // Global Keyboard Shortcuts (F1-F12 standard Eleventa style POS hotkeys)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (step === 'done') {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Escape' || e.key === 'F1') {
+          e.preventDefault()
+          newSale()
+          return
+        }
+        if (e.key === 'p' || e.key === 'P') {
+          e.preventDefault()
+          window.print()
+          return
+        }
+        if (e.key === 'w' || e.key === 'W') {
+          e.preventDefault()
+          sendTicketWhatsApp()
+          return
+        }
+      }
+
+      if (step === 'payment') {
+        if (e.key === 'Escape') {
+          e.preventDefault()
+          setStep('cart')
+          return
+        }
+        if (e.key === 'F1') {
+          e.preventDefault()
+          setPaymentMethod('cash')
+          return
+        }
+        if (e.key === 'F2') {
+          e.preventDefault()
+          setPaymentMethod('transfer')
+          return
+        }
+        if (e.key === 'F3') {
+          e.preventDefault()
+          setPaymentMethod('card_debit')
+          return
+        }
+        if (e.key === 'F4') {
+          e.preventDefault()
+          setPaymentMethod('fiao')
+          return
+        }
+      }
+
       // Voice toggle
       if (
         (e.key === 'v' || e.key === 'V') &&
@@ -250,10 +332,10 @@ export default function POSClient() {
         e.preventDefault()
         document.getElementById('pos-search-input')?.focus()
       }
-      // F2: Recharges & Utilities Modal
-      else if (e.key === 'F2') {
+      // F2 / F3: Abonos a Fiao / Cartera Modal
+      else if (e.key === 'F2' || e.key === 'F3') {
         e.preventDefault()
-        setShowRechargesModal(prev => !prev)
+        setShowPosAbonoModal(prev => !prev)
       }
       // F4: Kick Cash Drawer
       else if (e.key === 'F4') {
@@ -288,32 +370,38 @@ export default function POSClient() {
     }
     window.addEventListener('keydown', handleGlobalKeyDown)
     return () => window.removeEventListener('keydown', handleGlobalKeyDown)
-  }, [])
+  }, [step])
 
   // Audio-POS Voice Handlers
   const handleVoiceAddItems = useCallback((items: Array<{ product: any; quantity: number }>) => {
     items.forEach(({ product, quantity }) => {
       setCart(prevCart => {
-        const existingIdx = prevCart.findIndex(i => i.id === product.id)
-        if (existingIdx >= 0) {
-          const updated = [...prevCart]
-          const newQty = updated[existingIdx].quantity + quantity
-          const itemDisc = updated[existingIdx].discount || 0
-          updated[existingIdx] = {
-            ...updated[existingIdx],
+        const existing = prevCart.find(i => i.id === product.id)
+        if (existing) {
+          const newQty = existing.quantity + quantity
+          const { unitPrice } = getEffectiveUnitPrice({ ...existing, quantity: newQty })
+          const itemDisc = existing.discount || 0
+          const updatedItem = {
+            ...existing,
             quantity: newQty,
-            lineTotal: newQty * updated[existingIdx].price * (1 - itemDisc / 100)
+            lineTotal: newQty * unitPrice * (1 - itemDisc / 100)
           }
-          return updated
+          const rest = prevCart.filter(i => i.id !== product.id)
+          return [updatedItem, ...rest]
         } else {
+          const initialItem: CartItem = {
+            ...product,
+            quantity,
+            discount: 0,
+            lineTotal: 0
+          }
+          const { unitPrice } = getEffectiveUnitPrice(initialItem)
           return [
-            ...prevCart,
             {
-              ...product,
-              quantity,
-              discount: 0,
-              lineTotal: quantity * Number(product.price || 0)
-            }
+              ...initialItem,
+              lineTotal: quantity * unitPrice
+            },
+            ...prevCart
           ]
         }
       })
@@ -355,7 +443,6 @@ export default function POSClient() {
 
   // Eleventa Colombia POS Modal States
   const [showPriceCheckerModal, setShowPriceCheckerModal] = useState(false)
-  const [showRechargesModal, setShowRechargesModal] = useState(false)
   const [showWalletModal, setShowWalletModal] = useState(false)
   const [showTerminalModal, setShowTerminalModal] = useState(false)
   const [walletDiscountApplied, setWalletDiscountApplied] = useState(0)
@@ -530,10 +617,10 @@ export default function POSClient() {
           register_id
         })
 
-        // Fetch customers list
+        // Fetch customers list with complete fiscal data
         const { data: custData } = await supabase
           .from('customers')
-          .select('id, full_name, phone, credit_limit, credit_used, total_purchases, total_orders')
+          .select('id, full_name, tax_id, tax_name, tax_regime, tax_address, email, phone, address, city, state, credit_limit, credit_used, total_purchases, total_orders, metadata')
           .eq('tenant_id', tenant_id)
           .eq('is_active', true)
           .order('full_name', { ascending: true })
@@ -545,7 +632,23 @@ export default function POSClient() {
             const cId = params.get('customer')
             if (cId) {
               const found = custData.find((c: any) => c.id === cId)
-              if (found) setSelectedCustomer(found as any)
+              if (found) {
+                setSelectedCustomer(found as any)
+                const cleanTaxId = (found.tax_id || found.phone || '').replace(/[^a-zA-Z0-9]/g, '')
+                setDianCustomer({
+                  idType: (found.metadata?.id_type || (cleanTaxId.length >= 9 ? '31' : '13')) as any,
+                  documentNumber: cleanTaxId,
+                  dv: found.metadata?.dv || (cleanTaxId.length >= 9 ? calculateNITVerificationDigit(cleanTaxId) : undefined),
+                  name: (found.tax_name || found.full_name || '').toUpperCase(),
+                  personType: found.metadata?.person_type || (cleanTaxId.length >= 9 ? '1' : '2'),
+                  regime: (found.tax_regime || '49') as any,
+                  email: found.email || '',
+                  phone: found.phone || '',
+                  address: found.tax_address || found.address || 'Dirección Comercial',
+                  city: found.city || 'Bogotá',
+                  state: found.state || 'Bogotá D.C.'
+                })
+              }
             }
           }
         }
@@ -555,7 +658,7 @@ export default function POSClient() {
           supabase
             .from('products')
             .select(`
-              id, name, sale_price, cost_price, sku, barcode, category_id, tax_rate,
+              id, name, sale_price, cost_price, sku, barcode, category_id, tax_rate, image_url,
               categories (name),
               inventory (quantity, warehouse_id)
             `)
@@ -590,6 +693,7 @@ export default function POSClient() {
               category: catName,
               unit_type: isWeighed ? 'lb' : 'unit',
               tax_rate: p.tax_rate !== null && p.tax_rate !== undefined ? Number(p.tax_rate) : currentTaxRate,
+              image_url: p.image_url || null,
               category_id: p.category_id,
               warehouse_id,
               inventory: p.inventory || []
@@ -647,6 +751,55 @@ export default function POSClient() {
 
     loadData()
   }, [])
+
+  async function handleOpenShift(e?: React.FormEvent) {
+    if (e) e.preventDefault()
+    setOpeningShiftLoading(true)
+    setOpeningShiftError('')
+    try {
+      const amt = parseFloat(openingShiftAmount) || 0
+      const { data, error: rpcError } = await supabase.rpc('open_cash_session', {
+        p_opening_amount: amt
+      })
+      if (rpcError) throw rpcError
+
+      const newSessId = (data && typeof data === 'string') ? data : data?.id || 'active'
+
+      // Synchronize sessionInfo immediately
+      const [regRes, sessRes] = await Promise.all([
+        supabase
+          .from('cash_registers')
+          .select('id, current_session_id')
+          .eq('tenant_id', sessionInfo?.tenant_id)
+          .eq('is_active', true)
+          .limit(1),
+        supabase
+          .from('cash_sessions')
+          .select('id, register_id')
+          .eq('tenant_id', sessionInfo?.tenant_id)
+          .eq('status', 'open')
+          .order('opened_at', { ascending: false })
+          .limit(1)
+      ])
+
+      const finalRegId = regRes.data?.[0]?.id || sessRes.data?.[0]?.register_id || sessionInfo?.register_id || null
+      const finalSessId = sessRes.data?.[0]?.id || regRes.data?.[0]?.current_session_id || newSessId
+
+      setSessionInfo(prev => prev ? {
+        ...prev,
+        session_id: finalSessId,
+        register_id: finalRegId
+      } : null)
+
+      setShowOpenShiftModal(false)
+      playSound('success')
+    } catch (err: any) {
+      console.error('Error opening shift:', err)
+      setOpeningShiftError(err.message || 'Error al abrir turno')
+    } finally {
+      setOpeningShiftLoading(false)
+    }
+  }
 
   const getProductStock = useCallback((p: Product, whId: string | null) => {
     if (p.is_pharmacy) return p.stock || 0
@@ -719,14 +872,17 @@ export default function POSClient() {
       if (existing) {
         const newQty = existing.quantity + quantity
         const { unitPrice } = getEffectiveUnitPrice({ ...existing, quantity: newQty })
-        return prev.map(i => i.id === product.id
-          ? { ...i, quantity: newQty, lineTotal: newQty * unitPrice * (1 - (Number(i.discount) || 0) / 100) }
-          : i
-        )
+        const updatedItem = {
+          ...existing,
+          quantity: newQty,
+          lineTotal: newQty * unitPrice * (1 - (Number(existing.discount) || 0) / 100)
+        }
+        const rest = prev.filter(i => i.id !== product.id)
+        return [updatedItem, ...rest]
       }
       const initialItem: CartItem = { ...product, quantity, discount: 0, lineTotal: 0 }
       const { unitPrice } = getEffectiveUnitPrice(initialItem)
-      return [...prev, { ...initialItem, lineTotal: quantity * unitPrice }]
+      return [{ ...initialItem, lineTotal: quantity * unitPrice }, ...prev]
     })
   }, [])
 
@@ -734,11 +890,18 @@ export default function POSClient() {
     playSound('tap')
     if (qty <= 0) { removeFromCart(id); return }
     const rounded = Math.round(qty * 1000) / 1000
-    setCart(prev => prev.map(i => {
-      if (i.id !== id) return i
-      const { unitPrice } = getEffectiveUnitPrice({ ...i, quantity: rounded })
-      return { ...i, quantity: rounded, lineTotal: rounded * unitPrice * (1 - (Number(i.discount) || 0) / 100) }
-    }))
+    setCart(prev => {
+      const target = prev.find(i => i.id === id)
+      if (!target) return prev
+      const { unitPrice } = getEffectiveUnitPrice({ ...target, quantity: rounded })
+      const updatedItem = {
+        ...target,
+        quantity: rounded,
+        lineTotal: rounded * unitPrice * (1 - (Number(target.discount) || 0) / 100)
+      }
+      const rest = prev.filter(i => i.id !== id)
+      return [updatedItem, ...rest]
+    })
   }
 
   const removeFromCart = (id: string) => {
@@ -884,7 +1047,8 @@ export default function POSClient() {
       sku: cleanCode,
       price: master ? String(master.suggestedPrice) : '',
       cost: master ? String(master.suggestedCost) : '',
-      stock: '10'
+      stock: '10',
+      image_url: ''
     })
     setShowScanner(false)
     setShowExpressModal(true)
@@ -1094,7 +1258,7 @@ export default function POSClient() {
             total,
             receivedAmount: Number(receivedAmount) || total,
             change,
-            customerName: selectedCustomer?.full_name || null,
+            customerName: selectedCustomer?.full_name || dianCustomer?.name || null,
             isCompleted: true
           })
           channel.close()
@@ -1105,17 +1269,37 @@ export default function POSClient() {
       if (emitElectronicInvoice) {
         setDianEmitting(true)
         try {
+          const customCustomerPayload = (dianInvoiceMode === 'nominal' && dianCustomer) ? {
+            id: dianCustomer.documentNumber,
+            idType: dianCustomer.idType,
+            dv: dianCustomer.dv,
+            name: dianCustomer.name,
+            personType: dianCustomer.personType,
+            regime: dianCustomer.regime,
+            email: dianCustomer.email,
+            phone: dianCustomer.phone,
+            address: dianCustomer.address,
+            city: dianCustomer.city,
+            state: dianCustomer.state
+          } : {
+            id: '222222222222',
+            idType: '13',
+            name: 'Consumidor Final',
+            personType: '2',
+            regime: '49',
+            email: '',
+            phone: '',
+            address: 'Mostrador',
+            city: 'Bogotá',
+            state: 'Bogotá D.C.'
+          }
+
           const dianRes = await fetch('/api/dian/emit', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               saleId: data.sale_id || data.id,
-              customCustomer: {
-                id: dianCustomerNit.trim() || selectedCustomer?.phone || '222222222222',
-                idType: dianCustomerNit.length >= 9 ? '31' : '13',
-                name: selectedCustomer ? selectedCustomer.full_name : 'Consumidor Final',
-                email: dianCustomerEmail.trim() || ''
-              },
+              customCustomer: customCustomerPayload,
               paymentMethod
             })
           })
@@ -1277,7 +1461,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
         }
       }
     }
-
     await generateDianInvoicePdfA4(
       payload,
       dianResult?.cufe || 'c89f2a01490b8e7c102a99182bc837d7a129031738491823749812739487123984712983749182374918237491823749',
@@ -1285,152 +1468,325 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
       'Validada por la DIAN'
     )
   }
-
   if (step === 'done') {
     const activeCufe = dianResult?.cufe || 'c89f2a01490b8e7c102a99182bc837d7a12903173849182374981273948712398471298374918237491823749'
     const verificationUrl = getDianVerificationUrl(activeCufe, '2')
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', padding: 14 }}>
-        
-        {/* Printable Ticket Receipt */}
-        <div id="pos-ticket" className="neu-card animate-scale-in" style={{ background: '#fff', color: '#0F172A', padding: '20px 16px', borderRadius: 16, width: '100%', maxWidth: 360, margin: '0 auto 16px', fontFamily: 'monospace', fontSize: '0.8rem', border: '1px solid #CBD5E1', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+      <div style={{
+        width: '100%',
+        height: '100%',
+        maxHeight: 'calc(100vh - 56px)',
+        overflowY: 'auto',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'flex-start',
+        padding: '12px 14px',
+        boxSizing: 'border-box'
+      }}>
+        <div style={{
+          width: '100%',
+          maxWidth: 860,
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+          gap: 16,
+          alignItems: 'start',
+          margin: '0 auto'
+        }}>
           
-          <div style={{ textAlign: 'center', marginBottom: 10, borderBottom: '1px dashed #94A3B8', paddingBottom: 8 }}>
-            <div style={{ fontWeight: 900, fontSize: '1.05rem', letterSpacing: '-0.02em' }}>{businessName}</div>
-            <div style={{ fontSize: '0.68rem', color: '#475569' }}>NIT: 901.234.567-1 - Reg. DIAN</div>
-            <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Res. DIAN 18760000001 (SETP-1 al SETP-5000)</div>
-            <div style={{ fontSize: '0.65rem', color: '#64748B', marginTop: 2 }}>{new Date().toLocaleString('es-CO')}</div>
-            <div style={{ fontWeight: 800, fontSize: '0.85rem', marginTop: 4, color: '#1E293B' }}>
-              {emitElectronicInvoice ? `Factura Electrónica N°: ${dianResult?.number || saleNumber}` : `Factura POS N°: ${saleNumber}`}
+          {/* ── LEFT: Printable Thermal Receipt Preview ── */}
+          <div
+            id="pos-ticket"
+            className="neu-card animate-scale-in"
+            style={{
+              background: '#fff',
+              color: '#0F172A',
+              padding: '16px 14px',
+              borderRadius: 14,
+              fontFamily: 'monospace',
+              fontSize: '0.78rem',
+              border: '1px solid #CBD5E1',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.06)'
+            }}
+          >
+            {/* Header / Business details */}
+            <div style={{ textAlign: 'center', marginBottom: 8, borderBottom: '1px dashed #94A3B8', paddingBottom: 8 }}>
+              <div style={{ fontWeight: 900, fontSize: '1.05rem', letterSpacing: '-0.02em', color: '#0F172A' }}>{businessName}</div>
+              <div style={{ fontSize: '0.68rem', color: '#475569' }}>NIT: 901.234.567-1 - Reg. DIAN</div>
+              <div style={{ fontSize: '0.65rem', color: '#64748B' }}>Res. DIAN 18760000001 (SETP-1 al SETP-5000)</div>
+              <div style={{ fontSize: '0.65rem', color: '#64748B', marginTop: 1 }}>{new Date().toLocaleString('es-CO')}</div>
+              <div style={{ fontWeight: 800, fontSize: '0.84rem', marginTop: 4, color: '#1E293B' }}>
+                {emitElectronicInvoice ? `Factura Electrónica N°: ${dianResult?.number || saleNumber}` : `Factura POS N°: ${saleNumber}`}
+              </div>
+              {emitElectronicInvoice && (
+                <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ECFDF5', color: '#059669', padding: '2px 8px', borderRadius: 12, fontSize: '0.65rem', fontWeight: 700 }}>
+                  <ShieldCheck size={11} /> Validada DIAN (ApplicationResponse 00)
+                </div>
+              )}
             </div>
-            {emitElectronicInvoice && (
-              <div style={{ marginTop: 4, display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ECFDF5', color: '#059669', padding: '2px 8px', borderRadius: 12, fontSize: '0.65rem', fontWeight: 700 }}>
-                <ShieldCheck size={11} /> Validada DIAN (ApplicationResponse 00)
+
+            {/* Customer Details */}
+            {selectedCustomer && (
+              <div style={{ borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6, fontSize: '0.74rem' }}>
+                <div><strong>Cliente:</strong> {selectedCustomer.full_name}</div>
+                {selectedCustomer.phone && <div><strong>Tel:</strong> {selectedCustomer.phone}</div>}
+                {dianCustomerNit && <div><strong>NIT/C.C.:</strong> {dianCustomerNit}</div>}
               </div>
             )}
-          </div>
 
-          {selectedCustomer && (
-            <div style={{ borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6, fontSize: '0.75rem' }}>
-              <div><strong>Cliente:</strong> {selectedCustomer.full_name}</div>
-              {selectedCustomer.phone && <div><strong>Tel:</strong> {selectedCustomer.phone}</div>}
-              {dianCustomerNit && <div><strong>NIT/C.C.:</strong> {dianCustomerNit}</div>}
-            </div>
-          )}
-
-          <div style={{ borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontWeight: 800, borderBottom: '1px solid #E2E8F0', paddingBottom: 4, marginBottom: 4, fontSize: '0.72rem' }}>
-              <span>Cant/Producto</span>
-              <span style={{ textAlign: 'right' }}>P.Unit</span>
-              <span style={{ textAlign: 'right' }}>Total</span>
-            </div>
-            {cart.map(item => (
-              <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', marginBottom: 3, fontSize: '0.75rem' }}>
-                <div>{item.quantity} {item.unit_type === 'unit' ? 'x' : item.unit_type} {item.name}</div>
-                <div style={{ textAlign: 'right' }}>{formatCurrency(item.price)}</div>
-                <div style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(item.lineTotal)}</div>
+            {/* Cart items */}
+            <div style={{ borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', fontWeight: 800, borderBottom: '1px solid #E2E8F0', paddingBottom: 3, marginBottom: 4, fontSize: '0.72rem' }}>
+                <span>Cant/Producto</span>
+                <span style={{ textAlign: 'right' }}>P.Unit</span>
+                <span style={{ textAlign: 'right' }}>Total</span>
               </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 2, borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
-            {discount > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--accent-coral)' }}>
-                <span>Descuento ({discount}%):</span>
-                <span>-{formatCurrency(discountAmt)}</span>
+              <div style={{ maxHeight: 180, overflowY: 'auto' }}>
+                {cart.map(item => (
+                  <div key={item.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', marginBottom: 3, fontSize: '0.74rem' }}>
+                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: 4 }}>
+                      {item.quantity} {item.unit_type === 'unit' ? 'x' : item.unit_type} {item.name}
+                    </div>
+                    <div style={{ textAlign: 'right' }}>{formatCurrency(item.price)}</div>
+                    <div style={{ textAlign: 'right', fontWeight: 700 }}>{formatCurrency(item.lineTotal)}</div>
+                  </div>
+                ))}
               </div>
-            )}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#64748B' }}>
-              <span>IVA Estimado Incluido:</span>
-              <span>{formatCurrency(cart.reduce((sum, item) => {
-                const r = item.tax_rate !== undefined ? Number(item.tax_rate) : defaultTaxRate
-                const base = r > 0 ? (item.lineTotal / (1 + r / 100)) : item.lineTotal
-                return sum + (item.lineTotal - base)
-              }, 0))}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1rem', marginTop: 2 }}><span>TOTAL:</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#475569', marginTop: 1 }}>
-              <span>Pago:</span>
-              <span style={{ fontWeight: 800 }}>{paymentMethod === 'cash' ? 'EFECTIVO' : paymentMethod === 'fiao' ? 'FIAO (CRÉDITO)' : paymentMethod === 'transfer' ? 'NEQUI / TRANSFERENCIA' : 'TARJETA'}</span>
+
+            {/* Totals Breakdown */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, borderBottom: '1px dashed #94A3B8', paddingBottom: 6, marginBottom: 6 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal:</span><span>{formatCurrency(subtotal)}</span></div>
+              {discount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--accent-coral)' }}>
+                  <span>Descuento ({discount}%):</span>
+                  <span>-{formatCurrency(discountAmt)}</span>
+                </div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#64748B' }}>
+                <span>IVA Estimado Incluido:</span>
+                <span>{formatCurrency(cart.reduce((sum, item) => {
+                  const r = item.tax_rate !== undefined ? Number(item.tax_rate) : defaultTaxRate
+                  const base = r > 0 ? (item.lineTotal / (1 + r / 100)) : item.lineTotal
+                  return sum + (item.lineTotal - base)
+                }, 0))}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 900, fontSize: '1rem', marginTop: 2 }}>
+                <span>TOTAL:</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: '#475569', marginTop: 1 }}>
+                <span>Pago:</span>
+                <span style={{ fontWeight: 800 }}>{paymentMethod === 'cash' ? 'EFECTIVO' : paymentMethod === 'fiao' ? 'FIAO (CRÉDITO)' : paymentMethod === 'transfer' ? 'NEQUI / TRANSFERENCIA' : 'TARJETA'}</span>
+              </div>
+              {paymentMethod === 'cash' && change > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', color: '#059669', fontWeight: 900, marginTop: 2, background: '#ECFDF5', padding: '2px 6px', borderRadius: 4 }}>
+                  <span>CAMBIO / VUELTOS:</span>
+                  <span>{formatCurrency(change)}</span>
+                </div>
+              )}
             </div>
-            {change > 0 && <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--accent-green)', fontWeight: 800 }}><span>Cambio:</span><span>{formatCurrency(change)}</span></div>}
+
+            {/* QR Code & DIAN CUFE */}
+            <div style={{ textAlign: 'center', marginTop: 6 }}>
+              <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(verificationUrl)}`} alt="QR DIAN" style={{ width: 54, height: 54, margin: '0 auto 4px', display: 'block' }} />
+              <div style={{ fontSize: '0.52rem', color: '#64748B', wordBreak: 'break-all', fontFamily: 'monospace' }}>
+                CUFE: {activeCufe.slice(0, 32)}...
+              </div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, marginTop: 3, color: '#475569' }}>
+                ¡Gracias por su compra en {businessName}!
+              </div>
+            </div>
           </div>
 
-          <div style={{ textAlign: 'center', marginTop: 6 }}>
-            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=${encodeURIComponent(verificationUrl)}`} alt="QR DIAN" style={{ width: 64, height: 64, margin: '0 auto 4px' }} />
-            <div style={{ fontSize: '0.55rem', color: '#64748B', wordBreak: 'break-all', fontFamily: 'monospace' }}>
-              CUFE: {activeCufe.slice(0, 36)}...
+          {/* ── RIGHT: Control & Actions Panel ── */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            
+            {/* Header Success Card */}
+            <div className="neu-card animate-scale-in" style={{ padding: '16px 18px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.05))', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#10B981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.3rem', flexShrink: 0, boxShadow: '0 4px 12px rgba(16,185,129,0.35)' }}>
+                  ✓
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>
+                    ¡Venta Finalizada con Éxito!
+                  </h2>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', fontWeight: 600, marginTop: 2 }}>
+                    {emitElectronicInvoice ? 'Factura Electrónica emitida y validada por la DIAN' : 'Ticket registrado en caja registradora'}
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Metrics */}
+              <div style={{ display: 'grid', gridTemplateColumns: change > 0 ? '1fr 1fr' : '1fr', gap: 10, marginTop: 12, paddingTop: 12, borderTop: '1px solid rgba(16, 185, 129, 0.25)' }}>
+                <div style={{ background: 'var(--bg)', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Total Cobrado</div>
+                  <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-blue)', lineHeight: 1.1 }}>{formatCurrency(total)}</div>
+                </div>
+                {paymentMethod === 'cash' && change > 0 && (
+                  <div style={{ background: '#ECFDF5', padding: '8px 12px', borderRadius: 8, border: '1px solid #A7F3D0' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#059669', fontWeight: 800, textTransform: 'uppercase' }}>Cambio a Devolver</div>
+                    <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#059669', lineHeight: 1.1 }}>{formatCurrency(change)}</div>
+                  </div>
+                )}
+              </div>
             </div>
-            <div style={{ fontSize: '0.68rem', fontWeight: 700, marginTop: 4, color: '#475569' }}>
-              ¡Gracias por su compra en {businessName}!
+
+            {/* Actions Card */}
+            <div className="neu-card animate-scale-in" style={{ padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Acciones de Venta
+              </span>
+
+              {/* Big Nueva Venta Button */}
+              <button
+                className="btn-neu btn-primary"
+                onClick={newSale}
+                autoFocus
+                style={{
+                  width: '100%',
+                  padding: '14px 16px',
+                  fontSize: '1.02rem',
+                  fontWeight: 900,
+                  justifyContent: 'center',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  background: 'linear-gradient(135deg, #059669, #047857)',
+                  color: '#fff',
+                  boxShadow: '0 4px 14px rgba(5, 150, 105, 0.4)',
+                  cursor: 'pointer'
+                }}
+              >
+                <Plus size={18} strokeWidth={2.5} />
+                <span>Iniciar Nueva Venta [Enter / Espacio]</span>
+              </button>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button
+                  className="btn-neu"
+                  onClick={() => window.print()}
+                  style={{ padding: '10px 12px', fontSize: '0.82rem', fontWeight: 700, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                >
+                  <Printer size={15} strokeWidth={2} />
+                  <span>Imprimir [P]</span>
+                </button>
+
+                <button
+                  className="btn-neu"
+                  onClick={sendTicketWhatsApp}
+                  style={{ padding: '10px 12px', fontSize: '0.82rem', background: '#25D366', color: '#fff', fontWeight: 800, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                >
+                  <Send size={15} strokeWidth={2} />
+                  <span>WhatsApp [W]</span>
+                </button>
+              </div>
+
+              {emitElectronicInvoice && (
+                <button
+                  className="btn-neu"
+                  onClick={handleDownloadOfficialPdfA4}
+                  style={{ padding: '10px 12px', fontSize: '0.82rem', background: '#0284C7', color: '#fff', fontWeight: 700, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                >
+                  <FileText size={15} />
+                  <span>Descargar Factura Oficial DIAN (PDF A4)</span>
+                </button>
+              )}
             </div>
-          </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div style={{ display: 'flex', gap: 8, maxWidth: 360, width: '100%', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn-neu" onClick={() => window.print()} style={{ flex: 1, padding: '10px', fontSize: '0.82rem', fontWeight: 700, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Printer size={15} strokeWidth={2} />
-              <span>Imprimir</span>
-            </button>
-            <button className="btn-neu" onClick={sendTicketWhatsApp} style={{ flex: 1, padding: '10px', fontSize: '0.82rem', background: '#25D366', color: '#fff', fontWeight: 800, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Send size={15} strokeWidth={2} />
-              <span>WhatsApp</span>
-            </button>
           </div>
 
-          {emitElectronicInvoice && (
-            <button className="btn-neu" onClick={handleDownloadOfficialPdfA4} style={{ padding: '10px', fontSize: '0.82rem', background: '#0284C7', color: '#fff', fontWeight: 700, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <FileText size={15} />
-              <span>Descargar PDF Oficial DIAN (A4)</span>
-            </button>
-          )}
-
-          <button className="btn-neu btn-primary" onClick={newSale} style={{ padding: '12px', fontSize: '0.9rem', justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Plus size={16} strokeWidth={2.5} />
-            <span>Nueva venta</span>
-          </button>
         </div>
       </div>
     )
   }
 
   return (
-    <div style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+    <div style={{ width: '100%', height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
 
-      {/* Caja Cerrada Banner */}
+      {/* Turno Cerrado Banner */}
       {sessionInfo && !sessionInfo.session_id && (
-        <div style={{ background: '#FEE2E2', borderBottom: '2px solid #FECACA', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: '1.1rem' }}>🔒</span>
-          <span style={{ fontWeight: 700, color: '#DC2626', fontSize: '0.88rem' }}>
-            Caja cerrada &mdash; Debes abrir un turno en <strong>Caja y Turnos</strong> antes de realizar ventas.
-          </span>
+        <div style={{
+          background: '#FEF2F2',
+          borderBottom: '1px solid #FECACA',
+          padding: '6px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-start',
+          gap: 14,
+          flexShrink: 0,
+          flexWrap: 'wrap'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <span style={{ fontSize: '1.1rem' }}>🔒</span>
+            <span style={{ fontWeight: 700, color: '#DC2626', fontSize: '0.84rem' }}>
+              Turno cerrado &mdash; Debes abrir un turno para registrar ventas y cobros en el sistema.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => { setOpeningShiftError(''); setShowOpenShiftModal(true); }}
+            className="btn-neu btn-primary"
+            style={{
+              padding: '5px 14px',
+              fontSize: '0.78rem',
+              fontWeight: 800,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              flexShrink: 0,
+              cursor: 'pointer'
+            }}
+          >
+            <Unlock size={14} strokeWidth={2.5} />
+            <span>Abrir Turno</span>
+          </button>
         </div>
       )}
 
       {/* ── STEP 1: CART & PRODUCT SEARCH ── */}
       {step === 'cart' && (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', gap: 6 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', gap: 6 }}>
           
           {/* Top Search & Actions Bar */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flexShrink: 0 }}>
-            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-              <div className="input-group" style={{ flex: 1, position: 'relative', minWidth: 0 }}>
+            <div className="pos-search-row" style={{ display: 'flex', gap: 6, alignItems: 'center', width: '100%' }}>
+              <div className="input-group" style={{ flex: 1, position: 'relative', minWidth: 0, width: '100%' }}>
                 <span className="input-icon" style={{ left: 12, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center' }}>
                   <Search size={17} strokeWidth={2} style={{ color: 'var(--text-muted)' }} />
                 </span>
                 <input
+                  id="pos-search-input"
                   className="input-neu"
-                  placeholder="Buscar producto, SKU o código..."
+                  placeholder="Buscar producto, SKU o escanear código..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   onKeyDown={e => {
                     if (e.key === 'Enter') {
+                      e.preventDefault()
+                      const q = search.trim().toLowerCase()
+                      if (!q) return
+
+                      // 1. Check exact barcode or SKU match (ideal for physical barcode guns)
+                      const exact = products.find(p =>
+                        (p.barcode && p.barcode.toLowerCase() === q) ||
+                        (p.sku && p.sku.toLowerCase() === q)
+                      )
+                      if (exact) {
+                        if (exact.is_pharmacy && (exact.blister_price || exact.box_price)) {
+                          setSelectedFractionProduct(exact)
+                        } else if (exact.unit_type !== 'unit') {
+                          setWeighingProduct(exact)
+                        } else {
+                          addToCart(exact)
+                          setSearch('')
+                          playSound('beep')
+                        }
+                        return
+                      }
+
+                      // 2. If filtered has exactly 1 result
                       if (filtered.length === 1) {
-                        e.preventDefault()
                         const target = filtered[0]
                         if (target.is_pharmacy && (target.blister_price || target.box_price)) {
                           setSelectedFractionProduct(target)
@@ -1439,7 +1795,9 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                         } else {
                           addToCart(target)
                           setSearch('')
+                          playSound('beep')
                         }
+                        return
                       }
                     }
                   }}
@@ -1477,120 +1835,151 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 )}
               </div>
 
-              {/* Warehouse selector */}
-              <select
-                className="input-neu"
-                value={selectedWarehouseId || 'all'}
-                onChange={e => {
-                  const wid = e.target.value
-                  setSelectedWarehouseId(wid)
-                  const targetWh = warehouseList.find(w => w.id === wid) || warehouseList.find(w => w.is_main) || warehouseList[0]
-                  setSessionInfo(prev => prev ? { ...prev, warehouse_id: wid === 'all' ? (targetWh?.id || prev.warehouse_id) : wid } : prev)
-                }}
-                style={{ height: 38, padding: '0 8px', fontSize: '0.74rem', fontWeight: 700, borderRadius: 'var(--radius-md)', maxWidth: 155, flexShrink: 0, boxSizing: 'border-box' }}
-                title="Elegir bodega o ver catálogo global"
-              >
-                <option value="all">🌐 Todas</option>
-                {warehouseList.map(w => (
-                  <option key={w.id} value={w.id}>
-                    📦 {w.name} {w.is_main ? '(Principal)' : ''}
-                  </option>
-                ))}
-              </select>
+              {/* Action buttons wrapper */}
+              <div className="pos-actions-bar" style={{ display: 'flex', gap: 5, alignItems: 'center', flexShrink: 0 }}>
+                {/* Warehouse selector */}
+                <select
+                  className="input-neu"
+                  value={selectedWarehouseId || 'all'}
+                  onChange={e => {
+                    const wid = e.target.value
+                    setSelectedWarehouseId(wid)
+                    try {
+                      localStorage.setItem('pos_selected_warehouse_id', wid)
+                    } catch {}
+                  }}
+                  style={{ height: 38, padding: '0 8px', fontSize: '0.78rem', flexShrink: 0, boxSizing: 'border-box' }}
+                >
+                  <option value="all">Todas las bodegas</option>
+                  {warehouseList.map((w: any) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name} {w.is_main ? '(Principal)' : ''}
+                    </option>
+                  ))}
+                </select>
 
-              {/* Voice AI */}
-              <button
-                className="btn-neu"
-                onClick={() => setShowVoiceHUD(prev => !prev)}
-                title="Audio-POS por Voz Natural (Presiona V)"
-                style={{
-                  height: 38,
-                  padding: '0 10px',
-                  fontSize: '0.78rem',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 5,
-                  fontWeight: 800,
-                  background: showVoiceHUD ? 'linear-gradient(135deg, #EF4444, #DC2626)' : 'linear-gradient(135deg, #3B82F6, #8B5CF6)',
-                  color: '#fff',
-                  boxShadow: showVoiceHUD ? '0 0 12px rgba(239, 68, 68, 0.5)' : '0 2px 6px rgba(59, 130, 246, 0.3)',
-                  flexShrink: 0,
-                  boxSizing: 'border-box'
-                }}
-              >
-                <Mic size={15} strokeWidth={2.5} />
-                <span className="pos-btn-label">Voz</span>
-              </button>
-
-              {/* Scanner */}
-              <button
-                className="btn-neu btn-primary"
-                onClick={() => setShowScanner(true)}
-                title="Escanear código de barras (F5)"
-                style={{ height: 38, padding: '0 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, boxSizing: 'border-box' }}
-              >
-                <Camera size={15} strokeWidth={2} />
-                <span className="pos-btn-label">Escanear</span>
-              </button>
-
-              {/* Price Checker F10 */}
-              <button
-                className="btn-neu"
-                onClick={() => setShowPriceCheckerModal(true)}
-                title="Verificador de Precios / Modo Kiosko (F10)"
-                style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box' }}
-              >
-                <Search size={14} style={{ color: 'var(--accent-purple)' }} />
-                <span className="pos-btn-label">Precios (F10)</span>
-              </button>
-
-              {/* Recharges & Services F2 */}
-              <button
-                className="btn-neu"
-                onClick={() => setShowRechargesModal(true)}
-                title="Venta de Recargas Móviles, Pines y Servicios (F2)"
-                style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box', color: 'var(--accent-blue)', fontWeight: 700 }}
-              >
-                <Smartphone size={14} />
-                <span className="pos-btn-label">Recargas (F2)</span>
-              </button>
-
-              {/* Secondary Customer Display */}
-              <button
-                className="btn-neu"
-                onClick={() => window.open('/pos/customer-display', 'CustomerDisplay', 'width=1024,height=768')}
-                title="Abrir Pantalla Secundaria para el Cliente"
-                style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box' }}
-              >
-                <ExternalLink size={14} style={{ color: 'var(--text-muted)' }} />
-                <span className="pos-btn-label">2ª Pantalla</span>
-              </button>
-
-              {heldCarts.length > 0 && (
+                {/* Voice Assistant Button */}
                 <button
                   className="btn-neu"
-                  onClick={() => setShowHeldModal(true)}
-                  title="Ver carritos en espera"
-                  style={{ height: 38, padding: '0 10px', fontSize: '0.78rem', background: 'var(--accent-amber-lt)', color: 'var(--accent-amber)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box' }}
+                  onClick={() => setShowVoiceHUD(prev => !prev)}
+                  title="Asistente de Voz IA (Tecla V)"
+                  style={{
+                    height: 38,
+                    padding: '0 10px',
+                    fontSize: '0.78rem',
+                    background: showVoiceHUD ? '#ef4444' : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                    color: '#ffffff',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    border: 'none',
+                    fontWeight: 700,
+                    boxShadow: showVoiceHUD ? '0 0 12px rgba(239, 68, 68, 0.5)' : '0 2px 6px rgba(59, 130, 246, 0.3)',
+                    flexShrink: 0,
+                    boxSizing: 'border-box'
+                  }}
                 >
-                  <PlayCircle size={15} />
-                  <span>{heldCarts.length}</span>
+                  <Mic size={15} strokeWidth={2.5} />
+                  <span className="pos-btn-label">Voz</span>
                 </button>
-              )}
 
-              {!isOnline && (
-                <span className="badge badge-amber" title="Modo Offline" style={{ height: 38, padding: '0 8px', fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', flexShrink: 0, boxSizing: 'border-box' }}>
-                  <WifiOff size={13} />
+                {/* Camera Scanner (Only visible on mobile screen sizes < 768px; on Desktop the physical scanner gun scans directly into the search bar) */}
+                <button
+                  className="btn-neu btn-primary md:hidden"
+                  onClick={() => setShowScanner(true)}
+                  title="Escanear con cámara (Móvil)"
+                  style={{ height: 38, padding: '0 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0, boxSizing: 'border-box' }}
+                >
+                  <Camera size={15} strokeWidth={2} />
+                  <span className="pos-btn-label">Escanear</span>
+                </button>
+
+                {/* Price Checker F10 */}
+                <button
+                  className="btn-neu"
+                  onClick={() => setShowPriceCheckerModal(true)}
+                  title="Verificador de Precios / Modo Kiosko (F10)"
+                  style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box' }}
+                >
+                  <Search size={14} style={{ color: 'var(--accent-purple)' }} />
+                  <span className="pos-btn-label">Precios (F10)</span>
+                </button>
+
+                {/* Abonos a Fiao / Cartera F3 */}
+                <button
+                  className="btn-neu"
+                  onClick={() => setShowPosAbonoModal(true)}
+                  title="Registrar Abono a Crédito / Fiao (F3)"
+                  style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box', color: 'var(--accent-purple)', fontWeight: 700 }}
+                >
+                  <HandCoins size={14} />
+                  <span className="pos-btn-label">Abonar Fiao (F3)</span>
+                </button>
+
+                {/* Secondary Customer Display */}
+                <button
+                  className="btn-neu"
+                  onClick={() => window.open('/pos/customer-display', 'CustomerDisplay', 'width=1024,height=768')}
+                  title="Abrir Pantalla Secundaria para el Cliente"
+                  style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box' }}
+                >
+                  <ExternalLink size={14} style={{ color: 'var(--text-muted)' }} />
+                  <span className="pos-btn-label">2ª Pantalla</span>
+                </button>
+
+                {heldCarts.length > 0 && (
+                  <button
+                    className="btn-neu"
+                    onClick={() => setShowHeldModal(true)}
+                    title="Ver carritos en espera"
+                    style={{ height: 38, padding: '0 10px', fontSize: '0.78rem', background: 'var(--accent-amber-lt)', color: 'var(--accent-amber)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box' }}
+                  >
+                    <PlayCircle size={15} />
+                    <span>{heldCarts.length}</span>
+                  </button>
+                )}
+
+                {!isOnline && (
+                  <span className="badge badge-amber" title="Modo Offline" style={{ height: 38, padding: '0 8px', fontSize: '0.68rem', display: 'inline-flex', alignItems: 'center', flexShrink: 0, boxSizing: 'border-box' }}>
+                    <WifiOff size={13} />
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Segmented Switcher (< 768px only) */}
+          <div className="pos-mobile-tabs" style={{ display: 'none', gap: 6, padding: '2px 0' }}>
+            <button
+              type="button"
+              onClick={() => setMobileTab('catalog')}
+              className={`btn-neu ${mobileTab === 'catalog' ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ flex: 1, padding: '7px 10px', fontSize: '0.8rem', fontWeight: 800, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <Package size={14} />
+              <span>Catálogo ({filtered.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileTab('cart')}
+              className={`btn-neu ${mobileTab === 'cart' ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ flex: 1, padding: '7px 10px', fontSize: '0.8rem', fontWeight: 800, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6 }}
+            >
+              <ShoppingCart size={14} />
+              <span>Carrito ({cart.reduce((s, i) => s + (i.unit_type === 'unit' ? i.quantity : 1), 0)})</span>
+              {total > 0 && (
+                <span style={{ fontSize: '0.72rem', background: '#0F172A', color: '#fff', padding: '1px 6px', borderRadius: 6, marginLeft: 4 }}>
+                  {formatCurrency(total)}
                 </span>
               )}
-            </div>
+            </button>
           </div>
 
           {/* DUAL PANELS CONTAINER - UNIFIED VIEW FOR FAST SALES */}
           <div className="pos-layout-grid" style={{ flex: 1, minHeight: 0 }}>
 
             {/* LEFT / TOP: Products Search & Catalog Panel */}
-            <div className="pos-catalog-panel" style={{ display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
+            <div className={`pos-catalog-panel ${mobileTab === 'cart' ? 'mobile-hidden' : 'mobile-active'}`} style={{ display: 'flex', flexDirection: 'column', gap: 6, overflow: 'hidden' }}>
 
               {/* Smart Generic Suggestions Banner */}
               {search.trim() !== '' && (() => {
@@ -1694,33 +2083,134 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
               )}
 
               {/* Product grid results */}
+              {/* Product grid results */}
               <div className="pos-product-grid" style={{ flex: 1, overflowY: 'auto' }}>
                 {filtered.map(product => {
                   const displayStock = getProductStock(product, selectedWarehouseId)
                   return (
-                    <button key={product.id} className="pos-product-btn" onClick={() => {
-                      if (product.is_pharmacy && (product.blister_price || product.box_price)) {
-                        setSelectedFractionProduct(product)
-                      } else if (product.unit_type !== 'unit') {
-                        setWeighingProduct(product)
-                      } else {
-                        addToCart(product)
-                      }
-                    }} style={{ padding: '8px 6px', display: 'flex', flexDirection: 'column', gap: 3, position: 'relative' }}>
-                      
-                      {product.unit_type !== 'unit' && (
-                        <span style={{ position: 'absolute', top: 4, right: 4, background: 'var(--accent-purple-lt)', color: 'var(--accent-purple)', fontSize: '0.58rem', fontWeight: 800, padding: '1px 3px', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 2 }}>
-                          <Scale size={9} /> {product.unit_type}
-                        </span>
-                      )}
+                    <button
+                      key={product.id}
+                      className="pos-product-card"
+                      onClick={() => {
+                        if (product.is_pharmacy && (product.blister_price || product.box_price)) {
+                          setSelectedFractionProduct(product)
+                        } else if (product.unit_type !== 'unit') {
+                          setWeighingProduct(product)
+                        } else {
+                          addToCart(product)
+                        }
+                      }}
+                      style={{
+                        padding: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'space-between',
+                        minHeight: 155,
+                        position: 'relative'
+                      }}
+                    >
+                      {/* Product Image / Icon Thumbnail */}
+                      <div style={{
+                        width: '100%',
+                        height: 76,
+                        borderRadius: 8,
+                        overflow: 'hidden',
+                        background: '#F8FAFC',
+                        border: '1px solid #F1F5F9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginBottom: 4,
+                        position: 'relative'
+                      }}>
+                        {product.image_url ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLElement).style.display = 'none'
+                              if (e.currentTarget.nextElementSibling) {
+                                (e.currentTarget.nextElementSibling as HTMLElement).style.display = 'flex'
+                              }
+                            }}
+                          />
+                        ) : null}
+                        <div
+                          style={{
+                            display: product.image_url ? 'none' : 'flex',
+                            width: '100%',
+                            height: '100%',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'var(--accent-blue-lt)'
+                          }}
+                        >
+                          <Package size={24} strokeWidth={1.8} style={{ color: 'var(--accent-blue)' }} />
+                        </div>
 
-                      <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--accent-blue-lt)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2px' }}>
-                        <Package size={16} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
+                        {product.unit_type !== 'unit' && (
+                          <span style={{
+                            position: 'absolute',
+                            top: 3,
+                            right: 3,
+                            background: 'var(--accent-purple-lt)',
+                            color: 'var(--accent-purple)',
+                            fontSize: '0.58rem',
+                            fontWeight: 800,
+                            padding: '1px 4px',
+                            borderRadius: 4,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 2,
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.08)'
+                          }}>
+                            <Scale size={9} /> {product.unit_type}
+                          </span>
+                        )}
                       </div>
-                      <div style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.15, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{product.name}</div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: 2 }}>
-                        <span style={{ fontSize: '0.78rem', fontWeight: 800, color: 'var(--accent-blue)' }}>{formatCurrency(product.price)}</span>
-                        <span style={{ fontSize: '0.6rem', color: displayStock <= 5 ? 'var(--accent-coral)' : 'var(--text-muted)' }}>{displayStock} u</span>
+
+                      {/* Product Name */}
+                      <div style={{
+                        fontSize: '0.76rem',
+                        fontWeight: 700,
+                        color: 'var(--text-primary)',
+                        lineHeight: 1.2,
+                        textAlign: 'center',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        marginBottom: 'auto',
+                        width: '100%'
+                      }}>
+                        {product.name}
+                      </div>
+
+                      {/* Price & Stock Footer */}
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        width: '100%',
+                        marginTop: 4,
+                        paddingTop: 4,
+                        borderTop: '1px solid #F1F5F9'
+                      }}>
+                        <span style={{ fontSize: '0.82rem', fontWeight: 900, color: 'var(--accent-blue)' }}>
+                          {formatCurrency(product.price)}
+                        </span>
+                        <span style={{
+                          fontSize: '0.62rem',
+                          fontWeight: 700,
+                          color: displayStock <= 5 ? 'var(--accent-coral)' : 'var(--text-muted)',
+                          background: displayStock <= 5 ? '#FEE2E2' : '#F1F5F9',
+                          padding: '1px 5px',
+                          borderRadius: 4
+                        }}>
+                          {displayStock} u
+                        </span>
                       </div>
                     </button>
                   )
@@ -1734,7 +2224,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                         : 'No hay productos disponibles en esta categoría o bodega'}
                     </div>
                     {search.trim() !== '' ? (
-                      <button className="btn-neu btn-primary" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10' }); setShowExpressModal(true); }} style={{ margin: '8px auto 0', padding: '6px 12px', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <button className="btn-neu btn-primary" onClick={() => { setExpressForm({ name: search, sku: '', price: '', cost: '', stock: '10', image_url: '' }); setShowExpressModal(true); }} style={{ margin: '8px auto 0', padding: '6px 12px', fontSize: '0.74rem', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                         <PlusCircle size={13} />
                         <span>Registrar "{search}"</span>
                       </button>
@@ -1751,29 +2241,33 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
             </div>
 
             {/* RIGHT / BOTTOM: Minimalist High-Density Cart Panel */}
-            <div className="neu-card pos-cart-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+            <div className={`neu-card pos-cart-panel ${mobileTab === 'catalog' ? 'mobile-hidden' : 'mobile-active'}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
               {/* Cart header */}
               <div style={{ padding: '6px 10px', borderBottom: '1px solid var(--bg-deep)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 800, fontSize: '0.82rem', color: 'var(--text-primary)' }}>
-                  <ShoppingCart size={15} strokeWidth={2} style={{ color: 'var(--accent-blue)' }} />
-                  <span>Carrito ({cart.reduce((s, i) => s + (i.unit_type === 'unit' ? i.quantity : 1), 0)})</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontWeight: 800, fontSize: '0.82rem', color: 'var(--text-primary)', minWidth: 0 }}>
+                  <ShoppingCart size={15} strokeWidth={2} style={{ color: 'var(--accent-blue)', flexShrink: 0 }} />
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    Carrito ({cart.reduce((s, i) => s + (i.unit_type === 'unit' ? i.quantity : 1), 0)})
+                  </span>
                 </div>
                 
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexShrink: 0 }}>
                   {cart.length > 0 && (
                     <>
-                      <button className="btn-neu" onClick={holdCurrentCart} title="Poner en espera para atender a otro cliente" style={{ padding: '3px 6px', fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: 3, color: 'var(--accent-amber)' }}>
+                      <button className="btn-neu" onClick={holdCurrentCart} title="Poner en espera para atender a otro cliente" style={{ padding: '3px 7px', fontSize: '0.68rem', display: 'flex', alignItems: 'center', gap: 3, color: 'var(--accent-amber)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
                         <PauseCircle size={12} />
                         <span>En espera</span>
                       </button>
-                      <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '3px 6px', fontSize: '0.68rem', color: 'var(--accent-coral)' }}>Limpiar</button>
+                      <button className="btn-neu btn-ghost" onClick={() => setCart([])} style={{ padding: '3px 7px', fontSize: '0.68rem', color: 'var(--accent-coral)', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+                        Limpiar
+                      </button>
                     </>
                   )}
                 </div>
               </div>
 
               {/* Cart Items List */}
-              <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
+              <div ref={cartListRef} style={{ flex: 1, overflowY: 'auto', minHeight: 0, padding: '4px 6px' }}>
                 {cart.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '20px 12px', color: 'var(--text-muted)' }}>
                     <ShoppingCart size={26} strokeWidth={1.5} style={{ margin: '0 auto 4px', color: 'var(--text-muted)' }} />
@@ -1788,7 +2282,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                             {item.name}
                           </div>
                           <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 5, marginTop: 1, flexWrap: 'wrap' }}>
-                            <span>{formatCurrency(item.price)} {item.unit_type !== 'unit' ? `x ${item.unit_type}` : 'c/u'}</span>
+                            <span style={{ whiteSpace: 'nowrap' }}>{formatCurrency(item.price)} {item.unit_type !== 'unit' ? `x ${item.unit_type}` : 'c/u'}</span>
                             
                             <button
                               type="button"
@@ -1811,6 +2305,8 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: 2,
+                                whiteSpace: 'nowrap',
+                                cursor: 'pointer',
                                 background: (item.discount || 0) > 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(59, 130, 246, 0.08)'
                               }}
                               title={canEditPrice ? "Modificar precio o descuento" : "Requiere permiso de administrador"}
@@ -1823,19 +2319,19 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
 
                         {/* Quantity Controls */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
-                          <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 24, height: 24, minWidth: 24, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>-</button>
+                          <button className="btn-neu btn-icon-sm" onClick={() => updateQty(item.id, item.quantity - (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 24, height: 24, minWidth: 24, padding: 0, fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}>-</button>
                           <span style={{ minWidth: 24, textAlign: 'center', fontWeight: 800, fontSize: '0.78rem' }}>
                             {item.quantity}{item.unit_type !== 'unit' ? item.unit_type : ''}
                           </span>
-                          <button className="btn-neu btn-icon-sm btn-primary" onClick={() => updateQty(item.id, item.quantity + (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 24, height: 24, minWidth: 24, padding: 0, fontSize: '0.8rem', fontWeight: 800 }}>+</button>
+                          <button className="btn-neu btn-icon-sm btn-primary" onClick={() => updateQty(item.id, item.quantity + (item.unit_type !== 'unit' ? 0.25 : 1))} style={{ width: 24, height: 24, minWidth: 24, padding: 0, fontSize: '0.8rem', fontWeight: 800, cursor: 'pointer' }}>+</button>
                         </div>
 
                         {/* Line Total */}
                         <div style={{ textAlign: 'right', flexShrink: 0, minWidth: 54 }}>
-                          <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--accent-blue)' }}>{formatCurrency(item.lineTotal)}</div>
+                          <div style={{ fontWeight: 800, fontSize: '0.8rem', color: 'var(--accent-blue)', whiteSpace: 'nowrap' }}>{formatCurrency(item.lineTotal)}</div>
                         </div>
 
-                        <button onClick={() => removeFromCart(item.id)} style={{ padding: '3px', color: 'var(--accent-coral)', background: 'none', border: 'none', cursor: 'pointer' }} title="Quitar">
+                        <button onClick={() => removeFromCart(item.id)} style={{ padding: '3px', color: 'var(--accent-coral)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }} title="Quitar">
                           <X size={14} strokeWidth={2.5} />
                         </button>
                       </div>
@@ -1855,8 +2351,8 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
               )}
 
               {/* Totals & Checkout Button */}
-              <div style={{ padding: '6px 10px', borderTop: '1px solid var(--bg-deep)', background: 'var(--bg-deep)', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', flexShrink: 0 }}>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginBottom: 4 }}>
+              <div style={{ padding: '8px 10px', borderTop: '1px solid var(--bg-deep)', background: 'var(--bg-deep)', borderRadius: '0 0 var(--radius-lg) var(--radius-lg)', flexShrink: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 1, marginBottom: 5 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
                     <span>Subtotal</span><span>{formatCurrency(subtotal)}</span>
                   </div>
@@ -1870,237 +2366,542 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                     <span>Total</span><span style={{ color: 'var(--accent-blue)' }}>{formatCurrency(total)}</span>
                   </div>
                 </div>
-                <button className="btn-neu btn-primary" disabled={cart.length === 0 || !sessionInfo?.session_id} onClick={() => { setReceivedAmount(String(total)); setIsFirstNumpadKey(true); setStep('payment'); playSound('tap'); }} style={{ width: '100%', padding: '9px', fontSize: '0.86rem', fontWeight: 800, justifyContent: 'center' }}>
-                  Cobrar {formatCurrency(total)}
+                <button
+                  className="btn-neu btn-primary"
+                  disabled={cart.length === 0}
+                  onClick={() => {
+                    if (!sessionInfo?.session_id) {
+                      setOpeningShiftError('')
+                      setShowOpenShiftModal(true)
+                      return
+                    }
+                    setReceivedAmount(String(total))
+                    setIsFirstNumpadKey(true)
+                    setStep('payment')
+                    playSound('tap')
+                  }}
+                  style={{ width: '100%', padding: '10px', fontSize: '0.86rem', fontWeight: 800, justifyContent: 'center', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}
+                >
+                  {!sessionInfo?.session_id && <Unlock size={15} strokeWidth={2.5} />}
+                  <span>{!sessionInfo?.session_id ? 'Abrir Turno para Cobrar' : `Cobrar ${formatCurrency(total)}`}</span>
                 </button>
               </div>
             </div>
           </div>
+
+          {/* Floating Checkout Button for Mobile */}
+          {mobileTab === 'catalog' && cart.length > 0 && (
+            <div
+              className="pos-floating-checkout"
+              onClick={() => setMobileTab('cart')}
+              style={{
+                display: 'none',
+                position: 'fixed',
+                bottom: 12,
+                left: 12,
+                right: 12,
+                background: '#0F172A',
+                color: '#FFFFFF',
+                padding: '12px 18px',
+                borderRadius: 14,
+                zIndex: 99,
+                boxShadow: '0 10px 30px rgba(0,0,0,0.35)',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                cursor: 'pointer'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ background: '#00D6BC', color: '#0F172A', padding: '2px 8px', borderRadius: 8, fontWeight: 800, fontSize: '0.82rem' }}>
+                  {cart.reduce((s, i) => s + (i.unit_type === 'unit' ? i.quantity : 1), 0)} items
+                </span>
+                <span style={{ fontWeight: 800, fontSize: '1rem', color: '#FFFFFF' }}>{formatCurrency(total)}</span>
+              </div>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 800, color: '#00D6BC', fontSize: '0.86rem' }}>
+                Ver Carrito / Cobrar →
+              </span>
+            </div>
+          )}
         </div>
       )}
 
-      {/* ── STEP 2: INSTANT FULL-SCREEN TOUCH NUMPAD CHECKOUT (ZERO SCROLL) ── */}
+      {/* ── STEP 2: HIGH-SPEED DESKTOP & TOUCH CHECKOUT STUDIO ── */}
       {step === 'payment' && (
-        <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 440, margin: '0 auto', height: '100%', display: 'flex', flexDirection: 'column', padding: '12px 14px', boxSizing: 'border-box' }}>
+        <div className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 960, margin: '0 auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', padding: '16px 20px', boxSizing: 'border-box', overflow: 'hidden', background: '#FFFFFF', borderRadius: 20, border: '1px solid #E2E8F0', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)' }}>
           
-          {/* Top Row: Back & Total Display */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexShrink: 0 }}>
-            <button className="btn-neu btn-ghost" onClick={() => setStep('cart')} style={{ padding: '5px 8px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4 }}>
-              <ArrowLeft size={14} />
-              <span>Volver</span>
+          {/* Top Bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, paddingBottom: 10, borderBottom: '1px solid #F1F5F9', flexShrink: 0 }}>
+            <button
+              className="btn-neu btn-ghost"
+              onClick={() => setStep('cart')}
+              style={{ padding: '6px 14px', fontSize: '0.84rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', borderRadius: 10 }}
+            >
+              <ArrowLeft size={16} />
+              <span>Volver al Carrito (Esc)</span>
             </button>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total a Cobrar</div>
-              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: 'var(--accent-blue)', lineHeight: 1 }}>{formatCurrency(total)}</div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.78rem', color: '#64748B', fontWeight: 700 }}>
+                <span style={{ background: '#F1F5F9', padding: '4px 10px', borderRadius: 8, color: '#334155' }}>
+                  {cart.length} {cart.length === 1 ? 'producto' : 'productos'}
+                </span>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.68rem', color: '#94A3B8', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total a Cobrar</div>
+                <div style={{ fontSize: '1.6rem', fontWeight: 900, color: 'var(--accent-blue)', lineHeight: 1 }}>{formatCurrency(total)}</div>
+              </div>
             </div>
           </div>
 
-          {/* Quick Selectors Row (Cliente + Método) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 6, marginBottom: 6, flexShrink: 0 }}>
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
-                <label style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Cliente</label>
-                {selectedCustomer && (
+          {/* Dual Column Grid on Desktop, Stack on Mobile */}
+          <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(360px, 1.2fr)', gap: 16, minHeight: 0, overflow: 'hidden' }}>
+            
+            {/* ── LEFT COLUMN: Orden, Cliente & Método ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0, overflowY: 'auto', paddingRight: 4 }}>
+              
+              {/* Payment Methods Fast Bar */}
+              <div>
+                <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', display: 'block', marginBottom: 6 }}>
+                  Método de Pago (Atajos F1-F4)
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
                   <button
                     type="button"
-                    onClick={() => setShowWalletModal(true)}
-                    style={{ background: 'none', border: 'none', color: 'var(--accent-purple)', fontSize: '0.62rem', fontWeight: 800, cursor: 'pointer', padding: 0 }}
+                    onClick={() => { setPaymentMethod('cash'); setError(''); playSound('tap'); }}
+                    className={`btn-neu ${paymentMethod === 'cash' ? 'btn-primary' : ''}`}
+                    style={{ padding: '10px 4px', fontSize: '0.74rem', fontWeight: 800, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, borderRadius: 10 }}
                   >
-                    ✨ Puntos (F8) {walletDiscountApplied > 0 ? `(-${formatCurrency(walletDiscountApplied)})` : ''}
+                    <Banknote size={16} />
+                    <span>Efectivo</span>
+                    <span style={{ fontSize: '0.6rem', opacity: 0.75 }}>[F1]</span>
                   </button>
-                )}
-              </div>
-              <select className="input-neu" value={selectedCustomer?.id || ''} onChange={e => {
-                const found = customerList.find(c => c.id === e.target.value)
-                setSelectedCustomer(found || null)
-                setError('')
-              }} style={{ fontSize: '0.76rem', width: '100%', padding: '5px 6px' }}>
-                <option value="">-- General --</option>
-                {customerList.map(c => (
-                  <option key={c.id} value={c.id}>{c.full_name} (${c.credit_used})</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-secondary)', textTransform: 'uppercase', display: 'block', marginBottom: 2 }}>Método</label>
-              <select className="input-neu" value={paymentMethod} onChange={e => {
-                setPaymentMethod(e.target.value)
-                setError('')
-              }} style={{ fontSize: '0.76rem', fontWeight: 700, width: '100%', padding: '5px 6px' }}>
-                <option value="cash">💵 Efectivo</option>
-                <option value="transfer">📱 Nequi</option>
-                <option value="fiao">📋 Fiar</option>
-                <option value="card_debit">💳 Débito</option>
-                <option value="card_credit">💳 Crédito</option>
-              </select>
-            </div>
-          </div>
 
-          {/* DIAN Electronic Invoicing Toggle Box */}
-          <div style={{ background: emitElectronicInvoice ? '#EFF6FF' : 'var(--bg-deep)', border: emitElectronicInvoice ? '1px solid #93C5FD' : '1px solid transparent', padding: '6px 8px', borderRadius: 'var(--radius-sm)', marginBottom: 6, flexShrink: 0 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: '0.72rem', fontWeight: 800, color: emitElectronicInvoice ? '#1D4ED8' : 'var(--text-primary)' }}>
-                <input
-                  type="checkbox"
-                  checked={emitElectronicInvoice}
-                  onChange={e => setEmitElectronicInvoice(e.target.checked)}
-                  style={{ accentColor: '#2563EB', cursor: 'pointer' }}
-                />
-                <span>⚡ Factura Electrónica DIAN</span>
-              </label>
-              {emitElectronicInvoice && (
-                <span style={{ fontSize: '0.62rem', color: '#059669', fontWeight: 700 }}>
-                  ✓ UBL 2.1 + CUFE
-                </span>
-              )}
-            </div>
-
-            {emitElectronicInvoice && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 6 }}>
-                <input
-                  type="text"
-                  placeholder="NIT / Cédula Cliente *"
-                  value={dianCustomerNit}
-                  onChange={e => setDianCustomerNit(e.target.value)}
-                  style={{ fontSize: '0.72rem', padding: '4px 6px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#fff' }}
-                />
-                <input
-                  type="email"
-                  placeholder="Email recepción DIAN"
-                  value={dianCustomerEmail}
-                  onChange={e => setDianCustomerEmail(e.target.value)}
-                  style={{ fontSize: '0.72rem', padding: '4px 6px', borderRadius: 6, border: '1px solid #CBD5E1', background: '#fff' }}
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Body */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0, overflow: 'hidden' }}>
-            
-            {/* CASH: Display + Touch Numpad */}
-            {paymentMethod === 'cash' && (
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 6, minHeight: 0 }}>
-                <div style={{ background: 'var(--bg-deep)', padding: '6px 8px', borderRadius: 'var(--radius-md)', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                      Efectivo Recibido
-                    </div>
-                    <div style={{ fontSize: receivedAmount && receivedAmount.length > 7 ? '0.95rem' : '1.1rem', fontWeight: 900, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {receivedAmount ? formatCurrency(Number(receivedAmount)) : '$0'}
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right', minWidth: 0 }}>
-                    <div style={{ fontSize: '0.58rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
-                      Cambio / Vueltos
-                    </div>
-                    <div style={{ fontSize: formatCurrency(change).length > 8 ? '0.95rem' : '1.1rem', fontWeight: 900, color: change >= 0 && Number(receivedAmount) >= total ? 'var(--accent-green)' : 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {formatCurrency(change)}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Fast Denomination Chips */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, flexShrink: 0 }}>
-                  <button type="button" className="btn-neu" onClick={() => handleNumpadKey('exact')} style={{ padding: '5px 2px', fontSize: '0.7rem', fontWeight: 800, textAlign: 'center', color: 'var(--accent-blue)' }}>
-                    Exacto
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod('transfer'); setError(''); playSound('tap'); }}
+                    className={`btn-neu ${paymentMethod === 'transfer' ? 'btn-primary' : ''}`}
+                    style={{ padding: '10px 4px', fontSize: '0.74rem', fontWeight: 800, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, borderRadius: 10 }}
+                  >
+                    <Smartphone size={16} />
+                    <span>Nequi</span>
+                    <span style={{ fontSize: '0.6rem', opacity: 0.75 }}>[F2]</span>
                   </button>
-                  {[5000, 10000, 20000, 50000].map(amt => (
-                    <button key={amt} type="button" className="btn-neu" onClick={() => { setReceivedAmount(String(amt)); setIsFirstNumpadKey(true); playSound('tap'); }} style={{ padding: '5px 2px', fontSize: '0.7rem', fontWeight: 700, textAlign: 'center' }}>
-                      ${amt / 1000}k
-                    </button>
-                  ))}
-                </div>
 
-                {/* Integrated 3x4 Touch Numpad Grid */}
-                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, minHeight: 0 }}>
-                  {['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'].map(k => (
-                    <button
-                      key={k}
-                      type="button"
-                      onClick={() => handleNumpadKey(k)}
-                      className="btn-neu"
-                      style={{ fontSize: k === 'back' ? '0.95rem' : '1.15rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
-                    >
-                      {k === 'back' ? <Delete size={16} /> : k}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod('card_debit'); setError(''); playSound('tap'); }}
+                    className={`btn-neu ${paymentMethod === 'card_debit' ? 'btn-primary' : ''}`}
+                    style={{ padding: '10px 4px', fontSize: '0.74rem', fontWeight: 800, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, borderRadius: 10 }}
+                  >
+                    <CreditCard size={16} />
+                    <span>Tarjeta</span>
+                    <span style={{ fontSize: '0.6rem', opacity: 0.75 }}>[F3]</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod('fiao'); setError(''); playSound('tap'); }}
+                    className={`btn-neu ${paymentMethod === 'fiao' ? 'btn-primary' : ''}`}
+                    style={{ padding: '10px 4px', fontSize: '0.74rem', fontWeight: 800, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, borderRadius: 10 }}
+                  >
+                    <User size={16} />
+                    <span>Fiar</span>
+                    <span style={{ fontSize: '0.6rem', opacity: 0.75 }}>[F4]</span>
+                  </button>
                 </div>
               </div>
-            )}
 
-            {/* NEQUI / DAVIPLATA (Real Merchant Phone) */}
-            {paymentMethod === 'transfer' && (
-              <div style={{ background: 'var(--accent-purple-lt)', padding: '10px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 6, flex: 1, justifyContent: 'center' }}>
+              {/* Customer Selector & Fiscal Management */}
+              <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 800, fontSize: '0.82rem', color: 'var(--accent-purple)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <Smartphone size={15} /> Nequi: {merchantPhone}
-                  </span>
-                  <span style={{ fontWeight: 900, fontSize: '0.95rem', color: 'var(--accent-purple)' }}>{formatCurrency(total)}</span>
+                  <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <User size={13} color="#64748B" />
+                    <span>Cliente / Receptor</span>
+                  </label>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    {selectedCustomer && (
+                      <button
+                        type="button"
+                        onClick={() => setShowWalletModal(true)}
+                        style={{ background: '#FAF5FF', border: '1px solid #E9D5FF', color: '#7E22CE', borderRadius: 6, padding: '2px 7px', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer' }}
+                      >
+                        ✨ Puntos {walletDiscountApplied > 0 ? `(-${formatCurrency(walletDiscountApplied)})` : ''}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowDianCustomerModal(true)}
+                      style={{
+                        background: '#E6F7F5',
+                        color: '#00B19D',
+                        border: '1px solid #99F6E4',
+                        borderRadius: 6,
+                        padding: '3px 8px',
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        transition: 'all 0.15s ease'
+                      }}
+                      title="Registrar o editar datos del cliente para Facturación DIAN"
+                    >
+                      <span>{selectedCustomer || dianCustomer ? '✏️ Datos Fiscales' : '+ Datos Fiscales'}</span>
+                    </button>
+                  </div>
                 </div>
-                <div style={{ background: '#fff', padding: 6, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, margin: '0 auto' }}>
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=Nequi-Pagar-${merchantPhone}-${total}`} alt="QR" style={{ width: 80, height: 80 }} />
-                  <span style={{ fontSize: '0.62rem', color: '#64748B', fontWeight: 700 }}>Pagar a {merchantPhone}</span>
-                </div>
-                <div>
-                  <label style={{ fontSize: '0.65rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Nº de Comprobante / Aprobación *</label>
-                  <input className="input-neu" placeholder="Ej: 987654" value={transferRef} onChange={e => { setTransferRef(e.target.value); setError(''); }} autoFocus required style={{ fontWeight: 700, padding: '7px 8px', fontSize: '0.82rem', width: '100%' }} />
+
+                <select
+                  className="input-neu"
+                  value={selectedCustomer?.id || ''}
+                  onChange={e => {
+                    const found = customerList.find(c => c.id === e.target.value)
+                    setSelectedCustomer(found || null)
+                    if (found) {
+                      const cleanTaxId = (found.tax_id || found.phone || '').replace(/[^a-zA-Z0-9]/g, '')
+                      setDianCustomer({
+                        idType: (found.metadata?.id_type || (cleanTaxId.length >= 9 ? '31' : '13')) as any,
+                        documentNumber: cleanTaxId,
+                        dv: found.metadata?.dv || (cleanTaxId.length >= 9 ? calculateNITVerificationDigit(cleanTaxId) : undefined),
+                        name: (found.tax_name || found.full_name || '').toUpperCase(),
+                        personType: found.metadata?.person_type || (cleanTaxId.length >= 9 ? '1' : '2'),
+                        regime: (found.tax_regime || '49') as any,
+                        email: found.email || '',
+                        phone: found.phone || '',
+                        address: found.tax_address || found.address || 'Dirección Comercial',
+                        city: found.city || 'Bogotá',
+                        state: found.state || 'Bogotá D.C.'
+                      })
+                      setDianInvoiceMode('nominal')
+                    } else {
+                      setDianCustomer(null)
+                    }
+                    setError('')
+                  }}
+                  style={{ fontSize: '0.8rem', width: '100%', padding: '6px 10px', borderRadius: 8, height: 36 }}
+                >
+                  <option value="">-- Cliente General / Mostrador --</option>
+                  {customerList.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.full_name} {c.tax_id ? `[NIT: ${c.tax_id}]` : c.phone ? `(${c.phone})` : ''} {c.credit_used > 0 ? `• Deuda: ${formatCurrency(c.credit_used)}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Compact Cart Items List for Cashier Confirmation */}
+              <div style={{ flex: 1, background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 'var(--radius-md)', padding: '10px 12px', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+                <span style={{ fontSize: '0.66rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.02em', marginBottom: 6, display: 'block' }}>
+                  Resumen de Compra ({cart.length} ítems)
+                </span>
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 4, paddingRight: 2 }}>
+                  {cart.map((item, idx) => (
+                    <div key={item.id || idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.76rem', padding: '3px 0', borderBottom: '1px dashed #F1F5F9' }}>
+                      <span style={{ color: '#1E293B', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '65%' }}>
+                        <strong style={{ color: 'var(--accent-blue)', marginRight: 4 }}>{item.quantity}x</strong> {item.name}
+                      </span>
+                      <span style={{ fontWeight: 800, color: '#0F172A', fontFamily: 'monospace' }}>
+                        {formatCurrency(item.lineTotal || (item.quantity * item.price))}
+                      </span>
+                    </div>
+                  ))}
                 </div>
               </div>
-            )}
 
-            {/* FIAO */}
-            {paymentMethod === 'fiao' && (
-              <div style={{ background: selectedCustomer ? 'var(--accent-blue-lt)' : 'var(--accent-coral-lt)', padding: '10px', borderRadius: 'var(--radius-md)', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                {selectedCustomer ? (
-                  <div>
-                    <div style={{ fontSize: '0.84rem', fontWeight: 800, color: 'var(--accent-blue)' }}>Fiar a: {selectedCustomer.full_name}</div>
-                    <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', marginTop: 4, lineHeight: 1.35 }}>
-                      Deuda actual: <strong>{formatCurrency(selectedCustomer.credit_used)}</strong><br />
-                      Cupo disponible: <strong>{formatCurrency(selectedCustomer.credit_limit - selectedCustomer.credit_used)}</strong> de {formatCurrency(selectedCustomer.credit_limit)}
+              {/* DIAN Electronic Invoicing Panel with Full Legal Support */}
+              <div style={{
+                background: emitElectronicInvoice ? '#F0FDF4' : '#FFFFFF',
+                border: emitElectronicInvoice ? '1.5px solid #86EFAC' : '1px solid #E2E8F0',
+                padding: '10px 12px',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 8,
+                flexShrink: 0,
+                boxShadow: '0 1px 3px rgba(0,0,0,0.03)'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ fontSize: '0.74rem', fontWeight: 800, color: emitElectronicInvoice ? '#15803D' : '#334155', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={emitElectronicInvoice}
+                      onChange={e => setEmitElectronicInvoice(e.target.checked)}
+                      style={{ accentColor: '#16A34A', width: 15, height: 15 }}
+                    />
+                    <span>Factura Electrónica DIAN</span>
+                  </label>
+                  {emitElectronicInvoice && (
+                    <span style={{ fontSize: '0.64rem', background: '#DCFCE7', color: '#15803D', padding: '2px 8px', borderRadius: 9999, fontWeight: 800 }}>
+                      UBL 2.1 ACTIVA
+                    </span>
+                  )}
+                </div>
+
+                {emitElectronicInvoice && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    {/* Invoice Mode Selector */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      <button
+                        type="button"
+                        onClick={() => setDianInvoiceMode('nominal')}
+                        style={{
+                          padding: '6px 8px',
+                          fontSize: '0.72rem',
+                          fontWeight: dianInvoiceMode === 'nominal' ? 800 : 600,
+                          background: dianInvoiceMode === 'nominal' ? '#00B19D' : '#FFFFFF',
+                          color: dianInvoiceMode === 'nominal' ? '#FFFFFF' : '#475569',
+                          border: dianInvoiceMode === 'nominal' ? '1.5px solid #008F7E' : '1px solid #CBD5E1',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          boxShadow: dianInvoiceMode === 'nominal' ? '0 2px 6px rgba(0, 177, 157, 0.3)' : 'none'
+                        }}
+                      >
+                        🏢 Nominal (NIT / C.C.)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDianInvoiceMode('final_consumer')}
+                        style={{
+                          padding: '6px 8px',
+                          fontSize: '0.72rem',
+                          fontWeight: dianInvoiceMode === 'final_consumer' ? 800 : 600,
+                          background: dianInvoiceMode === 'final_consumer' ? '#00B19D' : '#FFFFFF',
+                          color: dianInvoiceMode === 'final_consumer' ? '#FFFFFF' : '#475569',
+                          border: dianInvoiceMode === 'final_consumer' ? '1.5px solid #008F7E' : '1px solid #CBD5E1',
+                          borderRadius: 8,
+                          cursor: 'pointer',
+                          boxShadow: dianInvoiceMode === 'final_consumer' ? '0 2px 6px rgba(0, 177, 157, 0.3)' : 'none'
+                        }}
+                      >
+                        ⚡ Consumidor Final
+                      </button>
                     </div>
-                  </div>
-                ) : (
-                  <div style={{ fontSize: '0.78rem', color: 'var(--accent-coral)', fontWeight: 700 }}>
-                    Selecciona un cliente en la parte superior para habilitar el fiao.
+
+                    {/* Nominal Details Card */}
+                    {dianInvoiceMode === 'nominal' ? (
+                      <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 8, border: '1px solid #99F6E4', fontSize: '0.74rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {dianCustomer?.documentNumber ? (
+                          <>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontWeight: 800, color: '#0F172A', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '75%' }}>
+                                {dianCustomer.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setShowDianCustomerModal(true)}
+                                style={{ background: 'none', border: 'none', color: '#00B19D', fontWeight: 800, fontSize: '0.7rem', cursor: 'pointer', padding: 0 }}
+                              >
+                                Editar
+                              </button>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: '0.68rem', color: '#475569' }}>
+                              <span><strong>{dianCustomer.idType === '31' ? 'NIT' : 'C.C.'}:</strong> {dianCustomer.documentNumber}{dianCustomer.dv ? `-${dianCustomer.dv}` : ''}</span>
+                              <span style={{ color: dianCustomer.email ? '#00B19D' : '#DC2626' }}>
+                                <strong>Email:</strong> {dianCustomer.email || '⚠️ Sin correo'}
+                              </span>
+                            </div>
+                            {!dianCustomer.email && (
+                              <div style={{ color: '#DC2626', fontSize: '0.64rem', fontWeight: 700 }}>
+                                ⚠️ DIAN exige correo electrónico obligatorio para entrega del XML.
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div style={{ textAlign: 'center', padding: '6px 0' }}>
+                            <p style={{ color: '#DC2626', margin: '0 0 6px', fontSize: '0.72rem', fontWeight: 700 }}>
+                              ⚠️ Sin datos fiscales asignados
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setShowDianCustomerModal(true)}
+                              style={{ width: '100%', padding: '6px 10px', fontSize: '0.74rem', fontWeight: 800, background: '#00B19D', color: '#FFFFFF', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                            >
+                              + Ingresar Datos Fiscales del Cliente
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: '0.7rem', color: '#475569', lineHeight: 1.35 }}>
+                        ℹ️ Factura Electrónica POS para <strong>Consumidor Final</strong> (NIT 222222222222 - Cuantías menores sin nombre).
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            )}
+            </div>
 
-            {/* CARDS */}
-            {(paymentMethod === 'card_debit' || paymentMethod === 'card_credit') && (
-              <div style={{ background: 'var(--bg-deep)', padding: '12px', borderRadius: 'var(--radius-md)', flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                <CreditCard size={28} style={{ color: 'var(--accent-blue)' }} />
-                <div style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--text-primary)' }}>Datáfono / Terminal POS</div>
-                <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>Pasa la tarjeta en el datáfono por <strong>{formatCurrency(total)}</strong></div>
-                <button
-                  type="button"
-                  onClick={() => setShowTerminalModal(true)}
-                  className="btn-neu btn-primary"
-                  style={{ marginTop: 6, padding: '6px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                  <CreditCard size={14} />
-                  <span>Conectar Datáfono Smart (Point/Bold)</span>
-                </button>
-              </div>
-            )}
+            {/* ── RIGHT COLUMN: Calculation, Bill Selector & Final Action ── */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, justifyContent: 'space-between', background: '#FFFFFF', border: '1px solid #E2E8F0', borderRadius: 'var(--radius-md)', padding: 14, boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
+              
+              {paymentMethod === 'cash' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                      Efectivo Recibido
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        id="pos-cash-input"
+                        type="number"
+                        className="input-neu"
+                        placeholder="0"
+                        value={receivedAmount}
+                        onChange={e => {
+                          setReceivedAmount(e.target.value)
+                          setError('')
+                        }}
+                        autoFocus
+                        style={{ fontSize: '1.4rem', fontWeight: 900, color: '#0F172A', height: 48, paddingLeft: 14 }}
+                      />
+                    </div>
+                  </div>
 
-            {error && (
-              <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '5px 8px', borderRadius: 'var(--radius-sm)', fontSize: '0.72rem' }}>
-                {error}
-              </div>
-            )}
+                  {/* Quick Colombian Bill Buttons */}
+                  <div>
+                    <span style={{ fontSize: '0.66rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', display: 'block', marginBottom: 4 }}>
+                      Billetes Rápidos (COP)
+                    </span>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+                      {[2000, 5000, 10000, 20000, 50000, 100000].map(val => (
+                        <button
+                          key={val}
+                          type="button"
+                          className="btn-neu"
+                          onClick={() => {
+                            setReceivedAmount(String(val))
+                            playSound('tap')
+                          }}
+                          style={{ padding: '8px 4px', fontSize: '0.78rem', fontWeight: 800, color: '#0F172A' }}
+                        >
+                          ${val >= 1000 ? `${val / 1000}k` : val}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-neu"
+                      onClick={() => {
+                        setReceivedAmount(String(total))
+                        playSound('tap')
+                      }}
+                      style={{ width: '100%', marginTop: 6, padding: '7px', fontSize: '0.78rem', fontWeight: 800, color: '#00B19D', background: '#E6F7F5', border: '1px solid #99F6E4' }}
+                    >
+                      💵 Monto Exacto ({formatCurrency(total)})
+                    </button>
+                  </div>
+
+                  {/* Change Preview */}
+                  <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 10, padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <div style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>Cambio / Vueltas</div>
+                      <div style={{ fontSize: '1.35rem', fontWeight: 900, color: change > 0 ? '#16A34A' : '#0F172A' }}>
+                        {formatCurrency(change)}
+                      </div>
+                    </div>
+                    {change > 0 && (
+                      <span style={{ fontSize: '0.72rem', background: '#DCFCE7', color: '#15803D', padding: '3px 8px', borderRadius: 6, fontWeight: 800 }}>
+                        Entregar Vueltas
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'transfer' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ background: '#E6F7F5', border: '1px solid #99F6E4', padding: 12, borderRadius: 10 }}>
+                    <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#007D6E', margin: '0 0 4px' }}>Transferencia Nequi / Daviplata / Bancolombia</h4>
+                    <p style={{ fontSize: '0.75rem', color: '#3B82F6', margin: 0 }}>
+                      Verifica en la app de tu comercio el comprobante de pago por <strong>{formatCurrency(total)}</strong>.
+                    </p>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#475569', display: 'block', marginBottom: 4 }}>
+                      Número de Comprobante / Referencia (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      className="input-neu"
+                      placeholder="Ej: M1234567 o Nequi..."
+                      value={transferRef}
+                      onChange={e => setTransferRef(e.target.value)}
+                      style={{ fontSize: '0.86rem', height: 40 }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'card_debit' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ background: '#F8FAFC', border: '1px solid #E2E8F0', padding: 12, borderRadius: 10, textAlign: 'center' }}>
+                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#0F172A', marginBottom: 4 }}>Datáfono / Tarjeta Débito / Crédito</div>
+                    <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#00B19D', marginBottom: 8 }}>{formatCurrency(total)}</div>
+                    <button
+                      type="button"
+                      onClick={() => setShowTerminalModal(true)}
+                      className="btn-neu"
+                      style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 800, color: '#00B19D', background: '#E6F7F5', border: '1px solid #99F6E4', margin: '0 auto' }}
+                    >
+                      💳 Conectar Datáfono Smart
+                    </button>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#475569', display: 'block', marginBottom: 4 }}>
+                      Autorización / Últimos 4 dígitos (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      className="input-neu"
+                      placeholder="Ej: Aut: 981244"
+                      value={transferRef}
+                      onChange={e => setTransferRef(e.target.value)}
+                      style={{ fontSize: '0.86rem', height: 40 }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === 'fiao' && (
+                <div style={{ background: '#F0EDFC', border: '1px solid #C8B9F5', padding: 12, borderRadius: 10 }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#92400E', margin: '0 0 4px' }}>Venta a Crédito / Fiado</h4>
+                  <p style={{ fontSize: '0.75rem', color: '#B45309', margin: 0 }}>
+                    Se cargará un saldo pendiente de <strong>{formatCurrency(total)}</strong> a la cuenta de <strong>{selectedCustomer?.full_name || 'Cliente'}</strong>.
+                  </p>
+                </div>
+              )}
+
+              {error && (
+                <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', padding: '8px 12px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 700 }}>
+                  {error}
+                </div>
+              )}
+
+              {/* Confirm Button */}
+              <button
+                id="pos-confirm-payment-btn"
+                className="btn-neu btn-primary"
+                onClick={processSale}
+                disabled={
+                  loading ||
+                  !sessionInfo?.session_id ||
+                  (paymentMethod === 'cash' && (Number(receivedAmount) || 0) < total) ||
+                  (paymentMethod === 'fiao' && !selectedCustomer)
+                }
+                style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: 900, justifyContent: 'center', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', boxShadow: '0 4px 14px rgba(5,150,105,0.4)', marginTop: 'auto', borderRadius: 12 }}
+              >
+                {loading ? (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                    <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
+                    Procesando...
+                  </span>
+                ) : (
+                  <span>✅ Confirmar Cobro — {formatCurrency(total)} <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>[Enter / F12]</span></span>
+                )}
+              </button>
+            </div>
           </div>
-
-          {/* Confirm Button Always Pinned at Bottom */}
-          <div style={{ marginTop: 'auto', paddingTop: 4, flexShrink: 0 }}>
-            <button id="pos-confirm-payment-btn" className="btn-neu btn-success" onClick={processSale} disabled={loading || !sessionInfo?.session_id || (paymentMethod === 'cash' && Number(receivedAmount) < total && receivedAmount !== '') || (paymentMethod === 'fiao' && !selectedCustomer) || (paymentMethod === 'transfer' && !transferRef.trim())}
-              style={{ width: '100%', padding: '10px', fontSize: '0.9rem', fontWeight: 800, justifyContent: 'center' }}>
-              {loading ? 'Procesando...' : paymentMethod === 'fiao' ? `Confirmar Fiao (${formatCurrency(total)})` : paymentMethod === 'transfer' ? `Confirmar Nequi (${formatCurrency(total)})` : 'Confirmar pago'}
-            </button>
-          </div>
-
         </div>
       )}
 
@@ -2291,7 +3092,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                     <Package size={18} color="var(--accent-purple)" />
                     <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Caja Completa (x{selectedFractionProduct.units_per_box || 100} uds)</div>
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem' }}>1 Caja Completa (x${selectedFractionProduct.units_per_box || 100} uds)</div>
                       <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Empaque original cerrado</div>
                     </div>
                   </div>
@@ -2335,7 +3136,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {/* Unit Price input */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 }}>
                   Precio Unitario (COP)
@@ -2350,7 +3150,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 />
               </div>
 
-              {/* Quick Discount Presets */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 4 }}>
                   Descuento Rápido (%)
@@ -2378,7 +3177,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 </div>
               </div>
 
-              {/* Custom Discount input */}
               <div>
                 <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 3 }}>
                   Descuento Personalizado (%)
@@ -2395,7 +3193,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 />
               </div>
 
-              {/* Summary calculation preview */}
               {(() => {
                 const p = Math.max(0, parseFloat(editItemPrice) || 0)
                 const d = Math.min(100, Math.max(0, parseFloat(editItemDiscount) || 0))
@@ -2416,7 +3213,6 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 )
               })()}
 
-              {/* Buttons */}
               <div style={{ display: 'flex', gap: 8, marginTop: 6 }}>
                 <button
                   type="button"
@@ -2513,12 +3309,19 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
         onAddToCart={(p, qty) => addToCart(p as any, qty)}
       />
 
-      {/* Recharges & Utility Bills Modal F2 */}
-      <RechargesServicesModal
-        isOpen={showRechargesModal}
-        onClose={() => setShowRechargesModal(false)}
-        onCompleteTransaction={(tx) => {
-          alert(`¡Transacción exitosa!\nTipo: ${tx.type}\nServicio: ${tx.title}\nValor: ${formatCurrency(tx.amount)}\nComisión: ${formatCurrency(tx.commission)}`)
+      {/* Abonos a Fiao / Cartera Modal F3 */}
+      <PosAbonoModal
+        isOpen={showPosAbonoModal}
+        onClose={() => setShowPosAbonoModal(false)}
+        customers={customerList}
+        initialCustomer={selectedCustomer}
+        businessName={businessName}
+        onAbonoSuccess={({ customerId, newDebt }) => {
+          setCustomerList(prev => prev.map(c => c.id === customerId ? { ...c, credit_used: newDebt } : c))
+          if (selectedCustomer?.id === customerId) {
+            setSelectedCustomer(prev => prev ? ({ ...prev, credit_used: newDebt }) : null)
+          }
+          playSound('success')
         }}
       />
 
@@ -2543,6 +3346,133 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
           setPaymentMethod('card_debit')
         }}
       />
+
+      {/* DIAN Customer Fiscal Data Modal */}
+      <DianCustomerModal
+        isOpen={showDianCustomerModal}
+        onClose={() => setShowDianCustomerModal(false)}
+        initialData={dianCustomer}
+        existingCustomers={customerList}
+        tenantId={sessionInfo?.tenant_id}
+        onSave={(data, savedDbRecord) => {
+          setDianCustomer(data)
+          setDianInvoiceMode('nominal')
+          if (savedDbRecord) {
+            setCustomerList(prev => {
+              const idx = prev.findIndex(c => c.id === savedDbRecord.id)
+              if (idx >= 0) {
+                const copy = [...prev]
+                copy[idx] = savedDbRecord
+                return copy
+              }
+              return [...prev, savedDbRecord]
+            })
+            setSelectedCustomer(savedDbRecord)
+          }
+          setError('')
+          playSound('beep')
+        }}
+      />
+
+      {/* ── MODAL: ABRIR TURNO ── */}
+      {showOpenShiftModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <form onSubmit={handleOpenShift} className="neu-card animate-scale-in" style={{ width: '100%', maxWidth: 400, padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 10, background: 'rgba(0, 214, 188, 0.15)', color: '#00D6BC', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Unlock size={20} strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>
+                    Abrir Turno
+                  </h2>
+                  <p style={{ fontSize: '0.74rem', color: 'var(--text-secondary)', margin: '2px 0 0' }}>
+                    Fondo inicial en efectivo para la jornada
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowOpenShiftModal(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {openingShiftError && (
+              <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', fontSize: '0.76rem', color: '#DC2626' }}>
+                {openingShiftError}
+              </div>
+            )}
+
+            <div>
+              <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+                Fondo Inicial en Efectivo ($)
+              </label>
+              <input
+                className="input-neu"
+                type="number"
+                step="1000"
+                min="0"
+                placeholder="50000"
+                value={openingShiftAmount}
+                onChange={e => setOpeningShiftAmount(e.target.value)}
+                autoFocus
+                required
+                style={{ fontSize: '1.25rem', fontWeight: 900, textAlign: 'center', height: 46, width: '100%' }}
+              />
+            </div>
+
+            <div>
+              <div style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: 6 }}>
+                Sugerencias de fondo rápido:
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
+                {[0, 20000, 50000, 100000].map(amt => (
+                  <button
+                    key={amt}
+                    type="button"
+                    className="btn-neu"
+                    onClick={() => setOpeningShiftAmount(String(amt))}
+                    style={{
+                      padding: '6px 4px',
+                      fontSize: '0.74rem',
+                      fontWeight: 700,
+                      justifyContent: 'center',
+                      borderColor: String(amt) === openingShiftAmount ? '#00D6BC' : undefined,
+                      color: String(amt) === openingShiftAmount ? '#00D6BC' : undefined
+                    }}
+                  >
+                    {amt === 0 ? '$0' : formatCurrency(amt)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+              <button
+                type="button"
+                className="btn-neu btn-ghost"
+                onClick={() => setShowOpenShiftModal(false)}
+                style={{ flex: 1, padding: '10px', fontSize: '0.8rem' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="btn-neu btn-primary"
+                disabled={openingShiftLoading}
+                style={{ flex: 1.5, padding: '10px', fontSize: '0.84rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+              >
+                <Unlock size={15} strokeWidth={2.5} />
+                <span>{openingShiftLoading ? 'Abriendo turno...' : 'Abrir Turno'}</span>
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }
