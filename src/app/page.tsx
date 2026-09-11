@@ -710,7 +710,7 @@ const ONBOARDING_PACKAGES = [
     name: 'Starter',
     subtitle: 'Hasta 80 productos',
     price: 49900,
-    ideal: 'Tiendas de barrio · Panaderías básicas',
+    ideal: 'Negocios iniciando · Catálogo compacto',
     includes: [
       'Conteo y registro de hasta 80 referencias',
       'Creación de categorías y precios de venta',
@@ -724,7 +724,7 @@ const ONBOARDING_PACKAGES = [
     name: 'Estándar',
     subtitle: 'Hasta 200 productos',
     price: 99900,
-    ideal: 'Tiendas medianas · Panaderías completas · Minimercados',
+    ideal: 'Comercios en crecimiento · Catálogo mediano',
     includes: [
       'Conteo y levantamiento de hasta 200 referencias',
       'Clasificación por categorías y unidades de medida',
@@ -739,7 +739,7 @@ const ONBOARDING_PACKAGES = [
     name: 'Profesional',
     subtitle: 'Hasta 500 productos',
     price: 199900,
-    ideal: 'Pequeñas empresas · Distribuidoras · Negocios medianos',
+    ideal: 'Empresas consolidadas · Catálogo extenso',
     includes: [
       'Digitalización masiva de hasta 500 referencias',
       'Estructuración de catálogo desde físico o listas de proveedores',
