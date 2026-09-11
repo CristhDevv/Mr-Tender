@@ -1,0 +1,1108 @@
+'use client'
+import { useState, useEffect } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { createClient } from '@/lib/supabase/client'
+import { formatDate } from '@/lib/utils'
+import { ALL_SYSTEM_MODULES, getModuleIcon, getDefaultModulesForBusinessType, resolveModuleToggle, getModuleById } from '@/lib/constants/modules'
+import {
+  ArrowLeft,
+  Store,
+  CheckCircle2,
+  AlertCircle,
+  Layers,
+  Check,
+  RefreshCw,
+  Trash2,
+  Users,
+  ShieldCheck,
+  AlertTriangle,
+  ArrowUpRight,
+  Sparkles,
+  SlidersHorizontal,
+  Info,
+  Receipt
+} from 'lucide-react'
+
+interface Tenant {
+  id: string
+  name: string
+  slug: string
+  owner_name: string
+  owner_email: string
+  phone: string
+  business_type: string
+  country: string
+  status: string
+  created_at: string
+}
+
+interface TenantUser {
+  id: string
+  email: string
+  full_name: string
+  role: string
+  created_at: string
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  active: 'Activo',
+  suspended: 'Suspendido',
+  trial: 'En Prueba',
+  cancelled: 'Cancelado',
+}
+
+export default function TenantDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const tenantId = params.id as string
+  const supabase = createClient()
+
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [tenant, setTenant] = useState<Tenant | null>(null)
+  const [tenantUsers, setTenantUsers] = useState<TenantUser[]>([])
+  const [activeTab, setActiveTab] = useState<'info' | 'modules' | 'users' | 'danger'>('info')
+  const [dianForm, setDianForm] = useState({
+    environment: '2',
+    softwareId: '',
+    softwarePin: '12345',
+    technicalKey: 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
+    resolution: '18760000001',
+    prefix: 'SETP',
+    from: '1',
+    to: '5000'
+  })
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Tenant Edit Form
+  const [form, setForm] = useState({
+    name: '',
+    slug: '',
+    owner_name: '',
+    owner_email: '',
+    phone: '',
+    business_type: '',
+    country: 'Colombia',
+    status: 'active'
+  })
+
+  // Password reset
+  const [newPassword, setNewPassword] = useState('')
+
+  // Modules State & Filter
+  const [modules, setModules] = useState<Record<string, boolean>>({})
+  const [moduleFilter, setModuleFilter] = useState<'all' | 'base' | 'vertical'>('all')
+  const [dependencyNotice, setDependencyNotice] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (tenantId) {
+      loadTenantData()
+    }
+  }, [tenantId])
+
+  async function loadTenantData() {
+    try {
+      setLoading(true)
+      setMessage(null)
+
+      const [tenantRes, settingsRes, usersRes] = await Promise.all([
+        supabase.from('platform_tenants').select('*').eq('id', tenantId).single(),
+        supabase.from('tenant_settings').select('*').eq('tenant_id', tenantId).limit(1),
+        supabase.from('profiles').select('id, email, full_name, role, created_at').eq('tenant_id', tenantId)
+      ])
+
+      if (tenantRes.error) throw tenantRes.error
+      const t = tenantRes.data
+      setTenant(t)
+      setForm({
+        name: t.name || '',
+        slug: t.slug || '',
+        owner_name: t.owner_name || '',
+        owner_email: t.owner_email || '',
+        phone: t.phone || '',
+        business_type: t.business_type || 'retail',
+        country: t.country || 'Colombia',
+        status: t.status || 'active'
+      })
+
+      // Load Modules
+      const defaultMods: Record<string, boolean> = {}
+      ALL_SYSTEM_MODULES.forEach(m => { defaultMods[m.id] = m.defaultEnabled })
+
+      if (settingsRes.data?.[0]) {
+        const row = settingsRes.data[0]
+        if (row.enabled_modules) {
+          setModules({ ...defaultMods, ...row.enabled_modules })
+        } else {
+          setModules(defaultMods)
+        }
+        setDianForm({
+          environment: row.fiscal_config?.environment || '2',
+          softwareId: row.dian_software_id || '',
+          softwarePin: row.fiscal_config?.software_pin || '12345',
+          technicalKey: row.fiscal_config?.technical_key || 'fc8eac422eba16e22ffd8c6f94b3f40a6e381160407',
+          resolution: row.dian_resolution || '18760000001',
+          prefix: row.dian_prefix || 'SETP',
+          from: row.dian_from || '1',
+          to: row.dian_to || '5000'
+        })
+      } else {
+        setModules(defaultMods)
+      }
+
+      setTenantUsers(usersRes.data || [])
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error cargando negocio' })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Update General Info
+  async function handleSaveGeneralInfo(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.rpc('superadmin_update_tenant', {
+        p_tenant_id: tenantId,
+        p_name: form.name.trim(),
+        p_owner_name: form.owner_name.trim(),
+        p_owner_email: form.owner_email.trim().toLowerCase(),
+        p_phone: form.phone.trim(),
+        p_business_type: form.business_type,
+        p_country: form.country
+      })
+
+      if (error) throw error
+
+      if (tenant && tenant.status !== form.status) {
+        await supabase.rpc('superadmin_update_tenant_status', {
+          p_tenant_id: tenantId,
+          p_status: form.status
+        })
+      }
+
+      setMessage({ type: 'success', text: 'Información del negocio guardada exitosamente.' })
+      await loadTenantData()
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error al guardar cambios' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Save DIAN Technical Configuration
+  async function handleSaveDian(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.from('tenant_settings').upsert({
+        tenant_id: tenantId,
+        dian_software_id: dianForm.softwareId,
+        dian_resolution: dianForm.resolution,
+        dian_prefix: dianForm.prefix,
+        dian_from: dianForm.from,
+        dian_to: dianForm.to,
+        fiscal_config: {
+          software_pin: dianForm.softwarePin,
+          technical_key: dianForm.technicalKey,
+          environment: dianForm.environment
+        }
+      }, { onConflict: 'tenant_id' })
+
+      if (error) throw error
+      setMessage({ type: 'success', text: 'Configuración técnica DIAN guardada exitosamente.' })
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error al guardar configuración DIAN' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Reset Admin Password
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newPassword.trim()) return
+    setSaving(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.rpc('superadmin_create_user', {
+        p_email: form.owner_email.trim().toLowerCase(),
+        p_password: newPassword.trim(),
+        p_full_name: form.owner_name.trim(),
+        p_role: 'admin',
+        p_tenant_id: tenantId
+      })
+
+      if (error) throw error
+      setMessage({ type: 'success', text: `Contraseña de "${form.owner_email}" restablecida exitosamente.` })
+      setNewPassword('')
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error al restablecer contraseña' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Toggle and Save Single Module with Dependency Auto-Resolution
+  async function handleToggleModule(modId: string) {
+    const currentState = !!modules[modId]
+    const targetState = !currentState
+    const result = resolveModuleToggle(modId, targetState, modules)
+
+    if (!targetState && result.blockedBy.length > 0) {
+      const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+      setDependencyNotice(`️ No puedes desactivar "${getModuleById(modId)?.name}" porque es requerido por: ${blockedNames}. Desactiva primero esos módulos.`)
+      setTimeout(() => setDependencyNotice(null), 6000)
+      return
+    }
+
+    if (targetState && result.autoEnabled.length > 0) {
+      const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
+      setDependencyNotice(`️ Prerrequisitos activados automáticamente: ${autoNames}`)
+      setTimeout(() => setDependencyNotice(null), 4000)
+    } else {
+      setDependencyNotice(null)
+    }
+
+    setModules(result.updatedModules)
+
+    try {
+      await supabase.from('tenant_settings').upsert({
+        tenant_id: tenantId,
+        enabled_modules: result.updatedModules
+      }, { onConflict: 'tenant_id' })
+    } catch (err: any) {
+      console.error('Error auto-saving module:', err)
+    }
+  }
+
+  // Quick Presets
+  async function handleApplyPreset(preset: 'base_only' | 'industry' | 'all' | 'clean') {
+    let next: Record<string, boolean> = {}
+    if (preset === 'base_only') {
+      ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = m.group === 'base' })
+      setDependencyNotice(' Se activaron los 13 módulos base indispensables y se apagaron los verticales.')
+    } else if (preset === 'industry') {
+      next = getDefaultModulesForBusinessType(tenant?.business_type || 'retail')
+      setDependencyNotice(` Se aplicó la configuración óptima para el giro "${tenant?.business_type}".`)
+    } else if (preset === 'all') {
+      ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = true })
+      setDependencyNotice(' Se activaron todos los 25 módulos del sistema.')
+    } else if (preset === 'clean') {
+      ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = false })
+      setDependencyNotice(' Se desactivaron todos los módulos.')
+    }
+
+    setModules(next)
+    setTimeout(() => setDependencyNotice(null), 5000)
+
+    try {
+      await supabase.from('tenant_settings').upsert({
+        tenant_id: tenantId,
+        enabled_modules: next
+      }, { onConflict: 'tenant_id' })
+    } catch (err: any) {
+      console.error('Error auto-saving preset:', err)
+    }
+  }
+
+  // Save All Modules
+  async function handleSaveAllModules() {
+    setSaving(true)
+    setMessage(null)
+    try {
+      const { error } = await supabase.rpc('superadmin_update_tenant_modules', {
+        p_tenant_id: tenantId,
+        p_modules: modules
+      })
+
+      if (error) throw error
+      setMessage({ type: 'success', text: 'Módulos del sistema actualizados y sincronizados.' })
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Error al guardar módulos' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Delete Tenant
+  async function handleDeleteTenant() {
+    if (!tenant) return
+    const confirmation = prompt(`Escribe el nombre del negocio "${tenant.name}" para confirmar la eliminación permanente:`)
+    if (confirmation !== tenant.name) return alert('Confirmación incorrecta. No se eliminó el negocio.')
+
+    setSaving(true)
+    try {
+      const { error } = await supabase.rpc('superadmin_delete_tenant', { p_tenant_id: tenantId })
+      if (error) throw error
+      router.push('/superadmin/tenants')
+    } catch (err: any) {
+      alert('Error eliminando negocio: ' + err.message)
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="neu-card" style={{ padding: 60, textAlign: 'center', color: 'var(--text-muted)' }}>
+        <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 12px' }} />
+        <div>Cargando panel de gestión del negocio...</div>
+      </div>
+    )
+  }
+
+  if (!tenant) {
+    return (
+      <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
+        <h2 style={{ fontWeight: 800 }}>Negocio no encontrado</h2>
+        <Link href="/superadmin/tenants" className="btn-neu btn-primary" style={{ marginTop: 12 }}>
+          Volver a Negocios
+        </Link>
+      </div>
+    )
+  }
+
+  const baseModules = ALL_SYSTEM_MODULES.filter(m => m.group === 'base')
+  const verticalModules = ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical')
+  const baseActiveCount = baseModules.filter(m => modules[m.id]).length
+  const verticalActiveCount = verticalModules.filter(m => modules[m.id]).length
+  const activeModulesCount = Object.values(modules).filter(Boolean).length
+
+  function renderModuleCard(m: any) {
+    const isEnabled = !!modules[m.id]
+    const IconComponent = getModuleIcon(m.id)
+    const requiresNames = m.requires?.map((reqId: string) => getModuleById(reqId)?.name.split('(')[0].trim() || reqId) || []
+
+    return (
+      <div
+        key={m.id}
+        onClick={() => handleToggleModule(m.id)}
+        style={{
+          background: isEnabled ? 'var(--bg)' : 'var(--bg-deep)',
+          border: isEnabled ? '1.5px solid var(--text-primary)' : '1px solid var(--border-color)',
+          borderRadius: 10,
+          padding: '12px 14px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 12,
+          transition: 'all 0.15s ease'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10, flex: 1, minWidth: 0 }}>
+          <div style={{
+            width: 32,
+            height: 32,
+            borderRadius: 7,
+            background: isEnabled ? 'var(--bg-deep)' : 'var(--bg)',
+            border: '1px solid var(--border-color)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: 'var(--text-primary)',
+            marginTop: 1
+          }}>
+            <IconComponent size={16} strokeWidth={2} />
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+              <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>
+                {m.name}
+              </span>
+              <span style={{
+                fontSize: '0.62rem',
+                padding: '1px 6px',
+                borderRadius: 4,
+                fontWeight: 700,
+                background: m.group === 'base' ? 'var(--bg-deep)' : 'var(--accent-purple-lt, rgba(168,85,247,0.12))',
+                color: m.group === 'base' ? 'var(--text-secondary)' : 'var(--accent-purple, #9333ea)',
+                border: '1px solid var(--border-color)'
+              }}>
+                {m.group === 'base' ? 'BASE' : m.categoryName}
+              </span>
+            </div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', lineHeight: 1.25, marginTop: 2 }}>
+              {m.description}
+            </div>
+            {requiresNames.length > 0 && (
+              <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span> Requiere:</span>
+                <span style={{ fontWeight: 600 }}>{requiresNames.join(', ')}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{
+          width: 20,
+          height: 20,
+          borderRadius: 4,
+          background: isEnabled ? 'var(--text-primary)' : 'var(--bg)',
+          border: isEnabled ? 'none' : '1.5px solid var(--border-color)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--bg)',
+          flexShrink: 0
+        }}>
+          {isEnabled && <Check size={13} strokeWidth={3} />}
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1100, margin: '0 auto' }}>
+      
+      {/* Top Breadcrumb */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <Link
+          href="/superadmin/tenants"
+          className="btn-neu btn-ghost"
+          style={{ padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <ArrowLeft size={16} strokeWidth={2} />
+          <span>Volver al Listado</span>
+        </Link>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Subdominio:</span>
+          <a
+            href={`https://${tenant.slug}.mrtender.com`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 600, fontFamily: 'monospace', display: 'flex', alignItems: 'center', gap: 4 }}
+          >
+            <span>{tenant.slug}.mrtender.com</span>
+            <ArrowUpRight size={12} strokeWidth={2} />
+          </a>
+        </div>
+      </div>
+
+      {/* Tenant Header Card - Minimalist */}
+      <div className="neu-card" style={{ padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <Store size={22} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+            <div>
+              <h1 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--text-primary)', margin: 0 }}>
+                {tenant.name}
+              </h1>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                Giro: <strong>{tenant.business_type}</strong> • Creado el {formatDate(tenant.created_at)} • {tenant.country}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{
+            padding: '4px 10px',
+            borderRadius: 6,
+            fontSize: '0.75rem',
+            fontWeight: 700,
+            background: 'var(--bg-deep)',
+            color: 'var(--text-primary)',
+            border: '1px solid var(--border-color)'
+          }}>
+            {STATUS_LABEL[tenant.status] || tenant.status}
+          </span>
+        </div>
+      </div>
+
+      {/* Alert message */}
+      {message && (
+        <div className="neu-card animate-scale-in" style={{
+          padding: 12,
+          border: '1px solid var(--border-color)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}>
+          {message.type === 'success' ? <CheckCircle2 size={16} strokeWidth={2} /> : <AlertCircle size={16} strokeWidth={2} />}
+          <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+            {message.text}
+          </span>
+        </div>
+      )}
+
+      {/* Dedicated Navigation Tabs - Monochrome */}
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', borderBottom: '1px solid var(--border-color)', paddingBottom: 8 }}>
+        <button
+          onClick={() => setActiveTab('info')}
+          className="btn-neu"
+          style={{
+            padding: '8px 16px',
+            fontSize: '0.82rem',
+            fontWeight: activeTab === 'info' ? 700 : 500,
+            background: activeTab === 'info' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'info' ? 'var(--bg)' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <Store size={15} strokeWidth={2} />
+          <span>Configuración & Datos</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('modules')}
+          className="btn-neu"
+          style={{
+            padding: '8px 16px',
+            fontSize: '0.82rem',
+            fontWeight: activeTab === 'modules' ? 700 : 500,
+            background: activeTab === 'modules' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'modules' ? 'var(--bg)' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <Layers size={15} strokeWidth={2} />
+          <span>Módulos del Sistema ({activeModulesCount}/{ALL_SYSTEM_MODULES.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('users')}
+          className="btn-neu"
+          style={{
+            padding: '8px 16px',
+            fontSize: '0.82rem',
+            fontWeight: activeTab === 'users' ? 700 : 500,
+            background: activeTab === 'users' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'users' ? 'var(--bg)' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <Users size={15} strokeWidth={2} />
+          <span>Personal & Usuarios ({tenantUsers.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('danger')}
+          className="btn-neu"
+          style={{
+            padding: '8px 16px',
+            fontSize: '0.82rem',
+            fontWeight: activeTab === 'danger' ? 700 : 500,
+            background: activeTab === 'danger' ? 'var(--text-primary)' : 'var(--bg)',
+            color: activeTab === 'danger' ? 'var(--bg)' : 'var(--text-secondary)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <ShieldCheck size={15} strokeWidth={2} />
+          <span>Zona de Seguridad</span>
+        </button>
+      </div>
+
+      {/* ── TAB 1: CONFIGURACIÓN GENERAL & DATOS ── */}
+      {activeTab === 'info' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 16 }}>
+          
+          {/* Edit Tenant Form */}
+          <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Editar Datos del Comercio</h3>
+            
+            <form onSubmit={handleSaveGeneralInfo} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                  Nombre Comercial
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={form.name}
+                  onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+                  required
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                  Propietario / Representante
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  value={form.owner_name}
+                  onChange={e => setForm(f => ({ ...f, owner_name: e.target.value }))}
+                  style={{ width: '100%', fontSize: '0.85rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                    Correo Acceso
+                  </label>
+                  <input
+                    type="email"
+                    className="input-neu"
+                    value={form.owner_email}
+                    onChange={e => setForm(f => ({ ...f, owner_email: e.target.value }))}
+                    required
+                    style={{ width: '100%', fontSize: '0.8rem' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                    WhatsApp
+                  </label>
+                  <input
+                    type="text"
+                    className="input-neu"
+                    value={form.phone}
+                    onChange={e => setForm(f => ({ ...f, phone: e.target.value }))}
+                    style={{ width: '100%', fontSize: '0.8rem' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                    Estado
+                  </label>
+                  <select
+                    className="input-neu"
+                    value={form.status}
+                    onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+                    style={{ width: '100%', fontSize: '0.8rem' }}
+                  >
+                    <option value="active">Activo</option>
+                    <option value="trial">En Prueba</option>
+                    <option value="suspended">Suspendido</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                    País
+                  </label>
+                  <input
+                    type="text"
+                    className="input-neu"
+                    value={form.country}
+                    onChange={e => setForm(f => ({ ...f, country: e.target.value }))}
+                    style={{ width: '100%', fontSize: '0.8rem' }}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving}
+                className="btn-neu btn-primary"
+                style={{ padding: '9px 18px', fontSize: '0.82rem', marginTop: 6 }}
+              >
+                {saving ? 'Guardando...' : 'Guardar Cambios del Negocio'}
+              </button>
+            </form>
+          </div>
+
+          {/* Reset Password Card */}
+          <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>Restablecer Contraseña de Administrador</h3>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>
+              Genera o asigna una nueva contraseña para el correo principal ({form.owner_email}).
+            </p>
+
+            <form onSubmit={handleResetPassword} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div>
+                <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+                  Nueva Contraseña
+                </label>
+                <input
+                  type="text"
+                  className="input-neu"
+                  placeholder="Escribe la nueva contraseña..."
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  required
+                  style={{ width: '100%', fontSize: '0.85rem', fontFamily: 'monospace' }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={saving || !newPassword}
+                className="btn-neu"
+                style={{ padding: '9px 18px', fontSize: '0.82rem', fontWeight: 700 }}
+              >
+                Actualizar Contraseña
+              </button>
+            </form>
+          </div>
+
+        </div>
+      )}
+
+      {/* ── TAB 2: GESTIÓN MODULAR ESTRATÉGICA (BASE vs VERTICALES) ── */}
+      {activeTab === 'modules' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          
+          {/* Top Control Header Card */}
+          <div className="neu-card" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                  Control Modular del Sistema
+                </h3>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <span>Activos en este negocio: <strong>{activeModulesCount}/{ALL_SYSTEM_MODULES.length}</strong></span>
+                  <span>•</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}> Base: {baseActiveCount}/13</span>
+                  <span>•</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}> Verticales: {verticalActiveCount}/12</span>
+                </div>
+              </div>
+
+              {/* Presets and Save Buttons */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('base_only')}
+                  className="btn-neu btn-ghost"
+                  title="Activa los 13 módulos base y desactiva todas las verticales"
+                  style={{ padding: '7px 12px', fontSize: '0.75rem', fontWeight: 600 }}
+                >
+                   Solo Base (13)
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('industry')}
+                  className="btn-neu btn-ghost"
+                  title={`Aplica los módulos base + la vertical recomendada para ${tenant.business_type}`}
+                  style={{ padding: '7px 12px', fontSize: '0.75rem', fontWeight: 600 }}
+                >
+                   Según Giro ({tenant.business_type})
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleApplyPreset('all')}
+                  className="btn-neu btn-ghost"
+                  style={{ padding: '7px 12px', fontSize: '0.75rem' }}
+                >
+                  Activar Todos (25)
+                </button>
+
+                <button
+                  onClick={handleSaveAllModules}
+                  disabled={saving}
+                  className="btn-neu btn-primary"
+                  style={{ padding: '8px 18px', fontSize: '0.8rem', fontWeight: 700 }}
+                >
+                  {saving ? 'Guardando...' : 'Sincronizar Módulos'}
+                </button>
+              </div>
+            </div>
+
+            {/* Segmented Filter Control */}
+            <div style={{ display: 'flex', gap: 6, borderTop: '1px solid var(--border-color)', paddingTop: 12, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setModuleFilter('all')}
+                className="btn-neu"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: moduleFilter === 'all' ? 700 : 500,
+                  background: moduleFilter === 'all' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'all' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                Todos los Módulos ({activeModulesCount}/25)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModuleFilter('base')}
+                className="btn-neu"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: moduleFilter === 'base' ? 700 : 500,
+                  background: moduleFilter === 'base' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'base' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                 Módulos Base / Indispensables ({baseActiveCount}/13)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setModuleFilter('vertical')}
+                className="btn-neu"
+                style={{
+                  padding: '6px 14px',
+                  fontSize: '0.78rem',
+                  fontWeight: moduleFilter === 'vertical' ? 700 : 500,
+                  background: moduleFilter === 'vertical' ? 'var(--text-primary)' : 'var(--bg-deep)',
+                  color: moduleFilter === 'vertical' ? 'var(--bg)' : 'var(--text-secondary)'
+                }}
+              >
+                 Módulos Verticales / Por Industria ({verticalActiveCount}/12)
+              </button>
+            </div>
+
+            {/* Dependency Notice Toast */}
+            {dependencyNotice && (
+              <div style={{
+                background: dependencyNotice.startsWith('️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
+                border: '1px solid var(--border-color)',
+                padding: '10px 14px',
+                borderRadius: 8,
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                color: 'var(--text-primary)',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <Info size={16} strokeWidth={2} style={{ flexShrink: 0 }} />
+                <span>{dependencyNotice}</span>
+              </div>
+            )}
+          </div>
+
+          {/*  SECCIÓN 1: MÓDULOS BASE / INDISPENSABLES */}
+          {(moduleFilter === 'all' || moduleFilter === 'base') && (
+            <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1.1rem' }}></span>
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>
+                    Módulos Base & Operativos ({baseActiveCount}/13 Activos)
+                  </h3>
+                  <span style={{ fontSize: '0.68rem', background: 'var(--bg-deep)', border: '1px solid var(--border-color)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                    INDISPENSABLES
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Núcleo funcional transversal para cualquier comercio (Ventas POS, Caja, Inventario, Compras, Facturación DIAN, Clientes, Personal y Finanzas).
+                </p>
+              </div>
+
+              {/* Functional Subgroups for Base Modules */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[
+                  {
+                    title: ' Ventas & Mostrador',
+                    desc: 'Operación comercial rápida, caja de efectivo, CRM y tienda online',
+                    ids: ['pos', 'cash', 'crm', 'ecommerce']
+                  },
+                  {
+                    title: ' Inventario & Logística',
+                    desc: 'Existencias generales, bodegas y control de Kardex',
+                    ids: ['inventory']
+                  },
+                  {
+                    title: ' Abastecimiento & Compras',
+                    desc: 'Facturas de compra a proveedores y directorio de contactos',
+                    ids: ['purchases', 'suppliers']
+                  },
+                  {
+                    title: ' Clientes & Cartera',
+                    desc: 'Directorio de clientes, libreta de fiados y cuentas por cobrar',
+                    ids: ['customers']
+                  },
+                  {
+                    title: ' Recursos Humanos & Nómina',
+                    desc: 'Personal, turnos, asistencia y emisión de nómina electrónica DIAN',
+                    ids: ['employees', 'payroll']
+                  },
+                  {
+                    title: ' Finanzas & Contabilidad',
+                    desc: 'Flujo de caja bancario, asientos contables PUC y reportes P&L',
+                    ids: ['reports', 'treasury', 'accounting']
+                  }
+                ].map(group => {
+                  const groupMods = group.ids.map(id => getModuleById(id)).filter(Boolean) as any[]
+                  return (
+                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>{group.title}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>— {group.desc}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                        {groupMods.map(m => renderModuleCard(m))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+          {/*  SECCIÓN 2: MÓDULOS VERTICALES / ESPECIALIZADOS POR INDUSTRIA */}
+          {(moduleFilter === 'all' || moduleFilter === 'vertical') && (
+            <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: '1.1rem' }}></span>
+                  <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>
+                    Módulos Verticales & Especializados ({verticalActiveCount}/12 Activos)
+                  </h3>
+                  <span style={{ fontSize: '0.68rem', background: 'var(--accent-purple-lt, rgba(168,85,247,0.12))', color: 'var(--accent-purple, #9333ea)', border: '1px solid var(--border-color)', padding: '2px 8px', borderRadius: 12, fontWeight: 700 }}>
+                    POR NICHO / GIRO
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Pantallas y herramientas específicas de cada industria. <strong>Activa únicamente el vertical que coincida con el giro de este negocio</strong> para mantener su menú optimizado.
+                </p>
+              </div>
+
+              {/* Functional Subgroups for Vertical Modules */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                {[
+                  {
+                    title: '️ Gastronomía, Panadería & Cafeterías',
+                    desc: 'Mesas, comandera KDS, recetas gastronómicas y horneadas de pan',
+                    ids: ['restaurant', 'bakery']
+                  },
+                  {
+                    title: ' Salud, Droguerías & Ópticas',
+                    desc: 'Medicamentos INVIMA, semáforo FEFO, fórmulas OD/OI y temperatura',
+                    ids: ['pharmacy', 'optometry']
+                  },
+                  {
+                    title: ' Moda, Boutiques & Calzado',
+                    desc: 'Matriz talla/color, probadores de ropa y lookbooks',
+                    ids: ['apparel']
+                  },
+                  {
+                    title: '️ Deportes, Gimnasios & Belleza',
+                    desc: 'Check-in QR, membresías fitness, agenda de citas y comisiones',
+                    ids: ['gym', 'beauty_salon']
+                  },
+                  {
+                    title: ' Servicios Técnicos, Talleres & Lavanderías',
+                    desc: 'Órdenes por placa, autolavado, percheros y alquiler de herramientas',
+                    ids: ['automotive', 'laundry', 'hardware']
+                  },
+                  {
+                    title: ' Mascotas & Comercio Especializado',
+                    desc: 'Consultas médicas veterinarias, carnet vacunas, botellas y copeo',
+                    ids: ['veterinary', 'liquor_tobacco']
+                  }
+                ].map(group => {
+                  const groupMods = group.ids.map(id => getModuleById(id)).filter(Boolean) as any[]
+                  return (
+                    <div key={group.title} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ fontWeight: 700, fontSize: '0.84rem', color: 'var(--text-primary)' }}>{group.title}</span>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginLeft: 8 }}>— {group.desc}</span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 }}>
+                        {groupMods.map(m => renderModuleCard(m))}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+
+        </div>
+      )}
+
+      {/* ── TAB 3: PERSONAL & USUARIOS DEL NEGOCIO ── */}
+      {activeTab === 'users' && (
+        <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <h3 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+            Usuarios y Colaboradores Registrados ({tenantUsers.length})
+          </h3>
+
+          {tenantUsers.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: 24, fontSize: '0.82rem' }}>
+              No hay usuarios adicionales registrados en este comercio.
+            </div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', fontSize: '0.8rem', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ color: 'var(--text-muted)', borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                    <th style={{ padding: 8 }}>Usuario</th>
+                    <th style={{ padding: 8 }}>Email</th>
+                    <th style={{ padding: 8 }}>Rol</th>
+                    <th style={{ padding: 8 }}>Fecha Registro</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tenantUsers.map(u => (
+                    <tr key={u.id} style={{ borderBottom: '1px dashed var(--border-color)' }}>
+                      <td style={{ padding: 8, fontWeight: 600 }}>{u.full_name || 'Sin nombre'}</td>
+                      <td style={{ padding: 8 }}>{u.email}</td>
+                      <td style={{ padding: 8 }}>
+                        <span style={{ padding: '2px 6px', borderRadius: 4, background: 'var(--bg-deep)', fontWeight: 600, color: 'var(--text-primary)' }}>
+                          {u.role}
+                        </span>
+                      </td>
+                      <td style={{ padding: 8, color: 'var(--text-muted)' }}>{formatDate(u.created_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── TAB 4: ZONA DE SEGURIDAD ── */}
+      {activeTab === 'danger' && (
+        <div className="neu-card" style={{ padding: 24, border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <ShieldCheck size={22} strokeWidth={2} style={{ color: 'var(--text-primary)' }} />
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)' }}>
+                Zona de Seguridad / Baja de Comercio
+              </h3>
+              <p style={{ margin: '2px 0 0', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                Acciones permanentes que afectan la disponibilidad de datos de este inquilino.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ background: 'var(--bg-deep)', padding: 16, borderRadius: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                Eliminar Inquilino Permanentemente
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                Borra la base de datos, ventas, inventario, productos y usuarios asociados a este negocio.
+              </div>
+            </div>
+
+            <button
+              onClick={handleDeleteTenant}
+              disabled={saving}
+              className="btn-neu"
+              style={{ padding: '8px 18px', fontSize: '0.82rem', fontWeight: 700 }}
+            >
+              Eliminar Comercio
+            </button>
+          </div>
+        </div>
+      )}
+
+    </div>
+  )
+}
