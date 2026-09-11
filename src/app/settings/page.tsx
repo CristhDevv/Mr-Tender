@@ -203,9 +203,26 @@ export default function SettingsPage() {
       description: 'Ajustes del comprobante de venta, mensajes impresos y régimen.',
       Icon: Receipt,
       fields: [
-        { key: 'dianRegimen', label: 'Régimen Tributario', type: 'select', options: ['No Responsable de IVA', 'Responsable de IVA (Común)', 'Régimen Simple de Tributación (RST)'] },
+        { 
+          key: 'dianRegimen', 
+          label: 'Régimen Tributario', 
+          type: 'select', 
+          options: [
+            { value: 'No Responsable de IVA', label: 'No Responsable de IVA' },
+            { value: 'Responsable de IVA (Común)', label: 'Responsable de IVA (Común)' },
+            { value: 'Régimen Simple de Tributación (RST)', label: 'Régimen Simple de Tributación (RST)' }
+          ] 
+        },
         { key: 'invoiceSeries', label: 'Prefijo de Venta (en el ticket)', type: 'text', placeholder: 'POS' },
-        { key: 'ticketCopies', label: 'Copias a imprimir por venta', type: 'select', options: ['1 copia', '2 copias'] },
+        { 
+          key: 'ticketCopies', 
+          label: 'Copias a imprimir por venta', 
+          type: 'select', 
+          options: [
+            { value: '1', label: '1 copia' },
+            { value: '2', label: '2 copias' }
+          ] 
+        },
         { key: 'ticketFooterMessage', label: 'Mensaje al final del ticket', type: 'textarea', placeholder: '¡Gracias por su compra! Vuelva pronto.' },
       ]
     },
@@ -224,7 +241,17 @@ export default function SettingsPage() {
       description: 'Moneda principal de trabajo e impuesto por defecto para productos.',
       Icon: DollarSign,
       fields: [
-        { key: 'currency', label: 'Moneda del Negocio', type: 'select', options: ['COP (Pesos Colombianos)', 'USD (Dólares)', 'MXN (Pesos Mexicanos)', 'PEN (Soles)'] },
+        { 
+          key: 'currency', 
+          label: 'Moneda del Negocio', 
+          type: 'select', 
+          options: [
+            { value: 'COP', label: 'COP (Pesos Colombianos)' },
+            { value: 'USD', label: 'USD (Dólares)' },
+            { value: 'MXN', label: 'MXN (Pesos Mexicanos)' },
+            { value: 'PEN', label: 'PEN (Soles)' }
+          ] 
+        },
         { key: 'taxName', label: 'Nombre del Impuesto', type: 'text', placeholder: 'IVA' },
         { key: 'taxRate', label: 'Tasa de impuesto por defecto (%)', type: 'number', placeholder: '19' },
       ]
@@ -387,9 +414,11 @@ export default function SettingsPage() {
                     onChange={e => handleFieldChange(f.key as any, e.target.value)}
                     style={{ fontSize: '0.84rem', background: '#FFFFFF', cursor: 'pointer' }}
                   >
-                    {f.options?.map(opt => (
-                      <option key={opt} value={opt.split(' ')[0]}>{opt}</option>
-                    ))}
+                    {f.options?.map((opt: any) => {
+                      const val = typeof opt === 'string' ? opt : opt.value
+                      const lbl = typeof opt === 'string' ? opt : opt.label
+                      return <option key={val} value={val}>{lbl}</option>
+                    })}
                   </select>
                 ) : f.type === 'textarea' ? (
                   <textarea
