@@ -13,7 +13,8 @@ import {
   LogOut,
   Lock,
   Store,
-  Sparkles
+  Sparkles,
+  HandCoins
 } from 'lucide-react'
 
 export default function POSPageLayout({ children }: { children: React.ReactNode }) {
@@ -126,6 +127,30 @@ export default function POSPageLayout({ children }: { children: React.ReactNode 
             <ArrowLeft size={14} strokeWidth={2.5} />
             <span className="pos-topbar-text">Volver al Panel</span>
           </Link>
+
+          <div className="pos-topbar-divider" style={{ width: 1, height: 18, background: 'var(--border-color)' }} />
+
+          {/* Quick Abonos Button */}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('open-pos-abono'))}
+            className="btn-neu"
+            title="Registrar Abono a Cartera / Deuda Fiao (F3)"
+            style={{
+              padding: '5px 10px',
+              fontSize: '0.76rem',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 5,
+              background: '#F5F3FF',
+              color: '#6D28D9',
+              border: '1px solid #DDD6FE',
+              cursor: 'pointer'
+            }}
+          >
+            <HandCoins size={14} strokeWidth={2.5} />
+            <span className="pos-topbar-text">Abonos (F3)</span>
+          </button>
         </div>
 
         {/* Right: Cashier, Fullscreen & Exit */}

@@ -71,7 +71,8 @@ import {
   CreditCard,
   CircleDollarSign,
   Headphones,
-  Tag
+  Tag,
+  HandCoins
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -87,6 +88,7 @@ interface NavSection {
   label: string
   Icon: any
   href?: string
+  moduleKey?: string
   items?: NavSubItem[]
 }
 
@@ -175,6 +177,7 @@ const NAV_SECTIONS: NavSection[] = [
     Icon: Users,
     items: [
       { href: '/customers',             Icon: Users,           label: 'Directorio',   moduleKey: 'customers',      requiredPermission: 'customers.view' },
+      { href: '/customers?tab=credits', Icon: HandCoins,       label: 'Abonos & Fiaos', moduleKey: 'customers',    requiredPermission: 'customers.view' },
       { href: '/gym/members',           Icon: Dumbbell,        label: 'Socios',       moduleKey: 'gym',            requiredPermission: 'customers.view' },
       { href: '/veterinary/pets',       Icon: Dog,             label: 'Pacientes',    moduleKey: 'veterinary',     requiredPermission: 'customers.view' },
       { href: '/veterinary/clinical',   Icon: Stethoscope,     label: 'Consultas',    moduleKey: 'veterinary',     requiredPermission: 'customers.view' },
@@ -224,7 +227,8 @@ const NAV_SECTIONS: NavSection[] = [
     id: 'reports',
     label: 'Reportes',
     Icon: BarChart3,
-    href: '/reports'
+    href: '/reports',
+    moduleKey: 'reports'
   },
 
   // 10. FINANZAS
@@ -302,9 +306,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         }
       } catch {}
     }
-    const defaultMods: Record<string, boolean> = {}
+    const defaultMods: Record<string, boolean> = {
+      pos: true,
+      inventory: true,
+      cash: true,
+      customers: true,
+      reports: true,
+      purchases: true,
+      suppliers: true
+    }
     ALL_SYSTEM_MODULES.forEach(m => {
-      defaultMods[m.id] = m.defaultEnabled
+      if (defaultMods[m.id] === undefined) defaultMods[m.id] = false
     })
     return defaultMods
   })
@@ -354,12 +366,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             .limit(1)
 
           if (tData?.[0]?.enabled_modules) {
-            const defaultMods: Record<string, boolean> = {}
-            ALL_SYSTEM_MODULES.forEach(m => { defaultMods[m.id] = m.defaultEnabled })
-            const merged = { ...defaultMods, ...tData[0].enabled_modules }
-            globalCachedModules = merged
-            try { localStorage.setItem('mr_tender_cached_modules', JSON.stringify(merged)) } catch {}
-            setEnabledModules(merged)
+            const cleanMods: Record<string, boolean> = {}
+            ALL_SYSTEM_MODULES.forEach(m => {
+              cleanMods[m.id] = !!tData[0].enabled_modules[m.id]
+            })
+            globalCachedModules = cleanMods
+            try { localStorage.setItem('mr_tender_cached_modules', JSON.stringify(cleanMods)) } catch {}
+            setEnabledModules(cleanMods)
+          } else {
+            const minimalBase: Record<string, boolean> = {
+              pos: true,
+              inventory: true,
+              cash: true,
+              customers: true,
+              reports: true,
+              purchases: true,
+              suppliers: true
+            }
+            ALL_SYSTEM_MODULES.forEach(m => {
+              if (minimalBase[m.id] === undefined) minimalBase[m.id] = false
+            })
+            globalCachedModules = minimalBase
+            setEnabledModules(minimalBase)
           }
           setModulesLoading(false)
         }
@@ -533,8 +561,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Navigation Sections with Accordion Submenus */}
         <nav style={{ flex: 1, padding: collapsed ? '0 6px' : '0 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
           {effectiveSections.map(section => {
-            // If single link (e.g. Inicio)
+            // If single link (e.g. Inicio, Reportes)
             if (section.href) {
+              if (section.moduleKey && !enabledModules[section.moduleKey]) return null
               const Icon = section.Icon
               const isActive = pathname === section.href
               return (

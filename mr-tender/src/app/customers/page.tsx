@@ -16,7 +16,8 @@ import {
   UserCheck,
   Receipt,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  HandCoins
 } from 'lucide-react'
 import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
 
@@ -57,6 +58,7 @@ export default function CustomersPage() {
   const [submitting, setSubmitting] = useState(false)
   const [tenantId, setTenantId] = useState<string | null>(null)
   const [businessName, setBusinessName] = useState<string>('nuestro negocio')
+  const [filterTab, setFilterTab] = useState<'all' | 'debtors'>('all')
 
   // Fiao History for selected customer
   const [customerSales, setCustomerSales] = useState<CustomerFiaoSale[]>([])
@@ -71,6 +73,12 @@ export default function CustomersPage() {
   const [abonoAmount, setAbonoAmount] = useState('')
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('tab') === 'credits' || params.get('tab') === 'debtors') {
+        setFilterTab('debtors')
+      }
+    }
     loadCustomers()
   }, [])
 
@@ -138,11 +146,16 @@ export default function CustomersPage() {
     loadCustomerHistory()
   }, [selected, tenantId])
 
-  const filtered = customers.filter(c =>
-    c.full_name.toLowerCase().includes(search.toLowerCase()) ||
-    (c.email && c.email.toLowerCase().includes(search.toLowerCase())) ||
-    (c.phone && c.phone.includes(search))
-  )
+  const filtered = customers.filter(c => {
+    const matchesSearch = c.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      (c.email && c.email.toLowerCase().includes(search.toLowerCase())) ||
+      (c.phone && c.phone.includes(search))
+    if (!matchesSearch) return false
+    if (filterTab === 'debtors') {
+      return Number(c.credit_used || 0) > 0
+    }
+    return true
+  })
 
   const selectedCustomer = customers.find(c => c.id === selected)
 
@@ -277,13 +290,41 @@ Fecha: ${new Date().toLocaleString('es-CO')}
             {t('customersPlural', 'Clientes')} & Cartera
           </h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', marginTop: 2 }}>
-            {customers.length} {t('customersPlural', 'clientes').toLowerCase()} registrados
+            {customers.length} {t('customersPlural', 'clientes').toLowerCase()} registrados &bull; Total fiado: <strong>{formatCurrency(customers.reduce((s, c) => s + Number(c.credit_used || 0), 0))}</strong>
           </p>
         </div>
-        <button className="btn-neu btn-primary" onClick={() => setShowNewModal(true)} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Plus size={15} strokeWidth={2.5} />
-          <span>Nuevo {t('customers', 'cliente').toLowerCase()}</span>
-        </button>
+
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            className="btn-neu"
+            onClick={() => {
+              if (selectedCustomer && selectedCustomer.credit_used > 0) {
+                setAbonoAmount(String(selectedCustomer.credit_used))
+              }
+              setShowAbonoModal(true)
+            }}
+            style={{
+              padding: '8px 14px',
+              fontSize: '0.8rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              background: '#F5F3FF',
+              color: '#6D28D9',
+              border: '1px solid #DDD6FE',
+              fontWeight: 800,
+              cursor: 'pointer'
+            }}
+          >
+            <HandCoins size={15} strokeWidth={2.2} />
+            <span>Registrar Abono</span>
+          </button>
+
+          <button className="btn-neu btn-primary" onClick={() => setShowNewModal(true)} style={{ padding: '8px 14px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={15} strokeWidth={2.5} />
+            <span>Nuevo {t('customers', 'cliente').toLowerCase()}</span>
+          </button>
+        </div>
       </div>
 
       {/* Main Grid: Responsive 2-column on desktop, stacked on mobile */}
@@ -291,6 +332,33 @@ Fecha: ${new Date().toLocaleString('es-CO')}
         
         {/* Left: Customer List */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Quick Filters */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              type="button"
+              className={`btn-neu ${filterTab === 'all' ? 'btn-primary' : 'btn-ghost'}`}
+              onClick={() => setFilterTab('all')}
+              style={{ padding: '5px 12px', fontSize: '0.75rem', fontWeight: 700 }}
+            >
+              Todos ({customers.length})
+            </button>
+            <button
+              type="button"
+              className="btn-neu"
+              onClick={() => setFilterTab('debtors')}
+              style={{
+                padding: '5px 12px',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                background: filterTab === 'debtors' ? 'var(--accent-coral)' : '#FEF2F2',
+                color: filterTab === 'debtors' ? '#fff' : '#DC2626',
+                border: filterTab === 'debtors' ? 'none' : '1px solid #FECACA'
+              }}
+            >
+              Con Saldo Fiado ({customers.filter(c => Number(c.credit_used || 0) > 0).length})
+            </button>
+          </div>
+
           <div className="input-group">
             <span className="input-icon"><Search size={16} strokeWidth={2} style={{ color: 'var(--text-muted)' }} /></span>
             <input className="input-neu" placeholder="Buscar por nombre o teléfono..." value={search} onChange={e => setSearch(e.target.value)} style={{ fontSize: '0.85rem' }} />

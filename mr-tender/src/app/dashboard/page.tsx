@@ -21,7 +21,8 @@ import {
   CheckCircle2,
   Plus,
   TrendingUp,
-  Sparkles
+  Sparkles,
+  HandCoins
 } from 'lucide-react'
 import { useVerticalTerms } from '@/lib/hooks/useVerticalTerms'
 import VerticalDashboardWidgets from '@/components/VerticalDashboardWidgets'
@@ -105,9 +106,10 @@ export default function DashboardPage() {
             .select('credit_used')
             .eq('tenant_id', tenant_id),
           supabase
-            .from('cash_registers')
-            .select('current_session_id')
+            .from('cash_sessions')
+            .select('id')
             .eq('tenant_id', tenant_id)
+            .eq('status', 'open')
             .limit(1),
           supabase
             .from('inventory')
@@ -148,8 +150,8 @@ export default function DashboardPage() {
           pendingCredit: totalPendingCredit
         })
 
-        // Cash status
-        setCajaStatus(!!(regRes.data?.[0]?.current_session_id))
+        // Cash status: accurately determined by active open session in cash_sessions
+        setCajaStatus(!!(regRes.data && regRes.data.length > 0))
 
         // 7-day Real Trend (Colombia Timezone)
         const dayNames = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -226,15 +228,16 @@ export default function DashboardPage() {
     { label: 'Utilidad total', value: formatCurrency(stats.profitToday), Icon: TrendingUp, color: 'var(--accent-green)', bg: 'var(--accent-green-lt)' },
     { label: `${t('ordersPlural', 'Pedidos')} hoy`, value: formatNumber(stats.ordersToday), Icon: ShoppingCart, color: 'var(--accent-purple)', bg: 'var(--accent-purple-lt)' },
     { label: 'Margen bruto est.', value: `${stats.grossMargin.toFixed(1)}%`, Icon: BarChart3, color: 'var(--accent-amber)', bg: 'var(--accent-amber-lt)' },
-    { label: 'Cartera por cobrar', value: formatCurrency(stats.pendingCredit), Icon: Users, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)' },
+    { label: 'Cartera por cobrar', value: formatCurrency(stats.pendingCredit), Icon: HandCoins, color: 'var(--accent-coral)', bg: 'var(--accent-coral-lt)', href: '/customers?tab=credits' },
   ]
 
   const dynamicQuickActions = [
     { Icon: ShoppingCart, label: `Nuevo ${t('orders', 'Venta')}`, href: '/pos', color: 'var(--accent-blue)' },
+    { Icon: HandCoins, label: 'Registrar Abono', href: '/customers?tab=credits', color: 'var(--accent-purple)' },
     { Icon: Package, label: `Nuevo ${t('products', 'Producto')}`, href: '/products/new', color: 'var(--accent-green)' },
     { Icon: Users, label: `Nuevo ${t('customers', 'Cliente')}`, href: '/customers', color: 'var(--accent-purple)' },
     { Icon: Truck, label: 'Orden de Compra', href: '/purchases', color: 'var(--accent-amber)' },
-    { Icon: DollarSign, label: 'Abrir Caja', href: '/cash', color: 'var(--accent-coral)' },
+    { Icon: DollarSign, label: 'Caja & Turnos', href: '/cash', color: 'var(--accent-coral)' },
     { Icon: BarChart3, label: 'Ver Reportes', href: '/reports', color: 'var(--text-secondary)' },
   ]
 
@@ -291,8 +294,8 @@ export default function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         {kpis.map(kpi => {
           const Icon = kpi.Icon
-          return (
-            <div key={kpi.label} className="neu-card animate-fade-in" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+          const CardContent = (
+            <div className="neu-card animate-fade-in" style={{ padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, height: '100%', cursor: (kpi as any).href ? 'pointer' : 'default' }}>
               <div style={{ minWidth: 0, flex: 1 }}>
                 <div style={{ fontSize: '0.68rem', color: '#64748B', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: 2 }}>{kpi.label}</div>
                 <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#0F172A' }}>{kpi.value}</div>
@@ -302,6 +305,16 @@ export default function DashboardPage() {
               </div>
             </div>
           )
+
+          if ((kpi as any).href) {
+            return (
+              <Link key={kpi.label} href={(kpi as any).href} style={{ textDecoration: 'none', color: 'inherit' }}>
+                {CardContent}
+              </Link>
+            )
+          }
+
+          return <div key={kpi.label}>{CardContent}</div>
         })}
       </div>
 

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -392,8 +392,13 @@ export default function POSClient() {
         document.getElementById('pos-confirm-payment-btn')?.click()
       }
     }
+    const handleOpenAbonoEvent = () => setShowPosAbonoModal(true)
     window.addEventListener('keydown', handleGlobalKeyDown)
-    return () => window.removeEventListener('keydown', handleGlobalKeyDown)
+    window.addEventListener('open-pos-abono', handleOpenAbonoEvent)
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeyDown)
+      window.removeEventListener('open-pos-abono', handleOpenAbonoEvent)
+    }
   }, [step])
 
   // Audio-POS Voice Handlers
@@ -1967,9 +1972,23 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   className="btn-neu"
                   onClick={() => setShowPosAbonoModal(true)}
                   title="Registrar Abono a Crédito / Fiao (F3)"
-                  style={{ height: 38, padding: '0 9px', fontSize: '0.76rem', display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0, boxSizing: 'border-box', color: 'var(--accent-purple)', fontWeight: 700 }}
+                  style={{
+                    height: 38,
+                    padding: '0 11px',
+                    fontSize: '0.78rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 5,
+                    flexShrink: 0,
+                    boxSizing: 'border-box',
+                    background: '#F5F3FF',
+                    color: '#6D28D9',
+                    border: '1px solid #DDD6FE',
+                    fontWeight: 800,
+                    cursor: 'pointer'
+                  }}
                 >
-                  <HandCoins size={14} />
+                  <HandCoins size={15} strokeWidth={2.2} />
                   <span className="pos-btn-label">Abonar Fiao (F3)</span>
                 </button>
 
