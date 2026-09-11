@@ -712,10 +712,10 @@ const ONBOARDING_PACKAGES = [
     price: 49900,
     ideal: 'Tiendas de barrio · Panaderías básicas',
     includes: [
-      'Visita presencial o videollamada',
-      'Carga de hasta 80 referencias',
-      'Configuración de categorías',
-      'Capacitación de 1 hora',
+      'Conteo y registro de hasta 80 referencias',
+      'Creación de categorías y precios de venta',
+      'Configuración de stock inicial y costos',
+      'Capacitación de uso (100% Gratis incluida)',
     ],
     highlight: false,
     badge: null,
@@ -724,13 +724,13 @@ const ONBOARDING_PACKAGES = [
     name: 'Estándar',
     subtitle: 'Hasta 200 productos',
     price: 99900,
-    ideal: 'Tiendas medianas · Panaderías completas',
+    ideal: 'Tiendas medianas · Panaderías completas · Minimercados',
     includes: [
-      'Visita presencial o videollamada',
-      'Carga de hasta 200 referencias',
-      'Configuración de categorías y precios',
-      'Capacitación de 2 horas',
-      'Soporte post-onboarding (7 días)',
+      'Conteo y levantamiento de hasta 200 referencias',
+      'Clasificación por categorías y unidades de medida',
+      'Carga de códigos de barras para escáner POS',
+      'Configuración de alertas de stock mínimo',
+      'Capacitación de uso (100% Gratis incluida)',
     ],
     highlight: true,
     badge: 'Más solicitado',
@@ -739,14 +739,13 @@ const ONBOARDING_PACKAGES = [
     name: 'Profesional',
     subtitle: 'Hasta 500 productos',
     price: 199900,
-    ideal: 'Pequeñas empresas · Distribuidoras',
+    ideal: 'Pequeñas empresas · Distribuidoras · Negocios medianos',
     includes: [
-      'Hasta 3 visitas o sesiones remotas',
-      'Carga de hasta 500 referencias',
-      'Importación masiva desde Excel/CSV',
-      'Configuración avanzada de módulos',
-      'Capacitación de 4 horas (equipo completo)',
-      'Soporte post-onboarding (30 días)',
+      'Digitalización masiva de hasta 500 referencias',
+      'Estructuración de catálogo desde físico o listas de proveedores',
+      'Carga de códigos de barra, variantes y precios mayoristas',
+      'Configuración de múltiples almacenes o bodegas',
+      'Capacitación para todo tu equipo (100% Gratis incluida)',
     ],
     highlight: false,
     badge: null,
@@ -758,13 +757,13 @@ function OnboardingSection() {
     <section style={{ padding: 'clamp(40px, 8vw, 80px) clamp(16px, 4vw, 48px)', background: '#F8FAFC' }}>
       <div style={{ maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <div className="badge badge-purple" style={{ marginBottom: 14 }}>Servicio adicional · Pago único</div>
+          <div className="badge badge-purple" style={{ marginBottom: 14 }}>Servicio Opcional · Hacemos el trabajo por ti</div>
           <h2 style={{ fontSize: 'clamp(1.5rem, 4vw, 2.2rem)', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em', marginBottom: 12 }}>
-            Te dejamos el negocio listo desde el día 1
+            Digitalización y Carga de Inventario
           </h2>
-          <p style={{ color: '#475569', fontSize: '1rem', maxWidth: 580, margin: '0 auto' }}>
-            Un asesor carga todo tu inventario en Mr. Tender, configura los módulos y capacita a tu equipo.
-            Solo pagas una vez. Sin contratos adicionales.
+          <p style={{ color: '#475569', fontSize: '1rem', maxWidth: 620, margin: '0 auto' }}>
+            ¿No tienes tiempo para contar y digitar todos tus productos? Nosotros lo hacemos por ti.
+            Levantamos tu inventario y te dejamos todo el catálogo cargado en Mr. Tender listo para vender desde el primer día.
           </p>
         </div>
 
@@ -800,14 +799,14 @@ function OnboardingSection() {
                   color: pkg.highlight ? '#94A3B8' : '#64748B',
                   marginBottom: 4,
                 }}>
-                  Onboarding {pkg.name}
+                  Inventario {pkg.name}
                 </div>
                 <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, marginBottom: 4 }}>
                   <span style={{ fontSize: '2.2rem', fontWeight: 800, color: pkg.highlight ? '#FFFFFF' : '#0F172A', lineHeight: 1, letterSpacing: '-0.02em' }}>
                     ${pkg.price.toLocaleString('es-CO')}
                   </span>
                   <span style={{ fontSize: '0.8rem', color: pkg.highlight ? '#64748B' : '#94A3B8', marginBottom: 5 }}>
-                    /único
+                    /pago único
                   </span>
                 </div>
                 <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#714AD9', marginBottom: 4 }}>
@@ -828,7 +827,7 @@ function OnboardingSection() {
               </ul>
 
               <a
-                href="https://wa.me/573000000000?text=Hola,%20quiero%20el%20servicio%20de%20onboarding%20Mr.%20Tender"
+                href="https://wa.me/573000000000?text=Hola,%20quiero%20el%20servicio%20de%20digitalizacion%20de%20inventario%20Mr.%20Tender"
                 target="_blank"
                 rel="noopener noreferrer"
                 style={{
@@ -874,10 +873,10 @@ function OnboardingSection() {
           <span style={{ fontSize: '1.2rem' }}></span>
           <div style={{ flex: 1, minWidth: 200 }}>
             <span style={{ fontSize: '0.88rem', fontWeight: 700, color: '#0F172A' }}>
-              El onboarding es totalmente opcional.{' '}
+              Capacitación 100% gratuita:{' '}
             </span>
             <span style={{ fontSize: '0.86rem', color: '#475569' }}>
-              Puedes cargar tu inventario solo en cualquier momento usando nuestra importación masiva por Excel, o contactarnos cuando lo necesites.
+              El acompañamiento y la enseñanza para usar Mr. Tender no tienen costo. Este servicio es exclusivamente para el conteo, organización y digitalización de tus productos si prefieres que nosotros hagamos el trabajo pesado.
             </span>
           </div>
         </div>
