@@ -48,8 +48,7 @@ export function usePermissions(): UserPermissionContext {
         const isSuper = Boolean(
           userMetaRole === 'superadmin' ||
           user.user_metadata?.is_superadmin === true ||
-          user.email === 'camilovelascoofficial@gmail.com' ||
-          user.email === 'camivelasco93@gmail.com'
+          user.email === 'camilovelascoofficial@gmail.com'
         )
 
         // Call RPC get_user_permissions

@@ -78,8 +78,7 @@ export async function middleware(request: NextRequest) {
 
     const role = user?.app_metadata?.role || user?.user_metadata?.role
     const isSuperadmin = role === 'superadmin' || 
-                         user?.email === 'camilovelascoofficial@gmail.com' || 
-                         user?.email === 'camivelasco93@gmail.com'
+                         user?.email === 'camilovelascoofficial@gmail.com'
 
     if (user && (pathname === '/login' || pathname === '/register')) {
       return NextResponse.redirect(new URL(isSuperadmin ? '/superadmin' : '/dashboard', request.url))
