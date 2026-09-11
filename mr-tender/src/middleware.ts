@@ -76,16 +76,23 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
+    const role = user?.app_metadata?.role || user?.user_metadata?.role
+    const isSuperadmin = role === 'superadmin' || 
+                         user?.email === 'camilovelascoofficial@gmail.com' || 
+                         user?.email === 'camivelasco93@gmail.com'
+
     if (user && (pathname === '/login' || pathname === '/register')) {
-      const role = user.app_metadata?.role
-      const isSuperadmin = role === 'superadmin'
       return NextResponse.redirect(new URL(isSuperadmin ? '/superadmin' : '/dashboard', request.url))
     }
 
-    // Protect superadmin routes
+    // If Superadmin lands on /dashboard, redirect to /superadmin
+    if (user && isSuperadmin && pathname === '/dashboard') {
+      return NextResponse.redirect(new URL('/superadmin', request.url))
+    }
+
+    // Protect superadmin routes for non-superadmin users
     if (pathname.startsWith('/superadmin')) {
-      const role = user?.app_metadata?.role
-      if (role !== 'superadmin') {
+      if (!isSuperadmin) {
         return NextResponse.redirect(new URL('/dashboard', request.url))
       }
     }

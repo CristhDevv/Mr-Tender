@@ -368,6 +368,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     loadUserAndModules()
   }, [])
 
+  // Auto-redirect SuperAdmin to /superadmin
+  useEffect(() => {
+    if (isSuperAdmin && pathname === '/dashboard') {
+      router.replace('/superadmin')
+    }
+  }, [isSuperAdmin, pathname, router])
+
   // Auto-expand group that contains current active route
   useEffect(() => {
     NAV_SECTIONS.forEach(sec => {

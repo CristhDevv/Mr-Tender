@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -18,14 +18,14 @@ import {
 } from 'lucide-react'
 
 const SUPERADMIN_NAV = [
-  { href: '/superadmin',               Icon: LayoutDashboard,  label: 'Dashboard' },
-  { href: '/superadmin/tenants',       Icon: Store,            label: 'Negocios' },
-  { href: '/superadmin/plans',         Icon: ClipboardList,    label: 'Planes' },
+  { href: '/superadmin',               Icon: LayoutDashboard,  label: 'Dashboard Global' },
+  { href: '/superadmin/tenants',       Icon: Store,            label: 'Negocios & Comercios' },
+  { href: '/superadmin/plans',         Icon: ClipboardList,    label: 'Planes SaaS' },
   { href: '/superadmin/subscriptions', Icon: CreditCard,       label: 'Suscripciones' },
-  { href: '/superadmin/payments',      Icon: CircleDollarSign, label: 'Pagos' },
-  { href: '/superadmin/coupons',       Icon: Tag,              label: 'Cupones' },
-  { href: '/superadmin/support',       Icon: Headphones,       label: 'Soporte' },
-  { href: '/superadmin/logs',          Icon: FileText,         label: 'Logs' },
+  { href: '/superadmin/payments',      Icon: CircleDollarSign, label: 'Pagos Plataforma' },
+  { href: '/superadmin/coupons',       Icon: Tag,              label: 'Cupones Descuento' },
+  { href: '/superadmin/support',       Icon: Headphones,       label: 'Soporte & Tickets' },
+  { href: '/superadmin/logs',          Icon: FileText,         label: 'Logs Auditoría' },
 ]
 
 export default function SuperadminLayout({ children }: { children: React.ReactNode }) {
@@ -33,8 +33,18 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
   const router = useRouter()
   const supabase = createClient()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-
   const [loggingOut, setLoggingOut] = useState(false)
+  const [userEmail, setUserEmail] = useState<string>('camilovelascoofficial@gmail.com')
+  const [userName, setUserName] = useState<string>('Camilo Velasco')
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserEmail(user.email || 'superadmin@mrtender.com')
+        setUserName(user.user_metadata?.full_name || 'Super Administrador')
+      }
+    })
+  }, [])
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -50,18 +60,21 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
           <img src="/logo.png" alt="Mr Tender" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
           <div>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</div>
-            <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Superadmin</div>
+            <div style={{ fontSize: '0.68rem', color: '#BE185D', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>👑 Panel Superadmin</div>
           </div>
         </Link>
 
         <div className="divider" style={{ margin: '0 16px 12px' }} />
 
-        <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <nav style={{ flex: 1, padding: '0 12px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', padding: '4px 8px', letterSpacing: '0.05em' }}>
+            Herramientas Globales
+          </div>
           {SUPERADMIN_NAV.map(item => {
             const Icon = item.Icon
-            const isActive = pathname === item.href
+            const isActive = pathname === item.href || (item.href !== '/superadmin' && pathname.startsWith(item.href))
             return (
-              <Link key={item.href} href={item.href} className={`sidebar-nav-item ${isActive ? 'active' : ''}`}>
+              <Link key={item.href} href={item.href} className={`sidebar-nav-item ${isActive ? 'active' : ''}`} style={isActive ? { fontWeight: 700 } : undefined}>
                 <Icon size={18} strokeWidth={2} style={{ flexShrink: 0, opacity: isActive ? 1 : 0.8 }} />
                 <span>{item.label}</span>
               </Link>
@@ -71,11 +84,23 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
 
         <div className="divider" style={{ margin: '12px 16px 0' }} />
 
-        <div style={{ padding: '14px 18px' }}>
-          <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 8 }}>Superadmin de plataforma</div>
-          <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '8px', fontSize: '0.8rem', justifyContent: 'center', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            <LogOut size={16} strokeWidth={2} />
-            <span>Cerrar sesión</span>
+        <div style={{ padding: '12px 16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 28, height: 28, borderRadius: 7, background: '#FDF2F8', color: '#BE185D', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              👑
+            </div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {userName}
+              </div>
+              <div style={{ fontSize: '0.68rem', color: '#BE185D', fontWeight: 700 }}>
+                Super Administrador
+              </div>
+            </div>
+          </div>
+          <button className="btn-neu btn-ghost" onClick={handleLogout} style={{ width: '100%', padding: '7px', fontSize: '0.78rem', justifyContent: 'center', color: 'var(--accent-coral)', display: 'flex', alignItems: 'center', gap: 6, borderRadius: 8 }}>
+            <LogOut size={14} strokeWidth={2} />
+            <span>{loggingOut ? 'Cerrando...' : 'Cerrar sesión'}</span>
           </button>
         </div>
       </aside>
