@@ -25,10 +25,10 @@ const BUSINESS_TYPES = [
 ]
 
 const PLANS = [
-  { slug: 'free', name: 'Gratis', price: '$0', color: 'var(--text-secondary)' },
-  { slug: 'basic', name: 'Básico', price: '$29/mes', color: 'var(--text-primary)' },
-  { slug: 'professional', name: 'Profesional', price: '$79/mes', color: 'var(--text-primary)', popular: true },
-  { slug: 'enterprise', name: 'Empresarial', price: '$199/mes', color: 'var(--text-primary)' },
+  { slug: 'gratis', name: 'Gratis', price: '$0', color: 'var(--text-secondary)' },
+  { slug: 'basico', name: 'Básico', price: '$30.000/mes', color: 'var(--text-primary)' },
+  { slug: 'pyme', name: 'Pyme', price: '$89.000/mes', color: 'var(--accent-blue)', popular: true },
+  { slug: 'cadena', name: 'Cadena', price: '$169.000/mes', color: 'var(--text-primary)' },
 ]
 
 export default function RegisterPage() {
@@ -47,7 +47,7 @@ export default function RegisterPage() {
     password: '',
     country: 'MX',
     currency: 'MXN',
-    planSlug: 'free',
+    planSlug: 'gratis',
   })
 
   const set = (k: keyof typeof form) => (v: string) => setForm(f => ({ ...f, [k]: v }))
