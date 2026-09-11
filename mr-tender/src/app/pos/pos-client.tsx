@@ -3115,10 +3115,10 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
 
               {/* Confirm Button */}
               {(() => {
-                const isFiaoOverLimit = paymentMethod === 'fiao' && selectedCustomer && total > Math.max(0, (Number(selectedCustomer.credit_limit || 0) - Number(selectedCustomer.credit_used || 0)))
-                const isFiaoMissingCustomer = paymentMethod === 'fiao' && !selectedCustomer
-                const isCashDisabled = paymentMethod === 'cash' && (Number(receivedAmount) || 0) < total
-                const isDisabled = loading || !sessionInfo?.session_id || isCashDisabled || isFiaoMissingCustomer || isFiaoOverLimit
+                const isFiaoOverLimit = Boolean(paymentMethod === 'fiao' && selectedCustomer && total > Math.max(0, (Number(selectedCustomer.credit_limit || 0) - Number(selectedCustomer.credit_used || 0))))
+                const isFiaoMissingCustomer = Boolean(paymentMethod === 'fiao' && !selectedCustomer)
+                const isCashDisabled = Boolean(paymentMethod === 'cash' && (Number(receivedAmount) || 0) < total)
+                const isDisabled = Boolean(loading || !sessionInfo?.session_id || isCashDisabled || isFiaoMissingCustomer || isFiaoOverLimit)
 
                 let btnBg = 'linear-gradient(135deg, #059669, #047857)'
                 let btnText = `✅ Confirmar Cobro — ${formatCurrency(total)}`
