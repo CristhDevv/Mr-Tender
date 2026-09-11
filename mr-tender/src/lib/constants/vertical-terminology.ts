@@ -446,8 +446,8 @@ export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
     singleWordTitle: 'Panadería',
     accentColor: '#714AD9', // Brand Purple
     terms: {
-      products: 'Pan / Torta',
-      productsPlural: 'Panes & Pasteles',
+      products: 'Producto',
+      productsPlural: 'Productos',
       customers: 'Cliente',
       customersPlural: 'Clientes',
       inventory: 'Insumos & Ingredientes',
@@ -459,12 +459,11 @@ export const VERTICAL_TERMINOLOGY: Record<string, VerticalTermConfig> = {
       quoteOrPrescription: 'Cotización'
     },
     sidebarOverrides: {
-      '/products': 'Panes',
+      '/products': 'Productos',
       '/customers': 'Clientes',
       '/inventory': 'Insumos & Ingredientes'
     },
     icons: {
-      products: Croissant,
       orders: Clock
     }
   },

@@ -65,7 +65,13 @@ import {
   Carrot,
   Flower2,
   Candy,
-  Scale
+  Scale,
+  Store,
+  ClipboardList,
+  CreditCard,
+  CircleDollarSign,
+  Headphones,
+  Tag
 } from 'lucide-react'
 
 interface NavSubItem {
@@ -254,6 +260,22 @@ const NAV_SECTIONS: NavSection[] = [
   }
 ]
 
+const SUPERADMIN_SECTION: NavSection = {
+  id: 'superadmin_portal',
+  label: 'Super Admin',
+  Icon: ShieldCheck,
+  items: [
+    { href: '/superadmin',               Icon: LayoutDashboard,  label: 'Consola Global' },
+    { href: '/superadmin/tenants',       Icon: Store,            label: 'Negocios & Comercios' },
+    { href: '/superadmin/plans',         Icon: ClipboardList,    label: 'Planes SaaS' },
+    { href: '/superadmin/subscriptions', Icon: CreditCard,       label: 'Suscripciones' },
+    { href: '/superadmin/payments',      Icon: CircleDollarSign, label: 'Pagos Plataforma' },
+    { href: '/superadmin/coupons',       Icon: Tag,              label: 'Cupones' },
+    { href: '/superadmin/support',       Icon: Headphones,       label: 'Soporte' },
+    { href: '/superadmin/logs',          Icon: FileText,         label: 'Logs Auditoría' }
+  ]
+}
+
 // Global in-memory cache to prevent flashing across layout unmounts
 let globalCachedModules: Record<string, boolean> | null = null
 
@@ -261,7 +283,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname()
   const router = useRouter()
   const supabase = createClient()
-  const { roleName, color, isAdmin, hasPermission, loading: permsLoading } = usePermissions()
+  const { roleName, color, isAdmin, isSuperAdmin, hasPermission, loading: permsLoading } = usePermissions()
   const { getSidebarLabel, verticalConfig, activeVertical } = useVerticalTerms()
   
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -371,6 +393,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   function filterItems(items?: NavSubItem[]) {
     if (!items) return []
     return items.filter(item => {
+      if (item.href.startsWith('/superadmin')) {
+        return isSuperAdmin
+      }
+
       // 1. If item belongs to a specific module and that module is not active, hide it immediately
       if (item.moduleKey && !enabledModules[item.moduleKey]) return false
 
@@ -384,11 +410,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     })
   }
 
+  const effectiveSections = isSuperAdmin ? [...NAV_SECTIONS, SUPERADMIN_SECTION] : NAV_SECTIONS
+
   // Check if current page is authorized for user and module is enabled
-  const allSubItems = NAV_SECTIONS.flatMap(s => s.items || (s.href ? [{ href: s.href, label: s.label, Icon: s.Icon, moduleKey: undefined, requiredPermission: undefined }] : []))
+  const allSubItems = effectiveSections.flatMap(s => s.items || (s.href ? [{ href: s.href, label: s.label, Icon: s.Icon, moduleKey: undefined, requiredPermission: undefined }] : []))
   const currentNavItem = allSubItems.find(i => pathname === i.href || (i.href !== '/dashboard' && pathname.startsWith(i.href)))
   const isModuleEnabled = !currentNavItem?.moduleKey || !!enabledModules[currentNavItem.moduleKey]
-  const isRoleAuthorized = isAdmin || !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
+  const isRoleAuthorized = isAdmin || isSuperAdmin || !currentNavItem?.requiredPermission || hasPermission(currentNavItem.requiredPermission)
   const isPageAuthorized = isModuleEnabled && isRoleAuthorized
 
   const [loggingOut, setLoggingOut] = useState(false)
@@ -400,11 +428,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   const getInitials = (name?: string) => name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : 'U'
 
+  const handleToggleMenu = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setSidebarOpen(prev => !prev)
+    } else {
+      toggleCollapsed()
+    }
+  }
+
   return (
     <div className="app-layout">
-      {/* Mobile overlay */}
-      {sidebarOpen && <div onClick={() => setSidebarOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 49 }} />}
-
       {/* ── SIDEBAR (ORGANIZED IN COMPACT PROFESSIONAL SUBMENUS) ── */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''} ${collapsed ? 'collapsed' : ''}`}>
         
@@ -492,7 +525,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
         {/* Navigation Sections with Accordion Submenus */}
         <nav style={{ flex: 1, padding: collapsed ? '0 6px' : '0 10px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 3 }}>
-          {NAV_SECTIONS.map(section => {
+          {effectiveSections.map(section => {
             // If single link (e.g. Inicio)
             if (section.href) {
               const Icon = section.Icon
@@ -515,9 +548,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             const visibleSubItems = filterItems(section.items)
             if (visibleSubItems.length === 0) return null
 
-            const isGroupOpen = openGroups[section.id] ?? false
+            const isGroupOpen = openGroups[section.id] ?? (section.id === 'superadmin_portal' ? true : false)
             const hasActiveChild = visibleSubItems.some(it => pathname === it.href || (it.href !== '/dashboard' && pathname.startsWith(it.href)))
             const GroupIcon = section.Icon
+            const isSuperGroup = section.id === 'superadmin_portal'
 
             // Collapsed Mode representation: click leads to first child
             if (collapsed) {
@@ -528,7 +562,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   title={`${section.label} (${visibleSubItems.map(i => getSidebarLabel(i.href, i.label)).join(', ')})`}
                   className={`sidebar-nav-item ${hasActiveChild ? 'active' : ''}`}
                 >
-                  <GroupIcon size={17} strokeWidth={2} style={{ flexShrink: 0, opacity: hasActiveChild ? 1 : 0.85 }} />
+                  <GroupIcon size={17} strokeWidth={2} style={{ flexShrink: 0, opacity: hasActiveChild ? 1 : 0.85, color: isSuperGroup ? '#BE185D' : undefined }} />
                 </Link>
               )
             }
@@ -540,24 +574,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   type="button"
                   onClick={() => toggleGroup(section.id)}
                   className={`sidebar-group-header ${hasActiveChild ? 'has-active-child' : ''}`}
+                  style={isSuperGroup ? { background: '#FDF2F8', borderRadius: 8, color: '#BE185D' } : undefined}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                    <GroupIcon size={16} strokeWidth={2} style={{ color: hasActiveChild ? (verticalConfig?.accentColor || 'var(--accent-blue)') : 'var(--text-secondary)' }} />
-                    <span>{section.label}</span>
+                    <GroupIcon size={16} strokeWidth={2} style={{ color: isSuperGroup ? '#BE185D' : (hasActiveChild ? (verticalConfig?.accentColor || 'var(--accent-blue)') : 'var(--text-secondary)') }} />
+                    <span style={isSuperGroup ? { fontWeight: 800, color: '#BE185D' } : undefined}>{section.label}</span>
                   </div>
                   <ChevronDown
                     size={14}
                     className={`sidebar-group-chevron ${isGroupOpen ? 'open' : ''}`}
+                    style={isSuperGroup ? { color: '#BE185D' } : undefined}
                   />
                 </button>
 
                 {/* Submenu Accordion Items */}
                 {isGroupOpen && (
-                  <div className="sidebar-sub-menu animate-fade-in">
+                  <div className="sidebar-sub-menu animate-fade-in" style={isSuperGroup ? { borderLeft: '2px solid #FBCFE8', marginLeft: 16 } : undefined}>
                     {visibleSubItems.map(subItem => {
                       const SubIcon = subItem.Icon
                       const isSubActive = pathname === subItem.href || (subItem.href !== '/dashboard' && pathname.startsWith(subItem.href))
-                      const dynamicLabel = getSidebarLabel(subItem.href, subItem.label)
+                      const dynamicLabel = subItem.href.startsWith('/superadmin') ? subItem.label : getSidebarLabel(subItem.href, subItem.label)
                       return (
                         <Link
                           key={subItem.href}
@@ -565,8 +601,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                           onClick={() => setSidebarOpen(false)}
                           className={`sidebar-sub-item ${isSubActive ? 'active' : ''}`}
                         >
-                          <SubIcon size={14} strokeWidth={2} style={{ opacity: isSubActive ? 1 : 0.75, flexShrink: 0 }} />
-                          <span>{dynamicLabel}</span>
+                          <SubIcon size={14} strokeWidth={2} style={{ opacity: isSubActive ? 1 : 0.75, flexShrink: 0, color: isSuperGroup ? '#BE185D' : undefined }} />
+                          <span style={isSuperGroup ? { fontWeight: 600 } : undefined}>{dynamicLabel}</span>
                         </Link>
                       )
                     })}
@@ -588,13 +624,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 width: 28,
                 height: 28,
                 borderRadius: 7,
-                background: 'var(--accent-blue-lt)',
+                background: isSuperAdmin ? '#FDF2F8' : 'var(--accent-blue-lt)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontWeight: 800,
                 fontSize: '0.75rem',
-                color: 'var(--accent-blue)',
+                color: isSuperAdmin ? '#BE185D' : 'var(--accent-blue)',
                 boxShadow: 'var(--neu-subtle)',
                 flexShrink: 0
               }}
@@ -631,6 +667,33 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </span>
           </div>
 
+          {/* Superadmin shortcut button */}
+          {isSuperAdmin && (
+            <Link
+              href="/superadmin"
+              style={{
+                width: '100%',
+                marginBottom: 6,
+                padding: collapsed ? '6px 0' : '5px 8px',
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#BE185D',
+                background: '#FDF2F8',
+                border: '1px solid #FBCFE8',
+                borderRadius: 6,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                textDecoration: 'none'
+              }}
+              title="Ir a Consola Superadmin"
+            >
+              <ShieldCheck size={13} />
+              <span className="role-pill-text">Consola Superadmin</span>
+            </Link>
+          )}
+
           <button
             className="btn-neu btn-ghost"
             onClick={handleLogout} disabled={loggingOut}
@@ -652,18 +715,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
 
-      {/* Mobile Backdrop */}
+      {/* Mobile Backdrop (Active only on small screens via CSS) */}
       {sidebarOpen && (
         <div
           className="sidebar-backdrop"
           onClick={() => setSidebarOpen(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.45)',
-            backdropFilter: 'blur(2px)',
-            zIndex: 998
-          }}
         />
       )}
 
@@ -673,8 +729,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Topbar Header */}
         <header className="topbar" style={{ display: 'flex', alignItems: 'center', gap: 10, justifyContent: 'space-between', padding: '10px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-            {/* Mobile Toggle Button */}
-            <button className="btn-neu btn-ghost sidebar-toggle-btn" onClick={() => setSidebarOpen(!sidebarOpen)} style={{ padding: '7px 10px', fontSize: '0.8rem', fontWeight: 700, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+            {/* Responsive Toggle Button */}
+            <button
+              className="btn-neu btn-ghost sidebar-toggle-btn"
+              onClick={handleToggleMenu}
+              style={{ padding: '7px 10px', fontSize: '0.8rem', fontWeight: 700, flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6 }}
+              title={collapsed ? "Expandir menú lateral" : "Colapsar menú lateral"}
+            >
               <Menu size={16} strokeWidth={2} />
               <span>Menú</span>
             </button>
@@ -690,6 +751,30 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {isSuperAdmin && (
+              <Link
+                href="/superadmin"
+                className="btn-neu"
+                style={{
+                  padding: '6px 11px',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 5,
+                  color: '#BE185D',
+                  background: '#FDF2F8',
+                  border: '1px solid #FBCFE8',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  boxShadow: '0 1px 3px rgba(190, 24, 93, 0.08)'
+                }}
+                title="Ir a la Consola Global Superadmin"
+              >
+                <ShieldCheck size={14} />
+                <span className="hide-on-mobile">Consola Superadmin</span>
+              </Link>
+            )}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('toggle-copilot'))}
               className="btn-neu btn-ghost"

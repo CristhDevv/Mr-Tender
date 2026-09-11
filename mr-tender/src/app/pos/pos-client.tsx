@@ -11,6 +11,7 @@ import PaymentTerminalModal from '@/components/PaymentTerminalModal'
 import ScaleHardwareModal from '@/components/ScaleHardwareModal'
 import DianCustomerModal, { DianCustomerData } from '@/components/DianCustomerModal'
 import PosAbonoModal from '@/components/PosAbonoModal'
+import ExpressCustomerModal, { ExpressCustomerCreated } from '@/components/ExpressCustomerModal'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
 import { parseScaleBarcode, getEffectiveUnitPrice, calculateEarnedPoints, kickCashDrawer } from '@/lib/cart'
 import { calculateLineFinancials, calculateInvoiceTotals, roundCurrency, roundCOP } from '@/lib/finance-math'
@@ -48,6 +49,8 @@ import {
   Printer,
   Send,
   User,
+  UserPlus,
+  AlertTriangle,
   Check,
   ArrowLeft,
   Delete,
@@ -277,6 +280,7 @@ export default function POSClient() {
   // Customers state
   const [customerList, setCustomerList] = useState<Customer[]>([])
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [showExpressCustomerModal, setShowExpressCustomerModal] = useState(false)
 
   // DIAN Electronic Invoicing State
   const [emitElectronicInvoice, setEmitElectronicInvoice] = useState(false)
@@ -2565,13 +2569,63 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
               </div>
 
               {/* Customer Selector & Fiscal Management */}
-              <div style={{ background: '#FFFFFF', border: '1px solid #E2E8F0', padding: '10px 12px', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: 6, boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ fontSize: '0.68rem', fontWeight: 800, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <User size={13} color="#64748B" />
+              <div
+                style={{
+                  background: '#FFFFFF',
+                  border: paymentMethod === 'fiao' && !selectedCustomer ? '1.5px solid #F59E0B' : '1px solid #E2E8F0',
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 6,
+                  boxShadow: paymentMethod === 'fiao' && !selectedCustomer ? '0 0 0 2px rgba(245, 158, 11, 0.15)' : '0 1px 3px rgba(0,0,0,0.03)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 4 }}>
+                  <label
+                    style={{
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      color: paymentMethod === 'fiao' && !selectedCustomer ? '#D97706' : '#475569',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.02em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4
+                    }}
+                  >
+                    <User size={13} color={paymentMethod === 'fiao' && !selectedCustomer ? '#D97706' : '#64748B'} />
                     <span>Cliente / Receptor</span>
+                    {paymentMethod === 'fiao' && !selectedCustomer && (
+                      <span style={{ fontSize: '0.62rem', background: '#FEF3C7', color: '#92400E', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>
+                        ⚠️ Requerido
+                      </span>
+                    )}
                   </label>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  <div style={{ display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowExpressCustomerModal(true)}
+                      style={{
+                        background: '#ECFDF5',
+                        color: '#059669',
+                        border: '1px solid #A7F3D0',
+                        borderRadius: 6,
+                        padding: '3px 8px',
+                        fontSize: '0.68rem',
+                        fontWeight: 800,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 3,
+                        transition: 'all 0.15s ease'
+                      }}
+                      title="Crear un cliente nuevo rápidamente"
+                    >
+                      <UserPlus size={12} strokeWidth={2.5} />
+                      <span>+ Nuevo Cliente</span>
+                    </button>
                     {selectedCustomer && (
                       <button
                         type="button"
@@ -2609,6 +2663,10 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   className="input-neu"
                   value={selectedCustomer?.id || ''}
                   onChange={e => {
+                    if (e.target.value === '__new_express__') {
+                      setShowExpressCustomerModal(true)
+                      return
+                    }
                     const found = customerList.find(c => c.id === e.target.value)
                     setSelectedCustomer(found || null)
                     if (found) {
@@ -2635,15 +2693,44 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                     }
                     setError('')
                   }}
-                  style={{ fontSize: '0.8rem', width: '100%', padding: '6px 10px', borderRadius: 8, height: 36 }}
+                  style={{
+                    fontSize: '0.8rem',
+                    width: '100%',
+                    padding: '6px 10px',
+                    borderRadius: 8,
+                    height: 36,
+                    border: paymentMethod === 'fiao' && !selectedCustomer ? '1.5px solid #F59E0B' : undefined,
+                    background: paymentMethod === 'fiao' && !selectedCustomer ? '#FFFBEB' : '#FFFFFF'
+                  }}
                 >
                   <option value="">-- Cliente General / Mostrador --</option>
+                  <option value="__new_express__" style={{ fontWeight: 800, color: '#00B19D' }}>➕ + Crear Nuevo Cliente Express...</option>
                   {customerList.map(c => (
                     <option key={c.id} value={c.id}>
-                      {c.full_name} {c.tax_id ? `[NIT: ${c.tax_id}]` : c.phone ? `(${c.phone})` : ''} {c.credit_used > 0 ? `• Deuda: ${formatCurrency(c.credit_used)}` : ''}
+                      {c.full_name} {c.tax_id ? `[NIT: ${c.tax_id}]` : c.phone ? `(${c.phone})` : ''} {c.credit_used > 0 ? `• Deuda: ${formatCurrency(c.credit_used)}` : c.credit_limit > 0 ? `• Cupo: ${formatCurrency(c.credit_limit)}` : ''}
                     </option>
                   ))}
                 </select>
+
+                {selectedCustomer && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC', padding: '4px 8px', borderRadius: 6, border: '1px solid #E2E8F0', fontSize: '0.7rem' }}>
+                    <span style={{ color: '#334155', fontWeight: 600 }}>
+                      Cupo disponible:{' '}
+                      <strong style={{ color: ((selectedCustomer.credit_limit || 0) - (selectedCustomer.credit_used || 0)) >= total ? '#16A34A' : '#DC2626' }}>
+                        {formatCurrency(Math.max(0, (selectedCustomer.credit_limit || 0) - (selectedCustomer.credit_used || 0)))}
+                      </strong>
+                      {selectedCustomer.credit_used > 0 && ` (Deuda: ${formatCurrency(selectedCustomer.credit_used)})`}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedCustomer(null); setDianCustomer(null); }}
+                      style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '0.68rem', cursor: 'pointer', padding: 0 }}
+                      title="Quitar cliente seleccionado"
+                    >
+                      ✕ Quitar
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Compact Cart Items List for Cashier Confirmation */}
@@ -2919,14 +3006,106 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 </div>
               )}
 
-              {paymentMethod === 'fiao' && (
-                <div style={{ background: '#F0EDFC', border: '1px solid #C8B9F5', padding: 12, borderRadius: 10 }}>
-                  <h4 style={{ fontSize: '0.85rem', fontWeight: 800, color: '#92400E', margin: '0 0 4px' }}>Venta a Crédito / Fiado</h4>
-                  <p style={{ fontSize: '0.75rem', color: '#B45309', margin: 0 }}>
-                    Se cargará un saldo pendiente de <strong>{formatCurrency(total)}</strong> a la cuenta de <strong>{selectedCustomer?.full_name || 'Cliente'}</strong>.
-                  </p>
-                </div>
-              )}
+              {paymentMethod === 'fiao' && (() => {
+                if (!selectedCustomer) {
+                  return (
+                    <div style={{ background: '#FFFBEB', border: '1.5px solid #FCD34D', padding: 14, borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#B45309' }}>
+                        <AlertTriangle size={20} strokeWidth={2.5} style={{ flexShrink: 0 }} />
+                        <h4 style={{ fontSize: '0.88rem', fontWeight: 900, margin: 0 }}>
+                          Cliente Obligatorio para Fiar
+                        </h4>
+                      </div>
+                      <p style={{ fontSize: '0.75rem', color: '#92400E', margin: 0, lineHeight: 1.4 }}>
+                        No está permitido fiar a <strong>Cliente General / Mostrador</strong>. Debes asignar un cliente registrado para controlar la cartera y el límite de crédito.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setShowExpressCustomerModal(true)}
+                        style={{
+                          marginTop: 4,
+                          background: 'linear-gradient(135deg, #00B19D, #008F7E)',
+                          color: '#FFFFFF',
+                          border: 'none',
+                          borderRadius: 8,
+                          padding: '9px 12px',
+                          fontSize: '0.8rem',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          boxShadow: '0 2px 8px rgba(0, 177, 157, 0.3)'
+                        }}
+                      >
+                        <UserPlus size={16} strokeWidth={2.5} />
+                        <span>+ Crear Cliente Express Ahora</span>
+                      </button>
+                    </div>
+                  )
+                }
+
+                const limit = Number(selectedCustomer.credit_limit || 0)
+                const used = Number(selectedCustomer.credit_used || 0)
+                const available = Math.max(0, limit - used)
+                const isOverLimit = total > available
+                const projectedDebt = used + total
+
+                return (
+                  <div style={{ background: isOverLimit ? '#FEF2F2' : '#F0FDF4', border: isOverLimit ? '1.5px solid #FECACA' : '1.5px solid #BBF7D0', padding: 14, borderRadius: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                      <div>
+                        <h4 style={{ fontSize: '0.86rem', fontWeight: 900, color: isOverLimit ? '#991B1B' : '#166534', margin: 0 }}>
+                          {isOverLimit ? '⚠️ Cupo de Crédito Insuficiente' : '👤 Venta a Crédito / Fiao'}
+                        </h4>
+                        <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#1E293B', marginTop: 2 }}>
+                          Cliente: {selectedCustomer.full_name} {selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setShowPosAbonoModal(true)}
+                        style={{ background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: 6, padding: '2px 6px', fontSize: '0.66rem', fontWeight: 800, color: '#0F766E', cursor: 'pointer' }}
+                        title="Registrar un abono para liberar cupo"
+                      >
+                        Abonar Fiao
+                      </button>
+                    </div>
+
+                    {/* Credit Status Breakdown */}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, background: '#FFFFFF', padding: 8, borderRadius: 8, border: '1px solid #E2E8F0', fontSize: '0.72rem' }}>
+                      <div>
+                        <span style={{ color: '#64748B', display: 'block', fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase' }}>Cupo Total</span>
+                        <strong style={{ color: '#0F172A' }}>{formatCurrency(limit)}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748B', display: 'block', fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase' }}>Deuda Actual</span>
+                        <strong style={{ color: used > 0 ? '#DC2626' : '#16A34A' }}>{formatCurrency(used)}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748B', display: 'block', fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase' }}>Cupo Disponible</span>
+                        <strong style={{ color: available >= total ? '#16A34A' : '#DC2626' }}>{formatCurrency(available)}</strong>
+                      </div>
+                      <div>
+                        <span style={{ color: '#64748B', display: 'block', fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase' }}>Nueva Deuda</span>
+                        <strong style={{ color: '#2563EB' }}>{formatCurrency(projectedDebt)}</strong>
+                      </div>
+                    </div>
+
+                    {isOverLimit ? (
+                      <div style={{ color: '#DC2626', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1.3 }}>
+                        ⚠️ La compra de <strong>{formatCurrency(total)}</strong> supera el cupo disponible por <strong>{formatCurrency(total - available)}</strong>.
+                      </div>
+                    ) : (
+                      <div style={{ color: '#15803D', fontSize: '0.72rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <Check size={14} strokeWidth={3} />
+                        <span>Crédito disponible. Se sumará <strong>{formatCurrency(total)}</strong> a su cuenta.</span>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {error && (
                 <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626', padding: '8px 12px', borderRadius: 8, fontSize: '0.78rem', fontWeight: 700 }}>
@@ -2935,27 +3114,71 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
               )}
 
               {/* Confirm Button */}
-              <button
-                id="pos-confirm-payment-btn"
-                className="btn-neu btn-primary"
-                onClick={processSale}
-                disabled={
-                  loading ||
-                  !sessionInfo?.session_id ||
-                  (paymentMethod === 'cash' && (Number(receivedAmount) || 0) < total) ||
-                  (paymentMethod === 'fiao' && !selectedCustomer)
+              {(() => {
+                const isFiaoOverLimit = paymentMethod === 'fiao' && selectedCustomer && total > Math.max(0, (Number(selectedCustomer.credit_limit || 0) - Number(selectedCustomer.credit_used || 0)))
+                const isFiaoMissingCustomer = paymentMethod === 'fiao' && !selectedCustomer
+                const isCashDisabled = paymentMethod === 'cash' && (Number(receivedAmount) || 0) < total
+                const isDisabled = loading || !sessionInfo?.session_id || isCashDisabled || isFiaoMissingCustomer || isFiaoOverLimit
+
+                let btnBg = 'linear-gradient(135deg, #059669, #047857)'
+                let btnText = `✅ Confirmar Cobro — ${formatCurrency(total)}`
+                let btnCursor = 'pointer'
+                let btnBoxShadow = '0 4px 14px rgba(5,150,105,0.4)'
+
+                if (isFiaoMissingCustomer) {
+                  btnBg = '#94A3B8'
+                  btnText = '⚠️ Selecciona o Crea un Cliente para Fiar'
+                  btnCursor = 'not-allowed'
+                  btnBoxShadow = 'none'
+                } else if (isFiaoOverLimit && selectedCustomer) {
+                  btnBg = '#DC2626'
+                  btnText = `⚠️ Cupo Insuficiente (${formatCurrency(Math.max(0, Number(selectedCustomer.credit_limit || 0) - Number(selectedCustomer.credit_used || 0)))})`
+                  btnCursor = 'not-allowed'
+                  btnBoxShadow = 'none'
+                } else if (isCashDisabled) {
+                  btnBg = '#64748B'
+                  btnCursor = 'not-allowed'
+                  btnBoxShadow = 'none'
                 }
-                style={{ width: '100%', padding: '16px', fontSize: '1.1rem', fontWeight: 900, justifyContent: 'center', background: 'linear-gradient(135deg, #059669, #047857)', color: '#fff', boxShadow: '0 4px 14px rgba(5,150,105,0.4)', marginTop: 'auto', borderRadius: 12 }}
-              >
-                {loading ? (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                    <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
-                    Procesando...
-                  </span>
-                ) : (
-                  <span>✅ Confirmar Cobro — {formatCurrency(total)} <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>[Enter / F12]</span></span>
-                )}
-              </button>
+
+                return (
+                  <button
+                    id="pos-confirm-payment-btn"
+                    className="btn-neu btn-primary"
+                    onClick={processSale}
+                    disabled={isDisabled}
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      fontSize: '1rem',
+                      fontWeight: 900,
+                      justifyContent: 'center',
+                      background: btnBg,
+                      color: '#fff',
+                      boxShadow: btnBoxShadow,
+                      marginTop: 'auto',
+                      borderRadius: 12,
+                      cursor: btnCursor,
+                      opacity: isDisabled && !loading ? 0.75 : 1,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    {loading ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
+                        <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
+                        Procesando...
+                      </span>
+                    ) : (
+                      <span>
+                        {btnText}{' '}
+                        {!isDisabled && (
+                          <span style={{ fontSize: '0.7rem', opacity: 0.8 }}>[Enter / F12]</span>
+                        )}
+                      </span>
+                    )}
+                  </button>
+                )
+              })()}
             </div>
           </div>
         </div>
@@ -3430,6 +3653,61 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
           }
           setError('')
           playSound('beep')
+        }}
+      />
+
+      {/* Express Customer Creation Modal */}
+      <ExpressCustomerModal
+        isOpen={showExpressCustomerModal}
+        onClose={() => setShowExpressCustomerModal(false)}
+        tenantId={sessionInfo?.tenant_id}
+        initialSuggestedLimit={200000}
+        onCustomerCreated={(newCust) => {
+          const castCustomer: Customer = {
+            id: newCust.id,
+            full_name: newCust.full_name,
+            tax_id: newCust.tax_id,
+            tax_name: newCust.tax_name,
+            tax_regime: newCust.tax_regime,
+            tax_address: newCust.tax_address,
+            email: newCust.email,
+            phone: newCust.phone,
+            address: newCust.address,
+            city: newCust.city,
+            state: newCust.state,
+            credit_limit: newCust.credit_limit,
+            credit_used: newCust.credit_used,
+            total_purchases: 0,
+            total_orders: 0,
+            metadata: newCust.metadata
+          }
+
+          setCustomerList(prev => {
+            const exists = prev.some(c => c.id === castCustomer.id)
+            if (exists) return prev.map(c => c.id === castCustomer.id ? castCustomer : c)
+            return [castCustomer, ...prev]
+          })
+          setSelectedCustomer(castCustomer)
+
+          if (newCust.tax_id) {
+            const cleanTaxId = newCust.tax_id.replace(/[^a-zA-Z0-9]/g, '')
+            setDianCustomer({
+              idType: (cleanTaxId.length >= 9 ? '31' : '13') as any,
+              documentNumber: cleanTaxId,
+              dv: cleanTaxId.length >= 9 ? calculateNITVerificationDigit(cleanTaxId) : undefined,
+              name: newCust.full_name.toUpperCase(),
+              personType: cleanTaxId.length >= 9 ? '1' : '2',
+              regime: (newCust.tax_regime || '49') as any,
+              email: newCust.email || '',
+              phone: newCust.phone || '',
+              address: newCust.address || 'Dirección Comercial',
+              city: newCust.city || 'Bogotá',
+              state: newCust.state || 'Bogotá D.C.'
+            })
+            setDianInvoiceMode('nominal')
+          }
+          setError('')
+          playSound('success')
         }}
       />
 
