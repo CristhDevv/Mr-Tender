@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -85,14 +85,14 @@ export default function NewTenantPage() {
 
     if (!targetState && result.blockedBy.length > 0) {
       const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-      setDependencyNotice(`⚠️ No puedes desactivar "${getModuleById(modId)?.name}" porque es requerido por: ${blockedNames}.`)
+      setDependencyNotice(`️ No puedes desactivar "${getModuleById(modId)?.name}" porque es requerido por: ${blockedNames}.`)
       setTimeout(() => setDependencyNotice(null), 5000)
       return
     }
 
     if (targetState && result.autoEnabled.length > 0) {
       const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-      setDependencyNotice(`ℹ️ Prerrequisitos activados: ${autoNames}`)
+      setDependencyNotice(`️ Prerrequisitos activados: ${autoNames}`)
       setTimeout(() => setDependencyNotice(null), 4000)
     } else {
       setDependencyNotice(null)
@@ -106,15 +106,15 @@ export default function NewTenantPage() {
       const allTrue: Record<string, boolean> = {}
       ALL_SYSTEM_MODULES.forEach(m => { allTrue[m.id] = true })
       setModules(allTrue)
-      setDependencyNotice('⚡ Se activaron todos los 25 módulos del sistema.')
+      setDependencyNotice(' Se activaron todos los 25 módulos del sistema.')
     } else if (preset === 'base_only') {
       const baseOnly: Record<string, boolean> = {}
       ALL_SYSTEM_MODULES.forEach(m => { baseOnly[m.id] = m.group === 'base' })
       setModules(baseOnly)
-      setDependencyNotice('✅ Se activaron los 13 módulos base y se desactivaron los verticales.')
+      setDependencyNotice(' Se activaron los 13 módulos base y se desactivaron los verticales.')
     } else {
       setModules(getDefaultModulesForBusinessType(form.business_type))
-      setDependencyNotice(`✅ Se aplicó la configuración recomendada para ${form.business_type}.`)
+      setDependencyNotice(` Se aplicó la configuración recomendada para ${form.business_type}.`)
     }
     setTimeout(() => setDependencyNotice(null), 4000)
   }
@@ -440,9 +440,9 @@ export default function NewTenantPage() {
                   </h3>
                 </div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span>🟢 Base: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && modules[m.id]).length}/13</strong></span>
+                  <span>Base: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && modules[m.id]).length}/13</strong></span>
                   <span>•</span>
-                  <span>🟣 Verticales: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && modules[m.id]).length}/12</strong></span>
+                  <span>Verticales: <strong>{ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && modules[m.id]).length}/12</strong></span>
                 </div>
               </div>
 
@@ -454,7 +454,7 @@ export default function NewTenantPage() {
                   className="btn-neu btn-ghost"
                   style={{ padding: '6px 10px', fontSize: '0.72rem' }}
                 >
-                  🟢 Solo Base (13)
+                   Solo Base (13)
                 </button>
                 <button
                   type="button"
@@ -462,7 +462,7 @@ export default function NewTenantPage() {
                   className="btn-neu btn-ghost"
                   style={{ padding: '6px 10px', fontSize: '0.72rem' }}
                 >
-                  🎯 Según Giro ({form.business_type})
+                   Según Giro ({form.business_type})
                 </button>
                 <button
                   type="button"
@@ -504,7 +504,7 @@ export default function NewTenantPage() {
                   color: moduleFilter === 'base' ? 'var(--bg)' : 'var(--text-secondary)'
                 }}
               >
-                🟢 Módulos Base / Indispensables ({ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && modules[m.id]).length}/13)
+                 Módulos Base / Indispensables ({ALL_SYSTEM_MODULES.filter(m => m.group === 'base' && modules[m.id]).length}/13)
               </button>
 
               <button
@@ -519,13 +519,13 @@ export default function NewTenantPage() {
                   color: moduleFilter === 'vertical' ? 'var(--bg)' : 'var(--text-secondary)'
                 }}
               >
-                🟣 Módulos Verticales / Especializados ({ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && modules[m.id]).length}/12)
+                 Módulos Verticales / Especializados ({ALL_SYSTEM_MODULES.filter(m => m.group === 'vertical' && modules[m.id]).length}/12)
               </button>
             </div>
 
             {dependencyNotice && (
               <div style={{
-                background: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
+                background: dependencyNotice.startsWith('️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
                 border: '1px solid var(--border-color)',
                 padding: '8px 12px',
                 borderRadius: 6,
@@ -537,11 +537,11 @@ export default function NewTenantPage() {
               </div>
             )}
 
-            {/* 🟢 SECCIÓN BASE */}
+            {/*  SECCIÓN BASE */}
             {(moduleFilter === 'all' || moduleFilter === 'base') && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-color)', paddingBottom: 4 }}>
-                  <span style={{ fontSize: '0.9rem' }}>🟢</span>
+                  <span style={{ fontSize: '0.9rem' }}></span>
                   <span style={{ fontWeight: 800, fontSize: '0.86rem', color: 'var(--text-primary)' }}>
                     Módulos Base (Indispensables para Todo Comercio)
                   </span>
@@ -600,11 +600,11 @@ export default function NewTenantPage() {
               </div>
             )}
 
-            {/* 🟣 SECCIÓN VERTICAL */}
+            {/*  SECCIÓN VERTICAL */}
             {(moduleFilter === 'all' || moduleFilter === 'vertical') && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: moduleFilter === 'all' ? 8 : 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, borderBottom: '1px solid var(--border-color)', paddingBottom: 4 }}>
-                  <span style={{ fontSize: '0.9rem' }}>🟣</span>
+                  <span style={{ fontSize: '0.9rem' }}></span>
                   <span style={{ fontWeight: 800, fontSize: '0.86rem', color: 'var(--text-primary)' }}>
                     Módulos Verticales (Especializados por Giro)
                   </span>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useState, useEffect } from 'react'
 import {
   ShoppingCart,
@@ -120,7 +120,7 @@ export default function CustomerDisplayPage() {
               boxShadow: '0 0 15px rgba(0,177,157,0.4)'
             }}
           >
-            🏪
+            
           </div>
           <div>
             <h1 style={{ fontSize: '1.35rem', fontWeight: 900, margin: 0, letterSpacing: '-0.02em', color: '#f8fafc' }}>
@@ -201,7 +201,7 @@ export default function CustomerDisplayPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 40, textAlign: 'center' }}>
-            <div style={{ fontSize: '4rem', marginBottom: 16 }}>👋</div>
+            <div style={{ fontSize: '4rem', marginBottom: 16 }}></div>
             <h2 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#f8fafc', margin: 0, letterSpacing: '-0.03em' }}>
               ¡Bienvenidos a {displayState.businessName || 'nuestra tienda'}!
             </h2>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useState } from 'react'
 import {
   Smartphone,
@@ -60,13 +60,13 @@ const PUBLIC_SERVICES = [
 ]
 
 const DIGITAL_PINS = [
-  { id: 'freefire', name: 'Free Fire (Diamantes Garena)', denomination: [3500, 7000, 17500, 35000], emoji: '🔥', commRate: 0.08 },
-  { id: 'netflix', name: 'Netflix Tarjeta de Regalo', denomination: [20000, 30000, 40000, 50000], emoji: '🎬', commRate: 0.06 },
-  { id: 'spotify', name: 'Spotify Premium Individual', denomination: [17900, 35800, 53700], emoji: '🎵', commRate: 0.06 },
-  { id: 'xbox', name: 'Xbox Game Pass / Gift Card', denomination: [30000, 50000, 100000], emoji: '🎮', commRate: 0.06 },
-  { id: 'playstation', name: 'PlayStation Store PIN (USD/COP)', denomination: [40000, 80000, 150000], emoji: '🕹️', commRate: 0.06 },
-  { id: 'roblox', name: 'Roblox Robux Digital Card', denomination: [25000, 50000, 100000], emoji: '🧱', commRate: 0.07 },
-  { id: 'crunchyroll', name: 'Crunchyroll Fan Mega', denomination: [15000, 30000, 45000], emoji: '🍥', commRate: 0.06 }
+  { id: 'freefire', name: 'Free Fire (Diamantes Garena)', denomination: [3500, 7000, 17500, 35000], emoji: '', commRate: 0.08 },
+  { id: 'netflix', name: 'Netflix Tarjeta de Regalo', denomination: [20000, 30000, 40000, 50000], emoji: '', commRate: 0.06 },
+  { id: 'spotify', name: 'Spotify Premium Individual', denomination: [17900, 35800, 53700], emoji: '', commRate: 0.06 },
+  { id: 'xbox', name: 'Xbox Game Pass / Gift Card', denomination: [30000, 50000, 100000], emoji: '', commRate: 0.06 },
+  { id: 'playstation', name: 'PlayStation Store PIN (USD/COP)', denomination: [40000, 80000, 150000], emoji: '️', commRate: 0.06 },
+  { id: 'roblox', name: 'Roblox Robux Digital Card', denomination: [25000, 50000, 100000], emoji: '', commRate: 0.07 },
+  { id: 'crunchyroll', name: 'Crunchyroll Fan Mega', denomination: [15000, 30000, 45000], emoji: '', commRate: 0.06 }
 ]
 
 export default function RechargesServicesModal({

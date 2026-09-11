@@ -603,8 +603,8 @@ Comprobante generado por el sistema Mr. Tender.`
                           </span>
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', gap: 12 }}>
-                          <span>📅 {new Date(sale.created_at).toLocaleDateString('es-CO')} {new Date(sale.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span>👤 {sale.customers?.full_name || 'Cliente general'}</span>
+                          <span> {new Date(sale.created_at).toLocaleDateString('es-CO')} {new Date(sale.created_at).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span> {sale.customers?.full_name || 'Cliente general'}</span>
                         </div>
                       </div>
 

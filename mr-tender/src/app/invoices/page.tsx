@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -1130,7 +1130,7 @@ ${dianUrl}
             <div style={{ border: '1px solid #E2E8F0', borderRadius: 12, padding: 18, background: '#F8FAFC' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                 <span style={{ fontWeight: 800, fontSize: '1rem', color: testSetResult.status === 'completed' ? '#10B981' : '#EF4444' }}>
-                  {testSetResult.status === 'completed' ? '✓ SET DE PRUEBAS COMPLETADO Y APROBADO' : '✗ SET DE PRUEBAS FINALIZADO'}
+                  {testSetResult.status === 'completed' ? ' SET DE PRUEBAS COMPLETADO Y APROBADO' : ' SET DE PRUEBAS FINALIZADO'}
                 </span>
                 <span style={{ fontSize: '0.8rem', color: '#64748B' }}>
                   {testSetResult.invoicesAccepted}/8 Facturas • {testSetResult.creditNotesAccepted}/1 Nota Crédito

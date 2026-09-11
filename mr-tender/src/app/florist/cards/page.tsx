@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import Link from 'next/link'
 import {
@@ -97,9 +97,9 @@ export default function FloristCardsPage() {
           <div>
             <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase' }}>Plantillas Rápidas:</span>
             <div style={{ display: 'flex', gap: 6, marginTop: 4, flexWrap: 'wrap' }}>
-              <button onClick={() => setMessage(TEMPLATES.amor[0])} className="btn-neu" style={{ padding: '4px 8px', fontSize: '0.72rem' }}>💖 Amor</button>
-              <button onClick={() => setMessage(TEMPLATES.cumpleanos[0])} className="btn-neu" style={{ padding: '4px 8px', fontSize: '0.72rem' }}>🎂 Cumpleaños</button>
-              <button onClick={() => setMessage(TEMPLATES.condolencias[0])} className="btn-neu" style={{ padding: '4px 8px', fontSize: '0.72rem' }}>🕊️ Condolencias</button>
+              <button onClick={() => setMessage(TEMPLATES.amor[0])} className="btn-neu" style={{ padding: '4px 8px', fontSize: '0.72rem' }}> Amor</button>
+              <button onClick={() => setMessage(TEMPLATES.cumpleanos[0])} className="btn-neu" style={{ padding: '4px 8px', fontSize: '0.72rem' }}> Cumpleaños</button>
+              <button onClick={() => setMessage(TEMPLATES.condolencias[0])} className="btn-neu" style={{ padding: '4px 8px', fontSize: '0.72rem' }}>️ Condolencias</button>
             </div>
           </div>
         </div>

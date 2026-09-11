@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -72,7 +72,7 @@ export default function GymCheckinPage() {
         const result = {
           status: isAllowed ? 'allowed' : 'expired',
           member: m,
-          message: isAllowed ? '✓ ACCESO AUTORIZADO - BIENVENIDO' : '⚠️ MEMBRESÍA VENCIDA O INACTIVA'
+          message: isAllowed ? ' ACCESO AUTORIZADO - BIENVENIDO' : '️ MEMBRESÍA VENCIDA O INACTIVA'
         }
         setLastCheckin(result)
 

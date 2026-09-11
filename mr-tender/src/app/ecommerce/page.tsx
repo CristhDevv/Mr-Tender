@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -193,7 +193,7 @@ export default function EcommercePage() {
               </a>
             </div>
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              ⚠️ Asegúrate de marcar "Tienda Virtual Activa" para que el catálogo sea visible.
+              ️ Asegúrate de marcar "Tienda Virtual Activa" para que el catálogo sea visible.
             </div>
           </div>
         </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
@@ -60,7 +60,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
           <img src="/logo.png" alt="Mr Tender" style={{ width: 38, height: 38, borderRadius: 10, objectFit: 'contain', flexShrink: 0 }} />
           <div>
             <div style={{ fontWeight: 800, fontSize: '1rem', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>Mr Tender</div>
-            <div style={{ fontSize: '0.68rem', color: '#BE185D', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>👑 Panel Superadmin</div>
+            <div style={{ fontSize: '0.68rem', color: '#BE185D', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Panel Superadmin</div>
           </div>
         </Link>
 
@@ -87,7 +87,7 @@ export default function SuperadminLayout({ children }: { children: React.ReactNo
         <div style={{ padding: '12px 16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
             <div style={{ width: 28, height: 28, borderRadius: 7, background: '#FDF2F8', color: '#BE185D', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              👑
+              SA
             </div>
             <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

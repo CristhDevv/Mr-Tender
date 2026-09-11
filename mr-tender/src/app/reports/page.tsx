@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -596,13 +596,13 @@ export default function ReportsPage() {
               height: 34
             }}
           >
-            <option value="sales">📊 Ventas & Facturación</option>
-            <option value="inventory">📦 Inventario & Stock</option>
-            <option value="customers">👥 Clientes & Cartera (Fiao)</option>
-            <option value="purchases">🚚 Compras & Proveedores</option>
-            <option value="cash">💵 Cajas & Turnos</option>
-            <option value="pnl">📈 Estado de Resultados (P&L)</option>
-            <option value="refunds">🔄 Devoluciones & Notas Crédito</option>
+            <option value="sales"> Ventas & Facturación</option>
+            <option value="inventory"> Inventario & Stock</option>
+            <option value="customers"> Clientes & Cartera (Fiao)</option>
+            <option value="purchases"> Compras & Proveedores</option>
+            <option value="cash"> Cajas & Turnos</option>
+            <option value="pnl"> Estado de Resultados (P&L)</option>
+            <option value="refunds"> Devoluciones & Notas Crédito</option>
           </select>
 
           {/* Inline Active Period Indicator */}
@@ -788,7 +788,7 @@ export default function ReportsPage() {
                 onChange={e => setPaymentMethodFilter(e.target.value)}
                 style={{ fontSize: '0.74rem', padding: '3px 8px', height: 28, width: 'auto', background: '#FFFFFF' }}
               >
-                <option value="all">💳 Todos los medios de pago</option>
+                <option value="all"> Todos los medios de pago</option>
                 <option value="Efectivo">Efectivo</option>
                 <option value="Nequi">Nequi</option>
                 <option value="Daviplata">Daviplata</option>
@@ -805,10 +805,10 @@ export default function ReportsPage() {
                   onChange={e => setStockStatusFilter(e.target.value)}
                   style={{ fontSize: '0.74rem', padding: '3px 8px', height: 28, width: 'auto', background: '#FFFFFF' }}
                 >
-                  <option value="all">📦 Todo el stock</option>
-                  <option value="low_stock">⚠️ Stock bajo (≤ alerta)</option>
-                  <option value="out_of_stock">⛔ Agotados (0 u)</option>
-                  <option value="in_stock">✅ Con existencias (&gt;0)</option>
+                  <option value="all"> Todo el stock</option>
+                  <option value="low_stock">️ Stock bajo (≤ alerta)</option>
+                  <option value="out_of_stock"> Agotados (0 u)</option>
+                  <option value="in_stock"> Con existencias (&gt;0)</option>
                 </select>
 
                 {categoriesList.length > 0 && (
@@ -818,7 +818,7 @@ export default function ReportsPage() {
                     onChange={e => setCategoryFilter(e.target.value)}
                     style={{ fontSize: '0.74rem', padding: '3px 8px', height: 28, width: 'auto', background: '#FFFFFF' }}
                   >
-                    <option value="all">🏷️ Todas las categorías</option>
+                    <option value="all">️ Todas las categorías</option>
                     {categoriesList.map(c => (
                       <option key={c} value={c}>{c}</option>
                     ))}
@@ -834,9 +834,9 @@ export default function ReportsPage() {
                 onChange={e => setDebtFilter(e.target.value)}
                 style={{ fontSize: '0.74rem', padding: '3px 8px', height: 28, width: 'auto', background: '#FFFFFF' }}
               >
-                <option value="all">👥 Todos los clientes</option>
-                <option value="has_debt">📕 Con saldo pendiente (Fiao)</option>
-                <option value="no_debt">✅ Al día (Sin deuda)</option>
+                <option value="all"> Todos los clientes</option>
+                <option value="has_debt"> Con saldo pendiente (Fiao)</option>
+                <option value="no_debt"> Al día (Sin deuda)</option>
               </select>
             )}
 
@@ -847,7 +847,7 @@ export default function ReportsPage() {
                 onChange={e => setSupplierFilter(e.target.value)}
                 style={{ fontSize: '0.74rem', padding: '3px 8px', height: 28, width: 'auto', background: '#FFFFFF' }}
               >
-                <option value="all">🚚 Todos los proveedores</option>
+                <option value="all"> Todos los proveedores</option>
                 {suppliersList.map(s => (
                   <option key={s} value={s}>{s}</option>
                 ))}
@@ -861,9 +861,9 @@ export default function ReportsPage() {
                 onChange={e => setCashStatusFilter(e.target.value)}
                 style={{ fontSize: '0.74rem', padding: '3px 8px', height: 28, width: 'auto', background: '#FFFFFF' }}
               >
-                <option value="all">💵 Todas las sesiones</option>
-                <option value="diff">⚠️ Con descuadre / diferencia</option>
-                <option value="exact">✅ Cuadradas exactamente</option>
+                <option value="all"> Todas las sesiones</option>
+                <option value="diff">️ Con descuadre / diferencia</option>
+                <option value="exact"> Cuadradas exactamente</option>
               </select>
             )}
 

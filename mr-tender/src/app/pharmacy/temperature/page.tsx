@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -257,7 +257,7 @@ export default function PharmacyTemperaturePage() {
                       <td style={{ padding: '12px 16px' }}>
                         <div style={{ fontWeight: 800, color: 'var(--text-primary)' }}>{formatDate(log.log_date)}</div>
                         <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                          Jornada: {log.time_slot === 'morning' ? '☀️ Mañana (08:00)' : '🌙 Tarde (16:00)'}
+                          Jornada: {log.time_slot === 'morning' ? '️ Mañana (08:00)' : ' Tarde (16:00)'}
                         </div>
                       </td>
                       <td style={{ padding: '12px 14px', fontWeight: 700 }}>
@@ -285,7 +285,7 @@ export default function PharmacyTemperaturePage() {
                           background: isCompliant ? 'var(--accent-green-lt)' : 'var(--accent-coral-lt)',
                           color: isCompliant ? 'var(--accent-green)' : 'var(--accent-coral)'
                         }}>
-                          {isCompliant ? '✓ ÓPTIMO' : '⚠️ FUERA DE RANGO'}
+                          {isCompliant ? ' ÓPTIMO' : '️ FUERA DE RANGO'}
                         </span>
                       </td>
                     </tr>
@@ -328,8 +328,8 @@ export default function PharmacyTemperaturePage() {
                     className="input-neu"
                     style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
                   >
-                    <option value="morning">☀️ Mañana</option>
-                    <option value="afternoon">🌙 Tarde</option>
+                    <option value="morning">️ Mañana</option>
+                    <option value="afternoon"> Tarde</option>
                   </select>
                 </div>
               </div>

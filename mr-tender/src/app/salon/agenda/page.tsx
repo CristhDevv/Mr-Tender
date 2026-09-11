@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -243,7 +243,7 @@ export default function SalonAgendaPage() {
                 <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div><strong>Servicio:</strong> {app.service_name}</div>
                   <div><strong>Profesional:</strong> {app.stylist_name}</div>
-                  <div><strong>Fecha & Hora:</strong> 📅 {formatDate(app.appointment_date)} a las {app.appointment_time}</div>
+                  <div><strong>Fecha & Hora:</strong>  {formatDate(app.appointment_date)} a las {app.appointment_time}</div>
                   <div style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>Valor: {formatCurrency(app.price)}</div>
                 </div>
 

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -151,7 +151,7 @@ export default function ButcheryCutsPage() {
       >
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: '1.8rem' }}>🥩</span>
+            <span style={{ fontSize: '1.8rem' }}></span>
             <div>
               <h1 style={{ fontSize: '1.4rem', fontWeight: 900, margin: 0, color: '#fff' }}>
                 Estudio de Cortes de Carne & Rendimiento Cárnico
@@ -184,7 +184,7 @@ export default function ButcheryCutsPage() {
             borderRadius: 10
           }}
         >
-          ⚡ Simulador de Cortes de Carne en Vivo
+           Simulador de Cortes de Carne en Vivo
         </button>
         <button
           onClick={() => setActiveTab('catalog')}
@@ -199,7 +199,7 @@ export default function ButcheryCutsPage() {
             borderRadius: 10
           }}
         >
-          📖 Catálogo de Cortes & Estándares
+           Catálogo de Cortes & Estándares
         </button>
         <button
           onClick={() => setActiveTab('history')}
@@ -214,7 +214,7 @@ export default function ButcheryCutsPage() {
             borderRadius: 10
           }}
         >
-          📜 Historial de Sesiones ({sessions.length})
+           Historial de Sesiones ({sessions.length})
         </button>
       </div>
 

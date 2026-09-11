@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { formatCurrency, formatDateTime } from '@/lib/utils'
 import { roundCurrency, validateCashDiscrepancy, calculateCashDiscrepancyThreshold } from '@/lib/finance-math'
@@ -291,19 +291,19 @@ export default function CashPage() {
       cleanPhone = '57' + cleanPhone
     }
 
-    const message = `📊 *REPORTE DE CIERRE DE CAJA*
-🏪 *${businessName}*
-📅 Fecha: ${new Date().toLocaleString('es-CO')}
+    const message = ` *REPORTE DE CIERRE DE CAJA*
+ *${businessName}*
+ Fecha: ${new Date().toLocaleString('es-CO')}
 
-💵 *Fondo Inicial:* ${formatCurrency(initialOp)}
-🛒 *Ventas Turno:* ${formatCurrency(rep.sales)}
-📤 *Gastos/Salidas:* -${formatCurrency(rep.expenses)}
+ *Fondo Inicial:* ${formatCurrency(initialOp)}
+ *Ventas Turno:* ${formatCurrency(rep.sales)}
+ *Gastos/Salidas:* -${formatCurrency(rep.expenses)}
 ──────────────
-💰 *Efectivo Esperado:* ${formatCurrency(rep.expected)}
-🪙 *Efectivo Contado:* ${formatCurrency(rep.counted)}
-⚖️ *Diferencia:* ${rep.diff === 0 ? 'Exacto ($0)' : rep.diff > 0 ? `+${formatCurrency(rep.diff)} (Sobrante)` : `${formatCurrency(rep.diff)} (Faltante)`}
+ *Efectivo Esperado:* ${formatCurrency(rep.expected)}
+ *Efectivo Contado:* ${formatCurrency(rep.counted)}
+️ *Diferencia:* ${rep.diff === 0 ? 'Exacto ($0)' : rep.diff > 0 ? `+${formatCurrency(rep.diff)} (Sobrante)` : `${formatCurrency(rep.diff)} (Faltante)`}
 
-✅ Cierre registrado en Mr Tender POS.`
+ Cierre registrado en Mr Tender POS.`
 
     if (cleanPhone) {
       window.open(`https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`, '_blank')
@@ -791,7 +791,7 @@ export default function CashPage() {
                       <div>
                         <div style={{ fontSize: '0.68rem', color: '#64748B' }}>Resultado de Cuadre</div>
                         <div style={{ fontSize: '0.85rem', fontWeight: 800, color: Number(historySessions[0].difference_amount) === 0 ? '#059669' : '#DC2626' }}>
-                          {Number(historySessions[0].difference_amount) === 0 ? '✓ Cuadre Exacto' : `Diferencia: ${formatCurrency(Number(historySessions[0].difference_amount))}`}
+                          {Number(historySessions[0].difference_amount) === 0 ? ' Cuadre Exacto' : `Diferencia: ${formatCurrency(Number(historySessions[0].difference_amount))}`}
                         </div>
                       </div>
 
@@ -906,7 +906,7 @@ export default function CashPage() {
                             color: isExact ? '#059669' : isPositive ? '#2563EB' : '#DC2626',
                             border: isExact ? '1px solid #A7F3D0' : isPositive ? '1px solid #BFDBFE' : '1px solid #FECACA'
                           }}>
-                            {isExact ? '✓ Exacto' : isPositive ? `+${formatCurrency(diff)} Sobrante` : `${formatCurrency(diff)} Faltante`}
+                            {isExact ? ' Exacto' : isPositive ? `+${formatCurrency(diff)} Sobrante` : `${formatCurrency(diff)} Faltante`}
                           </span>
                         </td>
 
@@ -1266,7 +1266,7 @@ export default function CashPage() {
                       fontSize: '0.9rem',
                       color: liveVal.difference === 0 ? '#059669' : liveVal.difference > 0 ? '#2563EB' : '#DC2626'
                     }}>
-                      {liveVal.difference === 0 ? '✓ $0 (Exacto)' : (liveVal.difference > 0 ? `+${formatCurrency(liveVal.difference)}` : formatCurrency(liveVal.difference))}
+                      {liveVal.difference === 0 ? ' $0 (Exacto)' : (liveVal.difference > 0 ? `+${formatCurrency(liveVal.difference)}` : formatCurrency(liveVal.difference))}
                     </span>
                   </div>
                 )}
@@ -1410,7 +1410,7 @@ export default function CashPage() {
                 fontSize: '0.88rem',
                 color: Number(selectedHistorySession.difference_amount) === 0 ? '#059669' : Number(selectedHistorySession.difference_amount) > 0 ? '#2563EB' : '#DC2626'
               }}>
-                {Number(selectedHistorySession.difference_amount) === 0 ? '✓ Exacto ($0)' : formatCurrency(Number(selectedHistorySession.difference_amount))}
+                {Number(selectedHistorySession.difference_amount) === 0 ? ' Exacto ($0)' : formatCurrency(Number(selectedHistorySession.difference_amount))}
               </span>
             </div>
 

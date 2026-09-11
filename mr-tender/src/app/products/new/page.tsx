@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -159,7 +159,7 @@ export default function NewProductPage() {
 
     const master = findMasterProduct(cleanCode)
     if (master) {
-      setFoundBadge(`✨ Autocompletado: "${master.name}"`)
+      setFoundBadge(` Autocompletado: "${master.name}"`)
       setForm(f => ({
         ...f,
         name: master.name,
@@ -314,7 +314,7 @@ export default function NewProductPage() {
             className="btn-neu btn-primary"
             style={{ padding: '8px 20px', fontSize: '0.82rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            {saved ? '✓ Guardado' : loading ? 'Guardando...' : '✓ Guardar Producto'}
+            {saved ? ' Guardado' : loading ? 'Guardando...' : ' Guardar Producto'}
           </button>
         </div>
       </div>
@@ -329,7 +329,7 @@ export default function NewProductPage() {
 
       {error && (
         <div style={{ background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA', padding: '10px 14px', borderRadius: 10, fontSize: '0.85rem', fontWeight: 700 }}>
-          ⚠ {error}
+           {error}
         </div>
       )}
 

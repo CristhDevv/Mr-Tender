@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -679,10 +679,10 @@ export default function RestaurantTablesPage() {
                     className="input-neu"
                     style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem' }}
                   >
-                    <option value="kitchen">🍳 Cocina Caliente</option>
-                    <option value="grill">🥩 Parrilla & Asados</option>
-                    <option value="bar">🍹 Barra & Bebidas</option>
-                    <option value="dessert">🍰 Postres & Café</option>
+                    <option value="kitchen"> Cocina Caliente</option>
+                    <option value="grill"> Parrilla & Asados</option>
+                    <option value="bar"> Barra & Bebidas</option>
+                    <option value="dessert"> Postres & Café</option>
                   </select>
                 </div>
 

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -153,8 +153,8 @@ export default function VetVaccinesPage() {
               </div>
 
               <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div><strong>Aplicada el:</strong> 📅 {formatDate(v.applied_date)}</div>
-                <div><strong>Próximo Refuerzo:</strong> ⏳ <span style={{ fontWeight: 800, color: 'var(--accent-blue)' }}>{formatDate(v.next_due_date)}</span></div>
+                <div><strong>Aplicada el:</strong>  {formatDate(v.applied_date)}</div>
+                <div><strong>Próximo Refuerzo:</strong>  <span style={{ fontWeight: 800, color: 'var(--accent-blue)' }}>{formatDate(v.next_due_date)}</span></div>
                 {v.lot_number && <div style={{ color: 'var(--text-muted)' }}>Lote Biológico: #{v.lot_number}</div>}
               </div>
             </div>

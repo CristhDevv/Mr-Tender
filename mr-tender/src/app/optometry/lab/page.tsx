@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -172,7 +172,7 @@ export default function OptometryLabPage() {
               <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div><strong>Montura:</strong> {o.frame_model}</div>
                 <div><strong>Lente / Tratamiento:</strong> {o.lens_type}</div>
-                <div><strong>Fecha Promesa:</strong> 📅 {formatDate(o.promised_date)}</div>
+                <div><strong>Fecha Promesa:</strong>  {formatDate(o.promised_date)}</div>
               </div>
 
               <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 6 }}>
@@ -182,7 +182,7 @@ export default function OptometryLabPage() {
                     className="btn-neu"
                     style={{ width: '100%', padding: '7px 0', fontSize: '0.76rem', color: 'var(--accent-purple)', fontWeight: 700 }}
                   >
-                    Recibido de Lab ➔ Biselar y Montar
+                    Recibido de Lab Biselar y Montar
                   </button>
                 )}
                 {!isReady && !isDeliv && (

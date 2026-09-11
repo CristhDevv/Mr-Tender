@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Link from 'next/link'
 import { useState } from 'react'
@@ -21,63 +21,63 @@ const STATS = [
 
 const FEATURES = [
   {
-    icon: '⚡',
+    icon: '',
     color: '#00D6BC',
     bg: '#E6FAF7',
     title: 'POS Ultra-Rápido',
     desc: 'Completa una venta en 3 toques. Escáner de código de barras, múltiples formas de pago (Nequi, Daviplata, Bancolombia QR, efectivo) y ticket digital al instante.',
   },
   {
-    icon: '🧾',
+    icon: '',
     color: '#714AD9',
     bg: '#F0EDFC',
     title: 'Facturación DIAN Completa',
     desc: 'Emisión UBL 2.1 con CUFE SHA-384, notas crédito, documento soporte, nómina electrónica CUNE y habilitación DIAN integrada. Sin software adicional.',
   },
   {
-    icon: '📦',
+    icon: '',
     color: '#0284C7',
     bg: '#EFF6FF',
     title: 'Inventario Multi-Almacén',
     desc: 'Kardex automático, alertas de stock mínimo, traslados entre bodegas, importación masiva desde Excel y valorización de existencias en tiempo real.',
   },
   {
-    icon: '🧠',
+    icon: '',
     color: '#D97706',
     bg: '#FFFBEB',
     title: 'IA Copilot Integrada',
     desc: 'Asistente de inteligencia artificial con Gemini: consulta ventas, crea productos por voz ("dos gaseosas y una bolsa de pan") y analiza tu negocio en lenguaje natural.',
   },
   {
-    icon: '🛒',
+    icon: '',
     color: '#059669',
     bg: '#ECFDF5',
     title: 'E-commerce Propio',
     desc: 'Tu tienda web en nombre.mrtender.com sincronizada en tiempo real con el inventario. Pedidos que llegan directo a WhatsApp sin comisiones.',
   },
   {
-    icon: '👥',
+    icon: '',
     color: '#00D6BC',
     bg: '#E6FAF7',
     title: 'CRM con Kanban de Ventas',
     desc: 'Embudo de ventas visual por etapas, links de pago Wompi/PSE, historial de clientes, fiados con estado de cuenta y recordatorios automáticos por WhatsApp.',
   },
   {
-    icon: '📊',
+    icon: '',
     color: '#714AD9',
     bg: '#F0EDFC',
     title: 'Reportes e Analítica',
     desc: 'Dashboard con KPIs en vivo: ventas netas, utilidad bruta, ticket promedio, cajero del mes y productos top. Exportación a PDF y Excel.',
   },
   {
-    icon: '💼',
+    icon: '',
     color: '#0284C7',
     bg: '#EFF6FF',
     title: 'Nómina Electrónica DIAN',
     desc: 'Liquidación quincenal/mensual con devengados, deducciones de ley Colombia, cálculo de CUNE y envío de colillas por WhatsApp a cada empleado.',
   },
   {
-    icon: '🏦',
+    icon: '',
     color: '#059669',
     bg: '#ECFDF5',
     title: 'Tesorería y Contabilidad',
@@ -86,23 +86,23 @@ const FEATURES = [
 ]
 
 const VERTICALS = [
-  { icon: '🍕', name: 'Restaurante & Café', desc: 'Mesas, comandas KDS cocina, split bill, recetas' },
-  { icon: '💊', name: 'Droguería & Farmacia', desc: 'INVIMA, lotes vencimiento, termohigrometría' },
-  { icon: '🥩', name: 'Carnicería & Charcutería', desc: 'Desposte canales, rendimiento cárnico, frío' },
-  { icon: '🥐', name: 'Panadería & Pastelería', desc: 'Recetas panaderas, horneadas, encargos' },
-  { icon: '🏋️', name: 'Gimnasio & Fitness', desc: 'Membresías, torniquete QR, aforo clases' },
-  { icon: '🐾', name: 'Veterinaria & Pet Shop', desc: 'Historias clínicas, vacunas WhatsApp, grooming' },
-  { icon: '🔧', name: 'Taller Mecánico', desc: 'Órdenes de trabajo por placa, checklist, autolavado' },
-  { icon: '👗', name: 'Boutique & Ropa', desc: 'Matriz talla/color, probadores, lookbooks' },
-  { icon: '🌸', name: 'Salón de Belleza', desc: 'Agenda citas WhatsApp, comisiones estilistas' },
-  { icon: '👓', name: 'Óptica', desc: 'Fórmulas OD/OI, órdenes laboratorio biselado' },
-  { icon: '🌿', name: 'Verdulería & Frutería', desc: 'Mermas, canastas mercado, balanza PLU' },
-  { icon: '🌹', name: 'Floristería & Eventos', desc: 'Arreglos por tallos, dedicatorias, domicilios' },
-  { icon: '🍫', name: 'Dulcería & Piñatería', desc: 'Sorpresas por niño, venta granel, combos fiesta' },
-  { icon: '🍷', name: 'Licorera & Estanco', desc: 'Copeo barra, retornables, combos rumberos' },
-  { icon: '🔩', name: 'Ferretería', desc: 'Cotizaciones PDF, venta fraccionada, alquiler herramientas' },
-  { icon: '📚', name: 'Papelería & Variedades', desc: 'Impresiones, fotocopias, útiles escolares' },
-  { icon: '👔', name: 'Lavandería & Tintorería', desc: 'Tickets prenda, percheros, lavado en seco' },
+  { icon: '', name: 'Restaurante & Café', desc: 'Mesas, comandas KDS cocina, split bill, recetas' },
+  { icon: '', name: 'Droguería & Farmacia', desc: 'INVIMA, lotes vencimiento, termohigrometría' },
+  { icon: '', name: 'Carnicería & Charcutería', desc: 'Desposte canales, rendimiento cárnico, frío' },
+  { icon: '', name: 'Panadería & Pastelería', desc: 'Recetas panaderas, horneadas, encargos' },
+  { icon: '️', name: 'Gimnasio & Fitness', desc: 'Membresías, torniquete QR, aforo clases' },
+  { icon: '', name: 'Veterinaria & Pet Shop', desc: 'Historias clínicas, vacunas WhatsApp, grooming' },
+  { icon: '', name: 'Taller Mecánico', desc: 'Órdenes de trabajo por placa, checklist, autolavado' },
+  { icon: '', name: 'Boutique & Ropa', desc: 'Matriz talla/color, probadores, lookbooks' },
+  { icon: '', name: 'Salón de Belleza', desc: 'Agenda citas WhatsApp, comisiones estilistas' },
+  { icon: '', name: 'Óptica', desc: 'Fórmulas OD/OI, órdenes laboratorio biselado' },
+  { icon: '', name: 'Verdulería & Frutería', desc: 'Mermas, canastas mercado, balanza PLU' },
+  { icon: '', name: 'Floristería & Eventos', desc: 'Arreglos por tallos, dedicatorias, domicilios' },
+  { icon: '', name: 'Dulcería & Piñatería', desc: 'Sorpresas por niño, venta granel, combos fiesta' },
+  { icon: '', name: 'Licorera & Estanco', desc: 'Copeo barra, retornables, combos rumberos' },
+  { icon: '', name: 'Ferretería', desc: 'Cotizaciones PDF, venta fraccionada, alquiler herramientas' },
+  { icon: '', name: 'Papelería & Variedades', desc: 'Impresiones, fotocopias, útiles escolares' },
+  { icon: '', name: 'Lavandería & Tintorería', desc: 'Tickets prenda, percheros, lavado en seco' },
 ]
 
 const PLANS = [
@@ -167,7 +167,7 @@ const PLANS = [
     price: 89000,
     priceAnnual: 71200,
     highlight: true,
-    badge: '⭐ Más popular',
+    badge: 'Más popular',
     cta: 'Probar 14 días gratis',
     ctaHref: '/register?plan=pyme',
     features: [
@@ -327,7 +327,7 @@ function HeroSection() {
       margin: '0 auto',
     }}>
       <div className="badge badge-blue animate-fade-in" style={{ marginBottom: 20, fontSize: '0.78rem' }}>
-        🇨🇴 ERP Cloud-Native para Colombia
+         ERP Cloud-Native para Colombia
       </div>
 
       <h1 className="animate-fade-in" style={{
@@ -426,7 +426,7 @@ function DashboardMockup() {
             fontSize: '0.78rem', color: '#94A3B8', border: '1px solid #E2E8F0',
             display: 'flex', alignItems: 'center', gap: 6,
           }}>
-            <span>🔒</span> app.mrtender.com/dashboard
+            <span></span> app.mrtender.com/dashboard
           </div>
         </div>
 
@@ -668,13 +668,13 @@ function PricingSection() {
               <ul style={{ listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24, flex: 1 }}>
                 {plan.features.map(f => (
                   <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.84rem' }}>
-                    <span style={{ color: '#00D6BC', fontWeight: 800, marginTop: 1, flexShrink: 0 }}>✓</span>
+                    <span style={{ color: '#00D6BC', fontWeight: 800, marginTop: 1, flexShrink: 0 }}></span>
                     <span style={{ color: plan.highlight ? '#E2E8F0' : '#334155' }}>{f}</span>
                   </li>
                 ))}
                 {plan.notIncluded.map(f => (
                   <li key={f} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: '0.84rem', opacity: 0.45 }}>
-                    <span style={{ color: '#94A3B8', fontWeight: 800, marginTop: 1, flexShrink: 0 }}>✕</span>
+                    <span style={{ color: '#94A3B8', fontWeight: 800, marginTop: 1, flexShrink: 0 }}></span>
                     <span style={{ color: plan.highlight ? '#94A3B8' : '#64748B' }}>{f}</span>
                   </li>
                 ))}
@@ -707,8 +707,8 @@ function PricingSection() {
 
 function CompareSection() {
   const renderCell = (val: string | boolean) => {
-    if (val === true) return <span style={{ color: '#059669', fontWeight: 800, fontSize: '1rem' }}>✓</span>
-    if (val === false) return <span style={{ color: '#EF4444', fontWeight: 800, fontSize: '0.9rem' }}>✕</span>
+    if (val === true) return <span style={{ color: '#059669', fontWeight: 800, fontSize: '1rem' }}></span>
+    if (val === false) return <span style={{ color: '#EF4444', fontWeight: 800, fontSize: '0.9rem' }}></span>
     return <span style={{ fontSize: '0.82rem', color: '#64748B' }}>{val}</span>
   }
 
@@ -845,7 +845,7 @@ function CtaSection() {
         boxShadow: '0 20px 60px rgba(15,23,42,0.20)',
         border: '1px solid #334155',
       }}>
-        <div style={{ fontSize: '2.5rem', marginBottom: 16 }}>🚀</div>
+        <div style={{ fontSize: '2.5rem', marginBottom: 16 }}></div>
         <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2rem)', fontWeight: 800, color: '#FFFFFF', marginBottom: 14, letterSpacing: '-0.02em' }}>
           Empieza a vender en 5 minutos
         </h2>
@@ -883,7 +883,7 @@ function Footer() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src="/icon-192.png" alt="Mr Tender" style={{ width: 28, height: 28, borderRadius: 8, objectFit: 'cover' }} />
           <span style={{ fontWeight: 800, fontSize: '0.9rem', color: '#0F172A' }}>Mr Tender</span>
-          <span className="badge badge-blue" style={{ fontSize: '0.68rem' }}>Colombia 🇨🇴</span>
+          <span className="badge badge-blue" style={{ fontSize: '0.68rem' }}>Colombia </span>
         </div>
 
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>

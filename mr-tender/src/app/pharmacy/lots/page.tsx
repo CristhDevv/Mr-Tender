@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -277,7 +277,7 @@ export default function PharmacyLotsPage() {
                           background: idx === 0 ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
                           color: idx === 0 ? 'var(--accent-coral)' : 'var(--text-muted)'
                         }}>
-                          {idx === 0 ? '⚡ 1º en salir' : `#${idx + 1}`}
+                          {idx === 0 ? ' 1º en salir' : `#${idx + 1}`}
                         </span>
                       </td>
                     </tr>

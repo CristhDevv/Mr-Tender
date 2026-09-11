@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
@@ -287,8 +287,8 @@ ${customer.notes ? `*Notas:* ${customer.notes}` : ''}`
             <div>
               <label style={{ fontSize: '0.72rem', fontWeight: 600, color: '#4B5563', display: 'block', marginBottom: 4 }}>Forma de Pago *</label>
               <select style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid #D1D5DB', outline: 'none', background: '#fff', fontWeight: 700, fontSize: '0.85rem' }} value={customer.paymentMethod} onChange={e => setCustomer({ ...customer, paymentMethod: e.target.value })}>
-                <option value="cash_on_delivery">💵 Efectivo Contra Entrega</option>
-                <option value="nequi">📱 Nequi / Daviplata</option>
+                <option value="cash_on_delivery"> Efectivo Contra Entrega</option>
+                <option value="nequi"> Nequi / Daviplata</option>
               </select>
             </div>
 

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -572,7 +572,7 @@ export default function BakerMobilePage() {
           }}
         >
           <Flame size={16} />
-          <span>🔥 Horno {activeTimersCount > 0 && `(${activeTimersCount})`}</span>
+          <span> Horno {activeTimersCount > 0 && `(${activeTimersCount})`}</span>
         </button>
 
         <button
@@ -596,7 +596,7 @@ export default function BakerMobilePage() {
           }}
         >
           <Croissant size={16} />
-          <span>🥐 Horneadas</span>
+          <span> Horneadas</span>
         </button>
 
         <button
@@ -620,7 +620,7 @@ export default function BakerMobilePage() {
           }}
         >
           <Wheat size={16} />
-          <span>🥣 Mojes</span>
+          <span> Mojes</span>
         </button>
       </div>
 
@@ -644,7 +644,7 @@ export default function BakerMobilePage() {
                     onClick={() => playOvenAlarm()}
                     style={{ fontSize: '0.68rem', color: '#64748B', background: '#F1F5F9', border: 'none', padding: '3px 8px', borderRadius: 6, cursor: 'pointer' }}
                   >
-                    🔔 Probar Alarma
+                     Probar Alarma
                   </button>
                 </div>
 
@@ -674,7 +674,7 @@ export default function BakerMobilePage() {
                               {timer.trayName}
                             </span>
                             <span style={{ fontSize: '0.76rem', color: '#64748B', fontWeight: 700 }}>
-                              {timer.temp_celsius}°C {timer.has_steam ? '· 💨 Vapor' : ''}
+                              {timer.temp_celsius}°C {timer.has_steam ? '·  Vapor' : ''}
                             </span>
                           </div>
                           <h3 style={{ fontSize: '1.08rem', fontWeight: 900, color: '#0F172A', margin: '4px 0 0' }}>
@@ -808,7 +808,7 @@ export default function BakerMobilePage() {
                               style={{ padding: '10px', fontSize: '0.78rem', fontWeight: 800, color: '#059669', borderRadius: 10 }}
                               title="Terminar y registrar horneada"
                             >
-                              Sacar ✓
+                              Sacar 
                             </button>
                           </>
                         )}
@@ -879,14 +879,14 @@ export default function BakerMobilePage() {
                           {preset.category}
                         </span>
                         {preset.has_steam && (
-                          <span style={{ fontSize: '0.6rem', color: '#0284C7', fontWeight: 800 }}>💨 Vapor</span>
+                          <span style={{ fontSize: '0.6rem', color: '#0284C7', fontWeight: 800 }}> Vapor</span>
                         )}
                       </div>
                       <h4 style={{ fontSize: '0.88rem', fontWeight: 800, color: '#0F172A', margin: 0, lineHeight: 1.25 }}>
                         {preset.name}
                       </h4>
                       <div style={{ fontSize: '0.74rem', color: '#64748B', fontWeight: 700, marginTop: 4 }}>
-                        🌡️ {preset.temp_celsius}°C · ⏱️ {preset.time_minutes} min
+                        ️ {preset.temp_celsius}°C · ️ {preset.time_minutes} min
                       </div>
                     </div>
 
@@ -1103,9 +1103,9 @@ export default function BakerMobilePage() {
                     </div>
 
                     <div style={{ display: 'flex', gap: 12, fontSize: '0.72rem', color: '#64748B' }}>
-                      {m.water_liters && <span>💧 Agua: {m.water_liters}L</span>}
-                      {m.yeast_grams && <span>🧪 Levadura: {m.yeast_grams}g</span>}
-                      {m.expected_units && <span>🍞 Rend. Esperado: ~{m.expected_units} panes</span>}
+                      {m.water_liters && <span> Agua: {m.water_liters}L</span>}
+                      {m.yeast_grams && <span> Levadura: {m.yeast_grams}g</span>}
+                      {m.expected_units && <span> Rend. Esperado: ~{m.expected_units} panes</span>}
                     </div>
 
                     {m.notes && (

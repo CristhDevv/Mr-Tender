@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
@@ -748,7 +748,7 @@ export default function InventoryPage() {
               <option value="all">Todas las Bodegas ({warehouses.length})</option>
               {warehouses.map(w => (
                 <option key={w.id} value={w.id}>
-                  {w.is_main ? '★ ' : ''}{w.name} {w.code ? `(${w.code})` : ''}
+                  {w.is_main ? ' ' : ''}{w.name} {w.code ? `(${w.code})` : ''}
                 </option>
               ))}
             </select>
@@ -1505,7 +1505,7 @@ export default function InventoryPage() {
                   >
                     {warehouses.map(w => (
                       <option key={w.id} value={w.id}>
-                        {w.is_main ? '★ ' : ''}{w.name}
+                        {w.is_main ? ' ' : ''}{w.name}
                       </option>
                     ))}
                   </select>

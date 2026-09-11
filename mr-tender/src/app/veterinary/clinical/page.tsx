@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -168,14 +168,14 @@ export default function VetClinicalPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
                 <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>
-                  {r.vet_pets?.name || 'Mascota'} 🐾
+                  {r.vet_pets?.name || 'Mascota'} 
                 </div>
                 <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>
                   Tutor: {r.vet_pets?.owner_name} • Dr(a): {r.vet_name}
                 </div>
               </div>
               <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: 8, background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)' }}>
-                📅 {formatDate(r.visit_date)}
+                 {formatDate(r.visit_date)}
               </span>
             </div>
 

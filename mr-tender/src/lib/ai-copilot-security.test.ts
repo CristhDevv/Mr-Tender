@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+﻿import { describe, it, expect } from 'vitest'
 
 /**
  * AI Copilot & Prompt Injection Security Test Suite
@@ -93,7 +93,7 @@ describe('Tender Copilot AI Security & Guardrails', () => {
 Para el dolor de cabeza y fiebre, se sugiere:
 - **Acetaminofén 500mg** (Genérico): 1 tableta cada 6 a 8 horas con agua. (Venta Libre - OTC). Stock disponible: 45 unidades a $ 800 COP.
 
-> ⚠️ **Aviso de Responsabilidad Legal y Farmacéutica:**
+> ️ **Aviso de Responsabilidad Legal y Farmacéutica:**
 > Esta información es una sugerencia orientativa de apoyo basada en datos reales de internet e inventario actual. **La responsabilidad de sugerir, prescribir o suministrar un medicamento es única y exclusiva del vendedor / regente de farmacia.** No reemplaza la consulta o prescripción de un médico profesional. Si los síntomas persisten, son graves, o se trata de mujeres embarazadas o niños pequeños, se debe remitir inmediatamente a consulta médica.
 `
     expect(verifyMedicalDisclaimer(sampleAiMedicalResponse)).toBe(true)

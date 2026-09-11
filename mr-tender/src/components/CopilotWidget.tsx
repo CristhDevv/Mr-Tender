@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
@@ -27,11 +27,11 @@ interface ChatMessage {
 }
 
 const QUICK_SUGGESTIONS = [
-  '💡 ¿Cómo hago un arqueo y cierre de caja?',
-  '💊 Cliente con dolor de cabeza y fiebre: ¿qué sugerir y stock?',
-  '🌿 Cliente con acidez estomacal: ¿qué tenemos y posología?',
-  '📊 ¿Cuánto vendimos hoy y por qué medios de pago?',
-  '📦 ¿Qué productos tienen stock bajo o crítico?'
+  ' ¿Cómo hago un arqueo y cierre de caja?',
+  ' Cliente con dolor de cabeza y fiebre: ¿qué sugerir y stock?',
+  ' Cliente con acidez estomacal: ¿qué tenemos y posología?',
+  ' ¿Cuánto vendimos hoy y por qué medios de pago?',
+  ' ¿Qué productos tienen stock bajo o crítico?'
 ]
 
 // ── RICH MARKDOWN PARSER FOR CRISP ELEGANT COPILOT MESSAGES ──
@@ -369,7 +369,7 @@ export default function CopilotWidget() {
         {
           id: 'msg-' + Date.now() + '-err',
           role: 'assistant',
-          content: '⚠️ Ocurrió un error al conectar con el asistente. Verifica tu conexión e intenta de nuevo.',
+          content: '️ Ocurrió un error al conectar con el asistente. Verifica tu conexión e intenta de nuevo.',
           timestamp: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })
         }
       ])
@@ -500,7 +500,7 @@ export default function CopilotWidget() {
                   lineHeight: 1.45
                 }}>
                   <div style={{ fontWeight: 800, color: '#fff', marginBottom: 4, fontSize: '0.88rem' }}>
-                    👋 ¡Hola, {userMetadata?.full_name || 'Comerciante'}!
+                     ¡Hola, {userMetadata?.full_name || 'Comerciante'}!
                   </div>
                   Soy tu copiloto inteligente de <strong>Mr. Tender</strong>. Puedo ayudarte a consultar ventas en vivo, buscar stock, revisar fiaos, generar PDFs y guiarte en cualquier proceso de tu negocio.
                 </div>

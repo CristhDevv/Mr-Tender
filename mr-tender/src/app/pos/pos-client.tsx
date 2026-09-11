@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useCallback, useEffect, useRef, useMemo } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -1662,7 +1662,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
             <div className="neu-card animate-scale-in" style={{ padding: '16px 18px', background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.05))', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{ width: 42, height: 42, borderRadius: '50%', background: '#10B981', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '1.3rem', flexShrink: 0, boxShadow: '0 4px 12px rgba(16,185,129,0.35)' }}>
-                  ✓
+                  
                 </div>
                 <div>
                   <h2 style={{ fontSize: '1.15rem', fontWeight: 900, color: 'var(--text-primary)', margin: 0, lineHeight: 1.2 }}>
@@ -1775,7 +1775,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
           flexWrap: 'wrap'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-            <span style={{ fontSize: '1.1rem' }}>🔒</span>
+            <span style={{ fontSize: '1.1rem' }}></span>
             <span style={{ fontWeight: 700, color: '#DC2626', fontSize: '0.84rem' }}>
               Turno cerrado &mdash; Debes abrir un turno para registrar ventas y cobros en el sistema.
             </span>
@@ -2048,7 +2048,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
 
                 return (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', background: 'rgba(139,114,190,0.08)', borderRadius: 8, border: '1px solid rgba(139,114,190,0.25)', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--accent-purple)' }}>💡 Alternativas con {matchedMed.generic_name}:</span>
+                    <span style={{ fontSize: '0.72rem', fontWeight: 800, color: 'var(--accent-purple)' }}> Alternativas con {matchedMed.generic_name}:</span>
                     {alternatives.map(alt => (
                       <button
                         key={alt.id}
@@ -2599,7 +2599,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                     <span>Cliente / Receptor</span>
                     {paymentMethod === 'fiao' && !selectedCustomer && (
                       <span style={{ fontSize: '0.62rem', background: '#FEF3C7', color: '#92400E', padding: '1px 6px', borderRadius: 4, fontWeight: 800 }}>
-                        ⚠️ Requerido
+                        ️ Requerido
                       </span>
                     )}
                   </label>
@@ -2632,7 +2632,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                         onClick={() => setShowWalletModal(true)}
                         style={{ background: '#FAF5FF', border: '1px solid #E9D5FF', color: '#7E22CE', borderRadius: 6, padding: '2px 7px', fontSize: '0.66rem', fontWeight: 800, cursor: 'pointer' }}
                       >
-                        ✨ Puntos {walletDiscountApplied > 0 ? `(-${formatCurrency(walletDiscountApplied)})` : ''}
+                         Puntos {walletDiscountApplied > 0 ? `(-${formatCurrency(walletDiscountApplied)})` : ''}
                       </button>
                     )}
                     <button
@@ -2654,7 +2654,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                       }}
                       title="Registrar o editar datos del cliente para Facturación DIAN"
                     >
-                      <span>{selectedCustomer || dianCustomer ? '✏️ Datos Fiscales' : '+ Datos Fiscales'}</span>
+                      <span>{selectedCustomer || dianCustomer ? '️ Datos Fiscales' : '+ Datos Fiscales'}</span>
                     </button>
                   </div>
                 </div>
@@ -2704,7 +2704,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   }}
                 >
                   <option value="">-- Cliente General / Mostrador --</option>
-                  <option value="__new_express__" style={{ fontWeight: 800, color: '#00B19D' }}>➕ + Crear Nuevo Cliente Express...</option>
+                  <option value="__new_express__" style={{ fontWeight: 800, color: '#00B19D' }}>+ Crear Nuevo Cliente Express...</option>
                   {customerList.map(c => (
                     <option key={c.id} value={c.id}>
                       {c.full_name} {c.tax_id ? `[NIT: ${c.tax_id}]` : c.phone ? `(${c.phone})` : ''} {c.credit_used > 0 ? `• Deuda: ${formatCurrency(c.credit_used)}` : c.credit_limit > 0 ? `• Cupo: ${formatCurrency(c.credit_limit)}` : ''}
@@ -2727,7 +2727,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                       style={{ background: 'none', border: 'none', color: '#94A3B8', fontSize: '0.68rem', cursor: 'pointer', padding: 0 }}
                       title="Quitar cliente seleccionado"
                     >
-                      ✕ Quitar
+                       Quitar
                     </button>
                   </div>
                 )}
@@ -2800,7 +2800,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                           boxShadow: dianInvoiceMode === 'nominal' ? '0 2px 6px rgba(0, 177, 157, 0.3)' : 'none'
                         }}
                       >
-                        🏢 Nominal (NIT / C.C.)
+                         Nominal (NIT / C.C.)
                       </button>
                       <button
                         type="button"
@@ -2817,7 +2817,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                           boxShadow: dianInvoiceMode === 'final_consumer' ? '0 2px 6px rgba(0, 177, 157, 0.3)' : 'none'
                         }}
                       >
-                        ⚡ Consumidor Final
+                         Consumidor Final
                       </button>
                     </div>
 
@@ -2841,19 +2841,19 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: '0.68rem', color: '#475569' }}>
                               <span><strong>{dianCustomer.idType === '31' ? 'NIT' : 'C.C.'}:</strong> {dianCustomer.documentNumber}{dianCustomer.dv ? `-${dianCustomer.dv}` : ''}</span>
                               <span style={{ color: dianCustomer.email ? '#00B19D' : '#DC2626' }}>
-                                <strong>Email:</strong> {dianCustomer.email || '⚠️ Sin correo'}
+                                <strong>Email:</strong> {dianCustomer.email || '️ Sin correo'}
                               </span>
                             </div>
                             {!dianCustomer.email && (
                               <div style={{ color: '#DC2626', fontSize: '0.64rem', fontWeight: 700 }}>
-                                ⚠️ DIAN exige correo electrónico obligatorio para entrega del XML.
+                                ️ DIAN exige correo electrónico obligatorio para entrega del XML.
                               </div>
                             )}
                           </>
                         ) : (
                           <div style={{ textAlign: 'center', padding: '6px 0' }}>
                             <p style={{ color: '#DC2626', margin: '0 0 6px', fontSize: '0.72rem', fontWeight: 700 }}>
-                              ⚠️ Sin datos fiscales asignados
+                              ️ Sin datos fiscales asignados
                             </p>
                             <button
                               type="button"
@@ -2867,7 +2867,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                       </div>
                     ) : (
                       <div style={{ background: '#FFFFFF', padding: '8px 10px', borderRadius: 8, border: '1px solid #E2E8F0', fontSize: '0.7rem', color: '#475569', lineHeight: 1.35 }}>
-                        ℹ️ Factura Electrónica POS para <strong>Consumidor Final</strong> (NIT 222222222222 - Cuantías menores sin nombre).
+                        ️ Factura Electrónica POS para <strong>Consumidor Final</strong> (NIT 222222222222 - Cuantías menores sin nombre).
                       </div>
                     )}
                   </div>
@@ -2931,7 +2931,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                       }}
                       style={{ width: '100%', marginTop: 6, padding: '7px', fontSize: '0.78rem', fontWeight: 800, color: '#00B19D', background: '#E6F7F5', border: '1px solid #99F6E4' }}
                     >
-                      💵 Monto Exacto ({formatCurrency(total)})
+                       Monto Exacto ({formatCurrency(total)})
                     </button>
                   </div>
 
@@ -2987,7 +2987,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                       className="btn-neu"
                       style={{ padding: '8px 14px', fontSize: '0.8rem', fontWeight: 800, color: '#00B19D', background: '#E6F7F5', border: '1px solid #99F6E4', margin: '0 auto' }}
                     >
-                      💳 Conectar Datáfono Smart
+                       Conectar Datáfono Smart
                     </button>
                   </div>
                   <div>
@@ -3057,7 +3057,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                       <div>
                         <h4 style={{ fontSize: '0.86rem', fontWeight: 900, color: isOverLimit ? '#991B1B' : '#166534', margin: 0 }}>
-                          {isOverLimit ? '⚠️ Cupo de Crédito Insuficiente' : '👤 Venta a Crédito / Fiao'}
+                          {isOverLimit ? '️ Cupo de Crédito Insuficiente' : ' Venta a Crédito / Fiao'}
                         </h4>
                         <div style={{ fontSize: '0.76rem', fontWeight: 700, color: '#1E293B', marginTop: 2 }}>
                           Cliente: {selectedCustomer.full_name} {selectedCustomer.phone ? `(${selectedCustomer.phone})` : ''}
@@ -3095,7 +3095,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
 
                     {isOverLimit ? (
                       <div style={{ color: '#DC2626', fontSize: '0.72rem', fontWeight: 700, lineHeight: 1.3 }}>
-                        ⚠️ La compra de <strong>{formatCurrency(total)}</strong> supera el cupo disponible por <strong>{formatCurrency(total - available)}</strong>.
+                        ️ La compra de <strong>{formatCurrency(total)}</strong> supera el cupo disponible por <strong>{formatCurrency(total - available)}</strong>.
                       </div>
                     ) : (
                       <div style={{ color: '#15803D', fontSize: '0.72rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
@@ -3121,18 +3121,18 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 const isDisabled = Boolean(loading || !sessionInfo?.session_id || isCashDisabled || isFiaoMissingCustomer || isFiaoOverLimit)
 
                 let btnBg = 'linear-gradient(135deg, #059669, #047857)'
-                let btnText = `✅ Confirmar Cobro — ${formatCurrency(total)}`
+                let btnText = `Confirmar Cobro — ${formatCurrency(total)}`
                 let btnCursor = 'pointer'
                 let btnBoxShadow = '0 4px 14px rgba(5,150,105,0.4)'
 
                 if (isFiaoMissingCustomer) {
                   btnBg = '#94A3B8'
-                  btnText = '⚠️ Selecciona o Crea un Cliente para Fiar'
+                  btnText = 'Selecciona o Crea un Cliente para Fiar'
                   btnCursor = 'not-allowed'
                   btnBoxShadow = 'none'
                 } else if (isFiaoOverLimit && selectedCustomer) {
                   btnBg = '#DC2626'
-                  btnText = `⚠️ Cupo Insuficiente (${formatCurrency(Math.max(0, Number(selectedCustomer.credit_limit || 0) - Number(selectedCustomer.credit_used || 0)))})`
+                  btnText = `Cupo Insuficiente (${formatCurrency(Math.max(0, Number(selectedCustomer.credit_limit || 0) - Number(selectedCustomer.credit_used || 0)))})`
                   btnCursor = 'not-allowed'
                   btnBoxShadow = 'none'
                 } else if (isCashDisabled) {
@@ -3165,7 +3165,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   >
                     {loading ? (
                       <span style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}>
-                        <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span>
+                        <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}></span>
                         Procesando...
                       </span>
                     ) : (
@@ -3193,7 +3193,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                 <PauseCircle size={17} style={{ color: 'var(--accent-amber)' }} />
                 <span>Carritos en Espera ({heldCarts.length})</span>
               </div>
-              <button className="btn-neu btn-ghost" onClick={() => setShowHeldModal(false)} style={{ padding: '2px 6px' }}>✕</button>
+              <button className="btn-neu btn-ghost" onClick={() => setShowHeldModal(false)} style={{ padding: '2px 6px' }}></button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 300, overflowY: 'auto' }}>
@@ -3294,7 +3294,7 @@ ${change > 0 ? `Cambio: ${formatCurrency(change)}` : ''}${cufeText}
                   {selectedFractionProduct.generic_name} {selectedFractionProduct.concentration} • {selectedFractionProduct.laboratory || 'Genérico'}
                 </div>
               </div>
-              <button onClick={() => setSelectedFractionProduct(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}>✕</button>
+              <button onClick={() => setSelectedFractionProduct(null)} style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: 'var(--text-muted)' }}></button>
             </div>
 
             <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginBottom: 14 }}>

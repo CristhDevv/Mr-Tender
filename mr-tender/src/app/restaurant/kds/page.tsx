@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -334,7 +334,7 @@ export default function RestaurantKdsPage() {
                     </div>
                     {item.notes && (
                       <div style={{ fontSize: '0.76rem', color: 'var(--accent-coral)', fontWeight: 700, marginTop: 2 }}>
-                        ⚠️ Nota: {item.notes}
+                        ️ Nota: {item.notes}
                       </div>
                     )}
                   </div>

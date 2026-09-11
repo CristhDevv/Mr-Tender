@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -310,20 +310,20 @@ export default function SalesHistoryPage() {
       ? sale.items.map(it => `• ${it.quantity}x ${it.product_name} (${formatCurrency(it.total)})`).join('\n')
       : `• ${sale.items_count || 1} productos`
 
-    const message = `🧾 *COMPROBANTE DE COMPRA*
-🏪 *${businessName}*
-🔖 Ticket: *${sale.number}*
-📅 Fecha: ${formatDateTime(sale.created_at)}
-👤 Cliente: ${sale.customer_name}
+    const message = ` *COMPROBANTE DE COMPRA*
+ *${businessName}*
+ Ticket: *${sale.number}*
+ Fecha: ${formatDateTime(sale.created_at)}
+ Cliente: ${sale.customer_name}
 
-📦 *Detalle:*
+ *Detalle:*
 ${itemsSummary}
 
 ──────────────
-💰 *TOTAL: ${formatCurrency(sale.total)}*
-💳 Pago: ${getPaymentLabel(sale.payment_method)}
-👤 Atendido por: ${sale.seller_name}
-🏢 Bodega: ${sale.warehouse_name}
+ *TOTAL: ${formatCurrency(sale.total)}*
+ Pago: ${getPaymentLabel(sale.payment_method)}
+ Atendido por: ${sale.seller_name}
+ Bodega: ${sale.warehouse_name}
 
 ¡Gracias por su compra!`
 

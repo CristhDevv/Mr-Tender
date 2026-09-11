@@ -1,4 +1,4 @@
-/**
+﻿/**
  * CARCASS YIELD & BUTCHERY CALCULATION ENGINE
  * Specialized algorithms for carcass breakdown, mass balance and value-weighted cost distribution.
  */
@@ -27,7 +27,7 @@ export const SPECIES_CONFIGS: Record<Species, SpeciesConfig> = {
   beef: {
     id: 'beef',
     name: 'Res / Vacuno',
-    emoji: '🥩',
+    emoji: '',
     defaultCarcassWeightKg: 220,
     standardCuts: [
       { id: 'lomo_fino', name: 'Lomo Fino / Solomillo', category: 'fino', defaultYieldPercent: 2.5, commercialValueWeight: 3.2, suggestedMarginPercent: 40, description: 'Corte premium tierno sin grasa' },
@@ -51,7 +51,7 @@ export const SPECIES_CONFIGS: Record<Species, SpeciesConfig> = {
   pork: {
     id: 'pork',
     name: 'Cerdo / Porcino',
-    emoji: '🐖',
+    emoji: '',
     defaultCarcassWeightKg: 95,
     standardCuts: [
       { id: 'lomo_cerdo', name: 'Lomo de Cerdo / Cañón', category: 'fino', defaultYieldPercent: 12.0, commercialValueWeight: 2.2, suggestedMarginPercent: 35, description: 'Corte magro y suave' },
@@ -70,7 +70,7 @@ export const SPECIES_CONFIGS: Record<Species, SpeciesConfig> = {
   chicken: {
     id: 'chicken',
     name: 'Pollo / Avícola',
-    emoji: '🍗',
+    emoji: '',
     defaultCarcassWeightKg: 2.2,
     standardCuts: [
       { id: 'pechuga_deshuesada', name: 'Pechuga Deshuesada / Filete', category: 'fino', defaultYieldPercent: 32.0, commercialValueWeight: 2.2, suggestedMarginPercent: 35, description: 'Filete magro sin piel ni hueso' },
@@ -85,7 +85,7 @@ export const SPECIES_CONFIGS: Record<Species, SpeciesConfig> = {
   lamb: {
     id: 'lamb',
     name: 'Cordero / Ovino',
-    emoji: '🐑',
+    emoji: '',
     defaultCarcassWeightKg: 25,
     standardCuts: [
       { id: 'rack_cordero', name: 'Rack Francés / Chuletón', category: 'fino', defaultYieldPercent: 14.0, commercialValueWeight: 3.0, suggestedMarginPercent: 40, description: 'Costillar fino con hueso limpio' },

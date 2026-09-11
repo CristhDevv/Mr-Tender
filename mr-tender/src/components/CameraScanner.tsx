@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useEffect, useRef, useState, useCallback } from 'react'
 
 export interface ScannedProductFeedback {
@@ -291,7 +291,7 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#F8FAFC' }}>
-              📷 Escáner de Código
+               Escáner de Código
             </span>
             {scanCount > 0 && (
               <span style={{
@@ -321,7 +321,7 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
               cursor: 'pointer'
             }}
           >
-            ✕ Cerrar
+             Cerrar
           </button>
         </div>
 
@@ -411,7 +411,7 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
               >
                 <div style={{ textAlign: 'left', overflow: 'hidden' }}>
                   <div style={{ fontSize: '0.85rem', fontWeight: 800, whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
-                    ✅ {lastProduct.name}
+                     {lastProduct.name}
                   </div>
                   {lastProduct.price !== undefined && lastProduct.price > 0 && (
                     <div style={{ fontSize: '0.75rem', opacity: 0.9, marginTop: 1 }}>
@@ -443,13 +443,13 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
                   zIndex: 20
                 }}
               >
-                ⚠️ No se detectó código. Centra bien el código de barras y presiona Escanear.
+                ️ No se detectó código. Centra bien el código de barras y presiona Escanear.
               </div>
             )}
           </div>
         ) : (
           <div style={{ padding: '20px 14px', background: '#334155', borderRadius: 12, color: '#FCA5A5', fontSize: '0.85rem', marginBottom: 16 }}>
-            ⚠️ {error}
+            ️ {error}
           </div>
         )}
 
@@ -485,7 +485,7 @@ export default function CameraScanner({ onScan, onClose, continuous = true }: Ca
             transform: isProcessing ? 'scale(0.98)' : 'none'
           }}
         >
-          {isProcessing ? '⏳ Leyendo código...' : '📸 Escanear / Capturar Código'}
+          {isProcessing ? ' Leyendo código...' : ' Escanear / Capturar Código'}
         </button>
 
         {/* Manual Input Fallback */}

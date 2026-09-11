@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+﻿import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NextRequest } from 'next/server'
 
 // ── Invocación Directa de Route Handlers Reales de Next.js ──
@@ -202,7 +202,7 @@ describe('Auditoría E2E: Remediación Crítica de Aislamiento Multi-Tenant en R
         role: 'admin'
       },
       user_metadata: {
-        tenant_id: 'tenant-beta-002', // ⚠️ Manipulado maliciosamente en el cliente
+        tenant_id: 'tenant-beta-002', // ️ Manipulado maliciosamente en el cliente
         role: 'owner',
         full_name: 'Atacante Alpha'
       }

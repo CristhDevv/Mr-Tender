@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -224,8 +224,8 @@ export default function GymClassesPage() {
                 </div>
 
                 <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                  <div><strong>Días:</strong> 📅 {c.day_of_week}</div>
-                  <div><strong>Horario:</strong> ⏰ {c.start_time} ({c.duration_minutes} min)</div>
+                  <div><strong>Días:</strong>  {c.day_of_week}</div>
+                  <div><strong>Horario:</strong>  {c.start_time} ({c.duration_minutes} min)</div>
                   <div><strong>Aforo Ocupado:</strong> {c.current_enrolled} / {c.max_capacity} personas</div>
                 </div>
 

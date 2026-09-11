@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -255,14 +255,14 @@ export default function TenantDetailPage() {
 
     if (!targetState && result.blockedBy.length > 0) {
       const blockedNames = result.blockedBy.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-      setDependencyNotice(`⚠️ No puedes desactivar "${getModuleById(modId)?.name}" porque es requerido por: ${blockedNames}. Desactiva primero esos módulos.`)
+      setDependencyNotice(`️ No puedes desactivar "${getModuleById(modId)?.name}" porque es requerido por: ${blockedNames}. Desactiva primero esos módulos.`)
       setTimeout(() => setDependencyNotice(null), 6000)
       return
     }
 
     if (targetState && result.autoEnabled.length > 0) {
       const autoNames = result.autoEnabled.map(id => getModuleById(id)?.name.split('(')[0].trim() || id).join(', ')
-      setDependencyNotice(`ℹ️ Prerrequisitos activados automáticamente: ${autoNames}`)
+      setDependencyNotice(`️ Prerrequisitos activados automáticamente: ${autoNames}`)
       setTimeout(() => setDependencyNotice(null), 4000)
     } else {
       setDependencyNotice(null)
@@ -285,16 +285,16 @@ export default function TenantDetailPage() {
     let next: Record<string, boolean> = {}
     if (preset === 'base_only') {
       ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = m.group === 'base' })
-      setDependencyNotice('✅ Se activaron los 13 módulos base indispensables y se apagaron los verticales.')
+      setDependencyNotice(' Se activaron los 13 módulos base indispensables y se apagaron los verticales.')
     } else if (preset === 'industry') {
       next = getDefaultModulesForBusinessType(tenant?.business_type || 'retail')
-      setDependencyNotice(`✅ Se aplicó la configuración óptima para el giro "${tenant?.business_type}".`)
+      setDependencyNotice(` Se aplicó la configuración óptima para el giro "${tenant?.business_type}".`)
     } else if (preset === 'all') {
       ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = true })
-      setDependencyNotice('⚡ Se activaron todos los 25 módulos del sistema.')
+      setDependencyNotice(' Se activaron todos los 25 módulos del sistema.')
     } else if (preset === 'clean') {
       ALL_SYSTEM_MODULES.forEach(m => { next[m.id] = false })
-      setDependencyNotice('🧹 Se desactivaron todos los módulos.')
+      setDependencyNotice(' Se desactivaron todos los módulos.')
     }
 
     setModules(next)
@@ -432,7 +432,7 @@ export default function TenantDetailPage() {
             </div>
             {requiresNames.length > 0 && (
               <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', marginTop: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span>🔗 Requiere:</span>
+                <span> Requiere:</span>
                 <span style={{ fontWeight: 600 }}>{requiresNames.join(', ')}</span>
               </div>
             )}
@@ -781,9 +781,9 @@ export default function TenantDetailPage() {
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                   <span>Activos en este negocio: <strong>{activeModulesCount}/{ALL_SYSTEM_MODULES.length}</strong></span>
                   <span>•</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>🟢 Base: {baseActiveCount}/13</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}> Base: {baseActiveCount}/13</span>
                   <span>•</span>
-                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>🟣 Verticales: {verticalActiveCount}/12</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}> Verticales: {verticalActiveCount}/12</span>
                 </div>
               </div>
 
@@ -796,7 +796,7 @@ export default function TenantDetailPage() {
                   title="Activa los 13 módulos base y desactiva todas las verticales"
                   style={{ padding: '7px 12px', fontSize: '0.75rem', fontWeight: 600 }}
                 >
-                  🟢 Solo Base (13)
+                   Solo Base (13)
                 </button>
 
                 <button
@@ -806,7 +806,7 @@ export default function TenantDetailPage() {
                   title={`Aplica los módulos base + la vertical recomendada para ${tenant.business_type}`}
                   style={{ padding: '7px 12px', fontSize: '0.75rem', fontWeight: 600 }}
                 >
-                  🎯 Según Giro ({tenant.business_type})
+                   Según Giro ({tenant.business_type})
                 </button>
 
                 <button
@@ -858,7 +858,7 @@ export default function TenantDetailPage() {
                   color: moduleFilter === 'base' ? 'var(--bg)' : 'var(--text-secondary)'
                 }}
               >
-                🟢 Módulos Base / Indispensables ({baseActiveCount}/13)
+                 Módulos Base / Indispensables ({baseActiveCount}/13)
               </button>
 
               <button
@@ -873,14 +873,14 @@ export default function TenantDetailPage() {
                   color: moduleFilter === 'vertical' ? 'var(--bg)' : 'var(--text-secondary)'
                 }}
               >
-                🟣 Módulos Verticales / Por Industria ({verticalActiveCount}/12)
+                 Módulos Verticales / Por Industria ({verticalActiveCount}/12)
               </button>
             </div>
 
             {/* Dependency Notice Toast */}
             {dependencyNotice && (
               <div style={{
-                background: dependencyNotice.startsWith('⚠️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
+                background: dependencyNotice.startsWith('️') ? 'var(--accent-coral-lt)' : 'var(--bg-deep)',
                 border: '1px solid var(--border-color)',
                 padding: '10px 14px',
                 borderRadius: 8,
@@ -897,12 +897,12 @@ export default function TenantDetailPage() {
             )}
           </div>
 
-          {/* 🟢 SECCIÓN 1: MÓDULOS BASE / INDISPENSABLES */}
+          {/*  SECCIÓN 1: MÓDULOS BASE / INDISPENSABLES */}
           {(moduleFilter === 'all' || moduleFilter === 'base') && (
             <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '1.1rem' }}>🟢</span>
+                  <span style={{ fontSize: '1.1rem' }}></span>
                   <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>
                     Módulos Base & Operativos ({baseActiveCount}/13 Activos)
                   </h3>
@@ -919,32 +919,32 @@ export default function TenantDetailPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
                   {
-                    title: '🛒 Ventas & Mostrador',
+                    title: ' Ventas & Mostrador',
                     desc: 'Operación comercial rápida, caja de efectivo, CRM y tienda online',
                     ids: ['pos', 'cash', 'crm', 'ecommerce']
                   },
                   {
-                    title: '📦 Inventario & Logística',
+                    title: ' Inventario & Logística',
                     desc: 'Existencias generales, bodegas y control de Kardex',
                     ids: ['inventory']
                   },
                   {
-                    title: '🚚 Abastecimiento & Compras',
+                    title: ' Abastecimiento & Compras',
                     desc: 'Facturas de compra a proveedores y directorio de contactos',
                     ids: ['purchases', 'suppliers']
                   },
                   {
-                    title: '👥 Clientes & Cartera',
+                    title: ' Clientes & Cartera',
                     desc: 'Directorio de clientes, libreta de fiados y cuentas por cobrar',
                     ids: ['customers']
                   },
                   {
-                    title: '👔 Recursos Humanos & Nómina',
+                    title: ' Recursos Humanos & Nómina',
                     desc: 'Personal, turnos, asistencia y emisión de nómina electrónica DIAN',
                     ids: ['employees', 'payroll']
                   },
                   {
-                    title: '📈 Finanzas & Contabilidad',
+                    title: ' Finanzas & Contabilidad',
                     desc: 'Flujo de caja bancario, asientos contables PUC y reportes P&L',
                     ids: ['reports', 'treasury', 'accounting']
                   }
@@ -968,12 +968,12 @@ export default function TenantDetailPage() {
             </div>
           )}
 
-          {/* 🟣 SECCIÓN 2: MÓDULOS VERTICALES / ESPECIALIZADOS POR INDUSTRIA */}
+          {/*  SECCIÓN 2: MÓDULOS VERTICALES / ESPECIALIZADOS POR INDUSTRIA */}
           {(moduleFilter === 'all' || moduleFilter === 'vertical') && (
             <div className="neu-card" style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: 10 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: '1.1rem' }}>🟣</span>
+                  <span style={{ fontSize: '1.1rem' }}></span>
                   <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 800 }}>
                     Módulos Verticales & Especializados ({verticalActiveCount}/12 Activos)
                   </h3>
@@ -990,32 +990,32 @@ export default function TenantDetailPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
                   {
-                    title: '🍽️ Gastronomía, Panadería & Cafeterías',
+                    title: '️ Gastronomía, Panadería & Cafeterías',
                     desc: 'Mesas, comandera KDS, recetas gastronómicas y horneadas de pan',
                     ids: ['restaurant', 'bakery']
                   },
                   {
-                    title: '💊 Salud, Droguerías & Ópticas',
+                    title: ' Salud, Droguerías & Ópticas',
                     desc: 'Medicamentos INVIMA, semáforo FEFO, fórmulas OD/OI y temperatura',
                     ids: ['pharmacy', 'optometry']
                   },
                   {
-                    title: '👗 Moda, Boutiques & Calzado',
+                    title: ' Moda, Boutiques & Calzado',
                     desc: 'Matriz talla/color, probadores de ropa y lookbooks',
                     ids: ['apparel']
                   },
                   {
-                    title: '🏋️ Deportes, Gimnasios & Belleza',
+                    title: '️ Deportes, Gimnasios & Belleza',
                     desc: 'Check-in QR, membresías fitness, agenda de citas y comisiones',
                     ids: ['gym', 'beauty_salon']
                   },
                   {
-                    title: '🚗 Servicios Técnicos, Talleres & Lavanderías',
+                    title: ' Servicios Técnicos, Talleres & Lavanderías',
                     desc: 'Órdenes por placa, autolavado, percheros y alquiler de herramientas',
                     ids: ['automotive', 'laundry', 'hardware']
                   },
                   {
-                    title: '🐾 Mascotas & Comercio Especializado',
+                    title: ' Mascotas & Comercio Especializado',
                     desc: 'Consultas médicas veterinarias, carnet vacunas, botellas y copeo',
                     ids: ['veterinary', 'liquor_tobacco']
                   }

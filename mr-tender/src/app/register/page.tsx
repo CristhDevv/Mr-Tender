@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -141,7 +141,7 @@ export default function RegisterPage() {
                 background: step > i + 1 ? 'var(--accent-green)' : step === i + 1 ? 'var(--accent-blue)' : 'var(--bg-deep)',
                 color: step >= i + 1 ? '#fff' : 'var(--text-muted)',
                 boxShadow: step === i + 1 ? '3px 3px 8px rgba(74,144,217,0.35)' : 'var(--neu-subtle)',
-              }}>{step > i + 1 ? '✓' : i + 1}</div>
+              }}>{step > i + 1 ? '' : i + 1}</div>
               <span style={{ fontSize: '0.75rem', color: step === i + 1 ? 'var(--accent-blue)' : 'var(--text-muted)', fontWeight: step === i + 1 ? 600 : 400 }}>{s}</span>
               {i < steps.length - 1 && <div style={{ width: 24, height: 1, background: 'var(--shadow-dark)', margin: '0 4px' }} />}
             </div>
@@ -170,12 +170,12 @@ export default function RegisterPage() {
               <div>
                 <label style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block', marginBottom: 8 }}>País</label>
                 <select className="input-neu" value={form.country} onChange={e => { set('country')(e.target.value); set('currency')(e.target.value === 'MX' ? 'MXN' : e.target.value === 'CO' ? 'COP' : e.target.value === 'PE' ? 'PEN' : 'USD') }}>
-                  <option value="MX">🇲🇽 México</option>
-                  <option value="CO">🇨🇴 Colombia</option>
-                  <option value="PE">🇵🇪 Perú</option>
-                  <option value="AR">🇦🇷 Argentina</option>
-                  <option value="CL">🇨🇱 Chile</option>
-                  <option value="US">🇺🇸 USA</option>
+                  <option value="MX"> México</option>
+                  <option value="CO"> Colombia</option>
+                  <option value="PE"> Perú</option>
+                  <option value="AR"> Argentina</option>
+                  <option value="CL"> Chile</option>
+                  <option value="US"> USA</option>
                 </select>
               </div>
               <div>
@@ -223,11 +223,11 @@ export default function RegisterPage() {
                 <span style={{ fontWeight: 700, color: plan.color, fontSize: '0.875rem' }}>{plan.price}</span>
               </button>
             ))}
-            {error && <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}>⚠ {error}</div>}
+            {error && <div style={{ background: 'var(--accent-coral-lt)', color: 'var(--accent-coral)', padding: '10px 14px', borderRadius: 'var(--radius-sm)', fontSize: '0.85rem' }}> {error}</div>}
             <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
               <button className="btn-neu" onClick={() => setStep(2)} style={{ flex: 1, padding: '13px' }}>← Atrás</button>
               <button className="btn-neu btn-primary" onClick={handleSubmit} disabled={loading} style={{ flex: 2, padding: '13px' }}>
-                {loading ? 'Creando tu cuenta...' : '🚀 Crear mi negocio'}
+                {loading ? 'Creando tu cuenta...' : ' Crear mi negocio'}
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate, formatCurrency } from '@/lib/utils'
@@ -119,7 +119,7 @@ export default function PaymentsAdminPage() {
 
       {error && (
         <div className="neu-card" style={{ padding: '16px 20px', background: 'rgba(235,94,85,0.08)', border: '1px solid rgba(235,94,85,0.2)' }}>
-          <p style={{ color: 'var(--accent-coral)', fontSize: '0.85rem', margin: 0 }}>⚠️ {error}</p>
+          <p style={{ color: 'var(--accent-coral)', fontSize: '0.85rem', margin: 0 }}>️ {error}</p>
         </div>
       )}
 
@@ -127,7 +127,7 @@ export default function PaymentsAdminPage() {
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando pagos...</div>
       ) : filtered.length === 0 ? (
         <div className="neu-card" style={{ padding: '40px', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: 12 }}>💰</div>
+          <div style={{ fontSize: '3rem', marginBottom: 12 }}></div>
           <h2 style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>No hay transacciones en este filtro</h2>
         </div>
       ) : (
@@ -161,7 +161,7 @@ export default function PaymentsAdminPage() {
                       {formatCurrency(p.amount)} <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 400 }}>{p.currency}</span>
                     </td>
                     <td style={{ padding: '16px 20px', textTransform: 'capitalize', color: 'var(--text-secondary)' }}>
-                      💳 {p.payment_method}
+                       {p.payment_method}
                     </td>
                     <td style={{ padding: '16px 20px', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
                       {p.paid_at ? formatDate(p.paid_at) : '—'}

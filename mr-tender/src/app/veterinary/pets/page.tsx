@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -232,7 +232,7 @@ export default function VeterinaryPetsPage() {
             <div key={p.id} className="neu-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{p.name} 🐾</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{p.name} </div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{p.species} • {p.breed} ({p.gender})</div>
                 </div>
                 <span style={{ fontSize: '0.72rem', fontWeight: 800, padding: '2px 8px', borderRadius: 8, background: 'var(--accent-green-lt)', color: 'var(--accent-green)' }}>
@@ -242,7 +242,7 @@ export default function VeterinaryPetsPage() {
 
               <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 2 }}>
                 <div><strong>Dueño / Tutor:</strong> {p.owner_name}</div>
-                {p.owner_phone && <div><strong>WhatsApp:</strong> 📞 {p.owner_phone}</div>}
+                {p.owner_phone && <div><strong>WhatsApp:</strong>  {p.owner_phone}</div>}
                 {p.microchip_number && <div><strong>Microchip:</strong> #{p.microchip_number}</div>}
               </div>
 

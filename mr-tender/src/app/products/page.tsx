@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
@@ -709,7 +709,7 @@ export default function ProductsPage() {
                     >
                       {warehousesList.map(w => (
                         <option key={w.id} value={w.id}>
-                          📦 {w.name} {w.is_main ? '(Principal)' : ''}
+                           {w.name} {w.is_main ? '(Principal)' : ''}
                         </option>
                       ))}
                     </select>

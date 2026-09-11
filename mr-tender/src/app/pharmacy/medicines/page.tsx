@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -316,7 +316,7 @@ export default function PharmacyMedicinesPage() {
             { id: 'all', label: 'Todos' },
             { id: 'otc', label: 'Venta Libre (OTC)' },
             { id: 'rx', label: 'Bajo Fórmula (Rx)' },
-            { id: 'controlled', label: 'Controlados 🔒' }
+            { id: 'controlled', label: 'Controlados ' }
           ].map(f => (
             <button
               key={f.id}
@@ -383,7 +383,7 @@ export default function PharmacyMedicinesPage() {
                         background: m.prescription_type === 'controlled' ? 'var(--accent-coral-lt)' : m.prescription_type === 'rx' ? 'var(--accent-amber-lt)' : 'var(--accent-green-lt)',
                         color: m.prescription_type === 'controlled' ? 'var(--accent-coral)' : m.prescription_type === 'rx' ? 'var(--accent-amber)' : 'var(--accent-green)'
                       }}>
-                        {m.prescription_type === 'controlled' ? 'Controlado 🔒' : m.prescription_type === 'rx' ? 'Fórmula Rx' : 'Venta Libre'}
+                        {m.prescription_type === 'controlled' ? 'Controlado ' : m.prescription_type === 'rx' ? 'Fórmula Rx' : 'Venta Libre'}
                       </span>
                     </td>
                     <td style={{ padding: '12px 14px', textAlign: 'right', fontWeight: 700 }}>
@@ -516,7 +516,7 @@ export default function PharmacyMedicinesPage() {
                   >
                     <option value="otc">Venta Libre (OTC)</option>
                     <option value="rx">Bajo Fórmula Médica (Rx)</option>
-                    <option value="controlled">Medicamento Controlado 🔒</option>
+                    <option value="controlled">Medicamento Controlado </option>
                   </select>
                 </div>
               </div>

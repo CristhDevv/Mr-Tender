@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -331,8 +331,8 @@ export default function HardwareQuotesPage() {
               </div>
 
               <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
-                <div><strong>Fecha:</strong> 📅 {formatDate(q.created_at)}</div>
-                {q.valid_until && <div><strong>Válido hasta:</strong> ⏳ {formatDate(q.valid_until)}</div>}
+                <div><strong>Fecha:</strong>  {formatDate(q.created_at)}</div>
+                {q.valid_until && <div><strong>Válido hasta:</strong>  {formatDate(q.valid_until)}</div>}
                 <div style={{ color: 'var(--accent-blue)', fontWeight: 800, fontSize: '0.95rem' }}>
                   Total: {formatCurrency(q.total)}
                 </div>

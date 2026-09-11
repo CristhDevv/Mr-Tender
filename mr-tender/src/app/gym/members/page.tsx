@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -273,7 +273,7 @@ export default function GymMembersPage() {
 
                 <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.78rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div><strong>Plan:</strong> {m.plan_name}</div>
-                  <div><strong>Vence:</strong> 📅 {formatDate(m.membership_expires_at)}</div>
+                  <div><strong>Vence:</strong>  {formatDate(m.membership_expires_at)}</div>
                   {m.phone && <div style={{ color: 'var(--text-muted)' }}><strong>Tel:</strong> {m.phone}</div>}
                 </div>
 

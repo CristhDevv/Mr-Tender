@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -103,7 +103,7 @@ export default function LaundryRackPage() {
             Control de Planta de Lavado & Percheros
           </h1>
           <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>
-            Ubicación física de prendas por percheros y control del ciclo (Lavado ➔ Secado ➔ Planchado ➔ Listo).
+            Ubicación física de prendas por percheros y control del ciclo (Lavado Secado Planchado Listo).
           </p>
         </div>
 

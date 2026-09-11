@@ -1,4 +1,4 @@
-import type { Metadata, Viewport } from 'next'
+﻿import type { Metadata, Viewport } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 
@@ -17,7 +17,7 @@ export const viewport: Viewport = {
 }
 
 export const metadata: Metadata = {
-  title: { default: 'Mr Tender — ERP & POS para tu negocio 🇨🇴', template: '%s | Mr Tender' },
+  title: { default: 'Mr Tender — ERP & POS para tu negocio ', template: '%s | Mr Tender' },
   description: 'Punto de venta y control de inventario para tiendas de barrio, panaderías, restaurantes y pequeños negocios en Colombia.',
   keywords: ['ERP', 'punto de venta', 'POS', 'inventario', 'panadería', 'Colombia'],
   authors: [{ name: 'Mr Tender' }],

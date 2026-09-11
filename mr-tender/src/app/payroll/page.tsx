@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils'
@@ -447,7 +447,7 @@ export default function PayrollPage() {
     const contract = settlement.payroll_contracts || contracts.find(c => c.id === settlement.contract_id)
     const phone = (contract?.phone || '').replace(/\D/g, '')
     const text = encodeURIComponent(
-      `¡Hola ${settlement.employee_name}! 📄 Tu desprendible de nómina está listo:\n\n` +
+      `¡Hola ${settlement.employee_name}!  Tu desprendible de nómina está listo:\n\n` +
       `• *Periodo:* ${formatDate(settlement.period_start)} al ${formatDate(settlement.period_end)}\n` +
       `• *Días trabajados:* ${settlement.worked_days}\n` +
       `• *Sueldo básico:* ${formatCurrency(Number(settlement.base_salary))}\n` +
@@ -459,9 +459,9 @@ export default function PayrollPage() {
       `• Salud (4%): -${formatCurrency(Number(settlement.health_deduction))}\n` +
       `• Pensión (4%): -${formatCurrency(Number(settlement.pension_deduction))}\n` +
       `• Total Deducciones: -${formatCurrency(Number(settlement.total_deductions))}\n\n` +
-      `💰 *NETO A PAGAR:* ${formatCurrency(Number(settlement.net_pay))}\n\n` +
+      ` *NETO A PAGAR:* ${formatCurrency(Number(settlement.net_pay))}\n\n` +
       `Cuenta de Abono: ${contract?.bank_name || 'Bancolombia'} (${contract?.bank_account_number || 'N/A'})\n` +
-      `Mr. Tender Nómina Electrónica DIAN ✅`
+      `Mr. Tender Nómina Electrónica DIAN `
     )
     return `https://wa.me/${phone.startsWith('57') ? phone : '57' + phone}?text=${text}`
   }
@@ -677,7 +677,7 @@ export default function PayrollPage() {
                         border: '1px solid var(--border-color)',
                         color: 'var(--text-primary)'
                       }}>
-                        {isEmitted ? 'Timbrada DIAN ✅' : set.status === 'approved' ? 'Aprobada' : 'Borrador'}
+                        {isEmitted ? 'Timbrada DIAN ' : set.status === 'approved' ? 'Aprobada' : 'Borrador'}
                       </span>
                     </div>
 
@@ -798,7 +798,7 @@ export default function PayrollPage() {
                           </td>
                           <td style={{ padding: '8px 10px' }}>
                             <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'var(--bg-deep)', border: '1px solid var(--border-color)' }}>
-                              Aceptado DIAN ✅
+                              Aceptado DIAN 
                             </span>
                           </td>
                         </tr>

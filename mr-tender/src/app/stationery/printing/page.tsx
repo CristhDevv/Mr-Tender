@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
@@ -124,7 +124,7 @@ export default function StationeryPrintingPage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: '1.8rem' }}>📚</span>
+          <span style={{ fontSize: '1.8rem' }}></span>
           <div>
             <h1 style={{ fontSize: '1.4rem', fontWeight: 900, margin: 0, color: '#fff' }}>
               Tarificador de Impresiones, Fotocopias & Anillados
@@ -147,16 +147,16 @@ export default function StationeryPrintingPage() {
           Plantillas Rápidas:
         </span>
         <button onClick={() => applyPreset('copias_simples')} className="btn-neu" style={{ padding: '6px 12px', fontSize: '0.76rem', background: '#FFFFFF' }}>
-          📄 Fotocopias Simples
+           Fotocopias Simples
         </button>
         <button onClick={() => applyPreset('tesis')} className="btn-neu" style={{ padding: '6px 12px', fontSize: '0.76rem', background: '#FFFFFF' }}>
-          📖 Tesis / Trabajo Anillado
+           Tesis / Trabajo Anillado
         </button>
         <button onClick={() => applyPreset('volante_color')} className="btn-neu" style={{ padding: '6px 12px', fontSize: '0.76rem', background: '#FFFFFF' }}>
-          🎨 100 Volantes Color Propalcote
+           100 Volantes Color Propalcote
         </button>
         <button onClick={() => applyPreset('carne_laminado')} className="btn-neu" style={{ padding: '6px 12px', fontSize: '0.76rem', background: '#FFFFFF' }}>
-          🪪 Carné / Documento Plastificado
+           Carné / Documento Plastificado
         </button>
       </div>
 
@@ -187,9 +187,9 @@ export default function StationeryPrintingPage() {
                 className="input-neu"
                 style={{ width: '100%', height: 38, fontSize: '0.82rem', fontWeight: 700 }}
               >
-                <option value="bw">⚫ Blanco y Negro (B/N)</option>
-                <option value="color">🌈 Color Estándar / Inyección / Láser</option>
-                <option value="full_photo">📸 Fotográfico HD / Full Color</option>
+                <option value="bw"> Blanco y Negro (B/N)</option>
+                <option value="color"> Color Estándar / Inyección / Láser</option>
+                <option value="full_photo"> Fotográfico HD / Full Color</option>
               </select>
             </div>
 
@@ -203,8 +203,8 @@ export default function StationeryPrintingPage() {
                 className="input-neu"
                 style={{ width: '100%', height: 38, fontSize: '0.82rem', fontWeight: 700 }}
               >
-                <option value="double_sided">📄 Doble Cara (Doble Faz - Ahorro de papel)</option>
-                <option value="single_sided">📃 Una Sola Cara (Simple Faz)</option>
+                <option value="double_sided"> Doble Cara (Doble Faz - Ahorro de papel)</option>
+                <option value="single_sided"> Una Sola Cara (Simple Faz)</option>
               </select>
             </div>
           </div>
@@ -299,9 +299,9 @@ export default function StationeryPrintingPage() {
                   style={{ width: '100%', height: 38, fontSize: '0.82rem' }}
                 >
                   <option value="none">Sin anillar (Hojas sueltas)</option>
-                  <option value="plastic_spiral">🌀 Anillado Espiral Plástico + Tapas</option>
-                  <option value="wire_o">🖇️ Doble O / Metálico Ring Wire</option>
-                  <option value="stapled">📎 Grapado de esquina / folleto</option>
+                  <option value="plastic_spiral"> Anillado Espiral Plástico + Tapas</option>
+                  <option value="wire_o">️ Doble O / Metálico Ring Wire</option>
+                  <option value="stapled"> Grapado de esquina / folleto</option>
                 </select>
               </div>
 
@@ -316,10 +316,10 @@ export default function StationeryPrintingPage() {
                   style={{ width: '100%', height: 38, fontSize: '0.82rem' }}
                 >
                   <option value="none">Sin plastificar</option>
-                  <option value="carnet">🪪 Plastificado Carné / Cédula</option>
-                  <option value="letter">📄 Laminado Carta Térmico</option>
-                  <option value="legal">📜 Laminado Oficio Térmico</option>
-                  <option value="tabloid">🖼️ Laminado Tabloide / Póster</option>
+                  <option value="carnet"> Plastificado Carné / Cédula</option>
+                  <option value="letter"> Laminado Carta Térmico</option>
+                  <option value="legal"> Laminado Oficio Térmico</option>
+                  <option value="tabloid">️ Laminado Tabloide / Póster</option>
                 </select>
               </div>
             </div>

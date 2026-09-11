@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
@@ -10,9 +10,9 @@ interface SupportTicket {
 }
 
 const PRIORITY_STYLES: Record<string, { bg: string; color: string; label: string }> = {
-  high:   { bg: 'rgba(235,94,85,0.12)', color: 'var(--accent-coral)', label: '🔴 Alta' },
-  medium: { bg: 'rgba(242,193,78,0.12)', color: 'var(--accent-gold)', label: '🟡 Media' },
-  low:    { bg: 'rgba(74,186,134,0.12)', color: 'var(--accent-emerald)', label: '🟢 Baja' },
+  high:   { bg: 'rgba(235,94,85,0.12)', color: 'var(--accent-coral)', label: ' Alta' },
+  medium: { bg: 'rgba(242,193,78,0.12)', color: 'var(--accent-gold)', label: ' Media' },
+  low:    { bg: 'rgba(74,186,134,0.12)', color: 'var(--accent-emerald)', label: ' Baja' },
 }
 
 export default function SupportAdminPage() {
@@ -118,13 +118,13 @@ export default function SupportAdminPage() {
         </div>
       </div>
 
-      {error && <div className="neu-card" style={{ padding: 16, background: 'rgba(235,94,85,0.08)', border: '1px solid rgba(235,94,85,0.2)' }}><p style={{ color: 'var(--accent-coral)', margin: 0, fontSize: '0.85rem' }}>⚠️ {error}</p></div>}
+      {error && <div className="neu-card" style={{ padding: 16, background: 'rgba(235,94,85,0.08)', border: '1px solid rgba(235,94,85,0.2)' }}><p style={{ color: 'var(--accent-coral)', margin: 0, fontSize: '0.85rem' }}>️ {error}</p></div>}
 
       {loading ? (
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando tickets...</div>
       ) : filtered.length === 0 ? (
         <div className="neu-card" style={{ padding: 40, textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: 12 }}>🎧</div>
+          <div style={{ fontSize: '3rem', marginBottom: 12 }}></div>
           <h2 style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>No se encontraron tickets</h2>
         </div>
       ) : (
@@ -148,10 +148,10 @@ export default function SupportAdminPage() {
                       {t.status === 'open' ? 'Abierto' : 'Resuelto'}
                     </span>
                     <button className="btn-neu btn-ghost" onClick={() => updateTicketStatus(t.id, t.status === 'open' ? 'resolved' : 'open')} disabled={updatingId === t.id} style={{ padding: '6px 12px', fontSize: '0.75rem', color: t.status === 'open' ? 'var(--accent-emerald)' : 'var(--accent-coral)' }}>
-                      {updatingId === t.id ? '...' : t.status === 'open' ? '✓ Resolver' : '↩ Reabrir'}
+                      {updatingId === t.id ? '...' : t.status === 'open' ? ' Resolver' : '↩ Reabrir'}
                     </button>
                     <button className="btn-neu btn-ghost" onClick={() => handleDeleteTicket(t.id, t.subject)} style={{ padding: '6px 10px', fontSize: '0.75rem', color: 'var(--accent-coral)' }}>
-                      🗑
+                      
                     </button>
                   </div>
                 </div>

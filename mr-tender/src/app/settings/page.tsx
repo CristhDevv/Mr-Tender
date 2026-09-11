@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { calculateNITVerificationDigit } from '@/lib/dian/cufe'
@@ -337,7 +337,7 @@ export default function SettingsPage() {
                     color: '#FFFFFF',
                     letterSpacing: '0.02em'
                   }}>
-                    {enableInvoicing ? '✓ HABILITADA (Visible en menú lateral)' : '✕ OCULTA (No visible en menú lateral)'}
+                    {enableInvoicing ? ' HABILITADA (Visible en menú lateral)' : ' OCULTA (No visible en menú lateral)'}
                   </span>
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#64748B', marginTop: 4, lineHeight: 1.4 }}>

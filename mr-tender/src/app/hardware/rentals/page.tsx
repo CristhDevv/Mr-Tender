@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -257,8 +257,8 @@ export default function HardwareRentalsPage() {
 
                 <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div><strong>Tarifa Diaria:</strong> {formatCurrency(r.daily_rate)} / día</div>
-                  <div><strong>Depósito en Garantía:</strong> 🛡️ {formatCurrency(r.deposit_amount)}</div>
-                  <div><strong>Devolución Esperada:</strong> 📅 {formatDate(r.rental_end_expected)}</div>
+                  <div><strong>Depósito en Garantía:</strong> ️ {formatCurrency(r.deposit_amount)}</div>
+                  <div><strong>Devolución Esperada:</strong>  {formatDate(r.rental_end_expected)}</div>
                 </div>
 
                 <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 6 }}>

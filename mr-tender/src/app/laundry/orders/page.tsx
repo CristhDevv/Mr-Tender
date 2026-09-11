@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -246,7 +246,7 @@ export default function LaundryOrdersPage() {
               <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div><strong>Servicio:</strong> {o.service_type}</div>
                 <div><strong>Detalle:</strong> {o.garment_count} prendas {o.weight_kg ? `(${o.weight_kg} kg)` : ''}</div>
-                <div><strong>Entrega Prometida:</strong> 📅 {formatDate(o.promised_date)}</div>
+                <div><strong>Entrega Prometida:</strong>  {formatDate(o.promised_date)}</div>
                 <div style={{ color: 'var(--accent-blue)', fontWeight: 800 }}>Valor: {formatCurrency(o.price)}</div>
               </div>
             </div>

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatDate } from '@/lib/utils'
@@ -128,14 +128,14 @@ export default function LogsAdminPage() {
         </select>
         {(filterActor !== 'all' || filterResource !== 'all' || searchAction) && (
           <button className="btn-neu btn-ghost" onClick={() => { setFilterActor('all'); setFilterResource('all'); setSearchAction('') }} style={{ padding: '10px 14px', fontSize: '0.8rem', color: 'var(--accent-coral)' }}>
-            ✕ Limpiar
+             Limpiar
           </button>
         )}
       </div>
 
       {error && (
         <div className="neu-card" style={{ padding: '16px 20px', background: 'rgba(235,94,85,0.08)', border: '1px solid rgba(235,94,85,0.2)' }}>
-          <p style={{ color: 'var(--accent-coral)', fontSize: '0.85rem', margin: 0 }}>⚠️ {error}</p>
+          <p style={{ color: 'var(--accent-coral)', fontSize: '0.85rem', margin: 0 }}>️ {error}</p>
         </div>
       )}
 
@@ -147,7 +147,7 @@ export default function LogsAdminPage() {
         <div style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>Cargando bitácora...</div>
       ) : filtered.length === 0 ? (
         <div className="neu-card" style={{ padding: '40px', textAlign: 'center' }}>
-          <div style={{ fontSize: '3rem', marginBottom: 12 }}>📋</div>
+          <div style={{ fontSize: '3rem', marginBottom: 12 }}></div>
           <h2 style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>No hay registros de auditoría</h2>
           <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Las acciones críticas de la plataforma quedarán grabadas aquí.</p>
         </div>

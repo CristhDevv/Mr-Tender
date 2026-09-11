@@ -188,14 +188,14 @@ export default function SupportDocPage() {
   function getWhatsAppUrl(doc: SupportDocument) {
     const phone = (doc.supplier_phone || '').replace(/\D/g, '')
     const text = encodeURIComponent(
-      `¡Hola ${doc.supplier_name}! 📄 Tu Documento Soporte Electrónico *${doc.document_number}* ha sido emitido y validado ante la DIAN:\n\n` +
+      `¡Hola ${doc.supplier_name}!  Tu Documento Soporte Electrónico *${doc.document_number}* ha sido emitido y validado ante la DIAN:\n\n` +
       `• *Concepto:* ${doc.description}\n` +
       `• *Subtotal:* ${formatCurrency(Number(doc.subtotal))}\n` +
       (Number(doc.retefuente_amount) > 0 ? `• *Retefuente (${doc.retefuente_percent}%):* -${formatCurrency(Number(doc.retefuente_amount))}\n` : '') +
       (Number(doc.reteica_amount) > 0 ? `• *ReteICA (${doc.reteica_percent}%):* -${formatCurrency(Number(doc.reteica_amount))}\n` : '') +
       `• *Neto Pagado:* ${formatCurrency(Number(doc.total))}\n\n` +
       `CUDS: ${doc.cuds ? doc.cuds.slice(0, 24) + '...' : 'Validado'}\n` +
-      `Mr. Tender Facturación & Documento Soporte DIAN ✅`
+      `Mr. Tender Facturación & Documento Soporte DIAN `
     )
     return `https://wa.me/${phone.startsWith('57') ? phone : '57' + phone}?text=${text}`
   }
@@ -322,7 +322,7 @@ export default function SupportDocPage() {
                   </div>
                 </div>
                 <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'var(--bg-deep)', border: '1px solid var(--border-color)' }}>
-                  Aceptado DIAN ✅
+                  Aceptado DIAN 
                 </span>
               </div>
 

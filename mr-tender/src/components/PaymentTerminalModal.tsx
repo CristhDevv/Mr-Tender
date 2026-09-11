@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useState, useEffect } from 'react'
 import {
   CreditCard,
@@ -200,7 +200,7 @@ export default function PaymentTerminalModal({
                 className="btn-neu"
                 style={{ padding: '8px 16px', fontSize: '0.82rem', fontWeight: 700, color: 'var(--accent-blue)', marginTop: 6 }}
               >
-                ⚡ Simular Aprobación Inmediata
+                 Simular Aprobación Inmediata
               </button>
             </>
           )}

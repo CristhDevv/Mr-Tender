@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useState, useEffect } from 'react'
 import {
   User,
@@ -598,7 +598,7 @@ export default function DianCustomerModal({
 
             <div>
               <label style={{ fontSize: '0.72rem', fontWeight: 800, color: '#334155', display: 'block', marginBottom: 4 }}>
-                DV {idType === '31' && <span style={{ color: '#16A34A', fontSize: '0.65rem' }}>✓ Auto</span>}
+                DV {idType === '31' && <span style={{ color: '#16A34A', fontSize: '0.65rem' }}> Auto</span>}
               </label>
               <input
                 type="text"
@@ -744,8 +744,8 @@ export default function DianCustomerModal({
                   outline: 'none'
                 }}
               >
-                <option value="2">👤 Persona Natural (2)</option>
-                <option value="1">🏢 Persona Jurídica (1)</option>
+                <option value="2"> Persona Natural (2)</option>
+                <option value="1"> Persona Jurídica (1)</option>
               </select>
             </div>
 

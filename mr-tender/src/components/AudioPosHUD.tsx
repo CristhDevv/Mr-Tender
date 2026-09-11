@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import {
@@ -372,7 +372,7 @@ export default function AudioPosHUD({
                 Audio-POS por Voz Natural
               </h3>
               <p style={{ fontSize: '0.7rem', color: '#94A3B8', margin: 0 }}>
-                {isListening ? '🎙️ Escuchando... habla de forma natural' : status === 'processing' ? '⚡ Analizando orden...' : 'Confirma o ajusta los productos detectados'}
+                {isListening ? '️ Escuchando... habla de forma natural' : status === 'processing' ? ' Analizando orden...' : 'Confirma o ajusta los productos detectados'}
               </p>
             </div>
           </div>
@@ -476,7 +476,7 @@ export default function AudioPosHUD({
             
             {/* Dictated Text Quote */}
             <div style={{ background: 'rgba(59, 130, 246, 0.1)', border: '1px solid rgba(59, 130, 246, 0.3)', borderRadius: 10, padding: '8px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: '0.8rem' }}>🗣️</span>
+              <span style={{ fontSize: '0.8rem' }}>️</span>
               <span style={{ fontSize: '0.78rem', color: '#93C5FD', fontWeight: 600, fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 "{proposal.rawTranscript}"
               </span>
@@ -490,7 +490,7 @@ export default function AudioPosHUD({
 
               {proposal.items.length === 0 ? (
                 <div style={{ padding: 20, textAlign: 'center', color: '#94A3B8', background: 'rgba(0,0,0,0.3)', borderRadius: 10, fontSize: '0.8rem' }}>
-                  ⚠️ No encontramos ningún producto exacto con ese nombre en tu catálogo.
+                  ️ No encontramos ningún producto exacto con ese nombre en tu catálogo.
                 </div>
               ) : (
                 proposal.items.map((item, idx) => (

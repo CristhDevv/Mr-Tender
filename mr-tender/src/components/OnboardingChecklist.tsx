@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -141,7 +141,7 @@ export default function OnboardingChecklist() {
         throw new Error(data.error || 'Error cargando datos demo')
       }
 
-      setSeedMessage(`🎉 ${data.message || 'Productos de ejemplo cargados exitosamente.'}`)
+      setSeedMessage(` ${data.message || 'Productos de ejemplo cargados exitosamente.'}`)
       // Auto-mark first step and persist
       if (onboardingConfig.checklist[0]) {
         const next = { ...completedSteps, [onboardingConfig.checklist[0].id]: true }
@@ -152,7 +152,7 @@ export default function OnboardingChecklist() {
         window.location.reload()
       }, 1500)
     } catch (err: any) {
-      setSeedMessage(`⚠️ ${err.message}`)
+      setSeedMessage(`️ ${err.message}`)
     } finally {
       setLoadingSeed(false)
     }

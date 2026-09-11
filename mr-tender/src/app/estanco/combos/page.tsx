@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -212,7 +212,7 @@ export default function EstancoCombosPage() {
                     <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{c.combo_name}</div>
                     {c.is_happy_hour && (
                       <div style={{ fontSize: '0.74rem', color: 'var(--accent-purple)', fontWeight: 700, marginTop: 2 }}>
-                        ⏰ Happy Hour: {c.happy_hour_start} a {c.happy_hour_end}
+                         Happy Hour: {c.happy_hour_start} a {c.happy_hour_end}
                       </div>
                     )}
                   </div>

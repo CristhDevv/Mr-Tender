@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
@@ -106,9 +106,9 @@ export default function FloristDeliveriesPage() {
                   </span>
                 </div>
                 <div style={{ fontSize: '0.78rem', color: '#475569', marginTop: 4, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span>💐 {d.arrangement}</span>
-                  <span>📍 {d.address}</span>
-                  <span>📞 {d.phone}</span>
+                  <span> {d.arrangement}</span>
+                  <span> {d.address}</span>
+                  <span> {d.phone}</span>
                 </div>
                 <div style={{ fontSize: '0.72rem', color: '#64748B', marginTop: 4 }}>
                   De parte de: <strong>{d.senderName}</strong> • Horario: <strong>{d.timeWindow}</strong>
@@ -129,9 +129,9 @@ export default function FloristDeliveriesPage() {
                     color: isDelivered ? '#15803D' : isEnRuta ? '#0369A1' : '#5534B8'
                   }}
                 >
-                  <option value="preparando">⏳ En Preparación</option>
-                  <option value="en_ruta">🚚 En Ruta de Entrega</option>
-                  <option value="entregado">✅ Entregado con Éxito</option>
+                  <option value="preparando"> En Preparación</option>
+                  <option value="en_ruta"> En Ruta de Entrega</option>
+                  <option value="entregado"> Entregado con Éxito</option>
                 </select>
               </div>
             </div>

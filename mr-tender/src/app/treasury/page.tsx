@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -407,7 +407,7 @@ export default function TreasuryPage() {
   // WhatsApp Reminder for CxC
   function getWhatsAppReminderUrl(schedule: PaymentSchedule) {
     const text = encodeURIComponent(
-      `¡Hola ${schedule.entity_name}! 🔔 Te recordamos el vencimiento de tu factura *${schedule.document_reference}* por valor de ${formatCurrency(Number(schedule.amount))}.\n\n` +
+      `¡Hola ${schedule.entity_name}!  Te recordamos el vencimiento de tu factura *${schedule.document_reference}* por valor de ${formatCurrency(Number(schedule.amount))}.\n\n` +
       `• *Fecha límite de pago:* ${formatDate(schedule.due_date)}\n\n` +
       `Puedes realizar tu transferencia a nuestras cuentas bancarias o solicitar tu link de pago PSE / Nequi.\n` +
       `¡Gracias por tu preferencia!`
@@ -610,7 +610,7 @@ export default function TreasuryPage() {
                       </div>
                     </div>
                     <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'var(--bg-deep)', border: '1px solid var(--border-color)' }}>
-                      Activa ✅
+                      Activa 
                     </span>
                   </div>
 
@@ -675,7 +675,7 @@ export default function TreasuryPage() {
                         </td>
                         <td style={{ padding: '8px 10px' }}>
                           <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'var(--bg-deep)', border: '1px solid var(--border-color)' }}>
-                            Conciliado ✅
+                            Conciliado 
                           </span>
                         </td>
                       </tr>
@@ -757,7 +757,7 @@ export default function TreasuryPage() {
                       </div>
 
                       <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '2px 8px', borderRadius: 4, background: 'var(--bg-deep)', border: '1px solid var(--border-color)' }}>
-                        {isPaid ? 'Pagado ✅' : isCxC ? 'CxC Por Cobrar' : 'CxP Por Pagar'}
+                        {isPaid ? 'Pagado ' : isCxC ? 'CxC Por Cobrar' : 'CxP Por Pagar'}
                       </span>
                     </div>
 

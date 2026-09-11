@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -155,8 +155,8 @@ export default function ApparelFittingRoomsPage() {
 
               <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
                 <div><strong>Cliente:</strong> {r.customer_name || 'Ninguno'}</div>
-                <div><strong>Prendas en Cabina:</strong> 🏷️ {r.pieces_in_room} prendas</div>
-                {r.occupied_since && <div><strong>Ocupado desde:</strong> ⏰ {r.occupied_since}</div>}
+                <div><strong>Prendas en Cabina:</strong> ️ {r.pieces_in_room} prendas</div>
+                {r.occupied_since && <div><strong>Ocupado desde:</strong>  {r.occupied_since}</div>}
               </div>
 
               <div style={{ display: 'flex', gap: 6, marginTop: 'auto', paddingTop: 6 }}>

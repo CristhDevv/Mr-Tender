@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -391,7 +391,7 @@ export default function BakeryProductionPage() {
                           color: b.status === 'ready' ? '#059669' : b.status === 'baking' ? '#714AD9' : '#64748B',
                           border: b.status === 'ready' ? '1px solid #A7F3D0' : b.status === 'baking' ? '1px solid #FDE68A' : '1px solid #CBD5E1'
                         }}>
-                          {b.status === 'ready' ? '✓ Listo / En Vitrina' : b.status === 'baking' ? '🔥 En Horno' : 'Pan de Ayer'}
+                          {b.status === 'ready' ? ' Listo / En Vitrina' : b.status === 'baking' ? ' En Horno' : 'Pan de Ayer'}
                         </span>
                       </td>
                     </tr>
@@ -502,8 +502,8 @@ export default function BakeryProductionPage() {
                       className="input-neu"
                       style={{ width: '100%', marginTop: 4, padding: '8px 12px', fontSize: '0.84rem', background: '#FFFFFF' }}
                     >
-                      <option value="ready">✓ Listo / Salido del Horno</option>
-                      <option value="baking">🔥 En Horno Actualmente</option>
+                      <option value="ready"> Listo / Salido del Horno</option>
+                      <option value="baking"> En Horno Actualmente</option>
                     </select>
                   </div>
                 </div>

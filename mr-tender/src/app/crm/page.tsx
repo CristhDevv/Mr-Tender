@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -53,7 +53,7 @@ const STAGES = [
   { id: 'contacted', label: 'Contactados' },
   { id: 'proposal_sent', label: 'Propuesta Enviada' },
   { id: 'negotiation', label: 'En Negociación' },
-  { id: 'won', label: 'Cerrado Ganado 🏆' },
+  { id: 'won', label: 'Cerrado Ganado ' },
   { id: 'lost', label: 'Perdido' }
 ]
 
@@ -276,7 +276,7 @@ export default function CrmPage() {
   function getWhatsAppDealUrl(deal: CrmDeal) {
     const phone = (deal.customer_phone || '').replace(/\D/g, '')
     const text = encodeURIComponent(
-      `¡Hola ${deal.customer_name}! 👋 Te contacto respecto a la propuesta *"${deal.title}"* por valor de ${formatCurrency(Number(deal.estimated_value))}.\n\n` +
+      `¡Hola ${deal.customer_name}!  Te contacto respecto a la propuesta *"${deal.title}"* por valor de ${formatCurrency(Number(deal.estimated_value))}.\n\n` +
       `¿Cómo va la revisión de los requerimientos? Quedo atento a tus dudas para formalizar el pedido o resolver inquietudes.`
     )
     return `https://wa.me/${phone.startsWith('57') ? phone : '57' + phone}?text=${text}`
@@ -443,12 +443,12 @@ export default function CrmPage() {
                       )}
                       {deal.stage === 'negotiation' && (
                         <button onClick={() => handleMoveStage(deal.id, 'won')} className="btn-neu btn-primary" style={{ flex: 1, padding: '4px 6px', fontSize: '0.68rem' }}>
-                          Marcar Ganado 🏆
+                          Marcar Ganado 
                         </button>
                       )}
                       {deal.stage === 'won' && (
                         <Link href={`/invoices?customer=${encodeURIComponent(deal.customer_name)}&amount=${deal.estimated_value}`} className="btn-neu btn-primary" style={{ flex: 1, padding: '4px 6px', fontSize: '0.68rem', textAlign: 'center' }}>
-                          Facturar DIAN 📄
+                          Facturar DIAN 
                         </Link>
                       )}
 

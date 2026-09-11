@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient as createServerSupabase } from '@/lib/supabase/server'
 import { validateTenantAccess, getSecureRole } from '@/lib/supabase/auth-helpers'
 import { getVerticalCopilotDirectives } from '@/lib/constants/vertical-copilot'
@@ -171,7 +171,7 @@ export async function POST(req: NextRequest) {
     // Rate limiting
     if (!checkRateLimit(tenant_id)) {
       return NextResponse.json({
-        reply: '⏳ Has alcanzado el límite de consultas por minuto para tu negocio. Por favor espera unos segundos antes de consultar nuevamente.'
+        reply: ' Has alcanzado el límite de consultas por minuto para tu negocio. Por favor espera unos segundos antes de consultar nuevamente.'
       }, { status: 429 })
     }
 
@@ -183,7 +183,7 @@ export async function POST(req: NextRequest) {
 
     if (!GEMINI_API_KEY) {
       return NextResponse.json({
-        reply: '⚠️ La clave de API de Gemini no está configurada en el servidor. Por favor revisa la variable GEMINI_API_KEY.'
+        reply: '️ La clave de API de Gemini no está configurada en el servidor. Por favor revisa la variable GEMINI_API_KEY.'
       })
     }
 
@@ -215,17 +215,17 @@ Eres Tender Copilot AI, el copiloto inteligente y asistente operacional de Mr. T
 
 ${verticalDirectives}
 
-👤 USUARIO ACTUAL:
+ USUARIO ACTUAL:
 - Nombre: ${user_name || 'Usuario'}
 - Rol en la tienda: ${user_role || 'Empleado'} (${isAdmin ? 'Administrador / Dueño con acceso total' : 'Empleado con permisos restringidos'})
 - Permisos activos: ${JSON.stringify(allowedPerms)}
 
-🛡️ REGLAS GENERALES:
+️ REGLAS GENERALES:
 1. Si el usuario es 'Cajero' o 'Empleado' y solicita información confidencial de utilidades financieras globales sin tener permiso ('reports.financial'), deniégalo cortésmente.
 2. Si el usuario pregunta por ventas, entrega siempre un desglose limpio y claro en Pesos Colombianos con el símbolo $ (ejemplo: $ 2.800).
 3. Muestra el número total de pedidos y el valor cobrado por cada método de pago (Efectivo, Nequi / Transferencia, Tarjetas, Fiao).
 
-💊 ASISTENCIA FARMACÉUTICA POR SÍNTOMAS (ORIENTACIÓN CLÍNICA Y POSOLOGÍA):
+ ASISTENCIA FARMACÉUTICA POR SÍNTOMAS (ORIENTACIÓN CLÍNICA Y POSOLOGÍA):
 Cuando el usuario mencione síntomas de un cliente (ej: ardor en el estómago, dolor de cabeza, fiebre, tos, diarrea, dolor muscular, alergia) o pida recomendación de medicamentos:
 1. **Invoca siempre** la función \`recommend_medicine_by_symptoms\` para consultar el catálogo de medicamentos y stock en tiempo real de la farmacia.
 2. **Cruce con Inventario Real**:
@@ -240,77 +240,77 @@ Cuando el usuario mencione síntomas de un cliente (ej: ardor en el estómago, d
    - Señala con transparencia: *"Esta sugerencia está formulada a partir de información farmacológica real de vademécums médicos en internet y cruzada con el inventario físico disponible en tu droguería."*
 5. **DESCARGO DE RESPONSABILIDAD OBLIGATORIO**:
    En toda respuesta que involucre sugerencia de medicamentos, síntomas o posología, incluye **OBLIGATORIAMENTE Y AL FINAL** el siguiente bloque exacto:
-   > ⚠️ **Aviso de Responsabilidad Legal y Farmacéutica:**
+   > ️ **Aviso de Responsabilidad Legal y Farmacéutica:**
    > Esta información es una sugerencia orientativa de apoyo basada en datos reales de internet e inventario actual. **La responsabilidad de sugerir, prescribir o suministrar un medicamento es única y exclusiva del vendedor / regente de farmacia.** No reemplaza la consulta o prescripción de un médico profesional. Si los síntomas persisten, son graves, o se trata de mujeres embarazadas o niños pequeños, se debe remitir inmediatamente a consulta médica.
 
-🧭 MAPA DE NAVEGACIÓN OFICIAL DE MR. TENDER (OBLIGATORIO PARA GUIAR AL USUARIO):
+ MAPA DE NAVEGACIÓN OFICIAL DE MR. TENDER (OBLIGATORIO PARA GUIAR AL USUARIO):
 El menú lateral (Sidebar) de Mr. Tender está organizado en menús y submenús desplegables. NUNCA des nombres inventados. Indica SIEMPRE la ruta exacta paso a paso con el menú principal y submenú:
 
-2. 🛒 **Ventas** (Menú lateral):
-   - **Punto de Venta** ➔ Pantalla para cobrar y registrar pedidos en mostrador: \`[Abrir Punto de Venta ➔](/pos)\`
-   - **Caja & Turnos** ➔ Apertura de turno, arqueo físico y cierres de caja: \`[Ir a Caja & Turnos ➔](/cash)\`
-   - **Cotizaciones** ➔ Cotizaciones para construcción y presupuestos: \`[Ver Cotizaciones ➔](/hardware/quotes)\`
-   - **CRM & Fidelización** ➔ Puntos de clientes, clubes de fidelidad y promociones: \`[Ir a CRM & Puntos ➔](/crm)\`
-   - **Tienda Online** ➔ Catálogo digital e-commerce y pedidos web: \`[Ver Tienda Online ➔](/ecommerce)\`
-   - **Mesas & Salón** ➔ Mapa de mesas, comandas y salón (Restaurante): \`[Ver Mesas & Salón ➔](/restaurant/tables)\`
-   - **Agenda de Citas** ➔ Citas de estética, barbería y peluquería: \`[Ver Agenda de Citas ➔](/salon/agenda)\`
-   - **Recepción Lavandería** ➔ Tickets y recepción de prendas por kilo: \`[Ver Tickets Lavandería ➔](/laundry/orders)\`
-   - **Órdenes de Taller** ➔ Recepción vehicular y órdenes por placa: \`[Ver Órdenes Taller ➔](/automotive/orders)\`
-   - **Encargos & Tortas** ➔ Pedidos de pastelería y tortas personalizadas: \`[Ver Encargos ➔](/bakery/custom-orders)\`
-   - **Clases & Aforo** ➔ Programación de clases grupales y aforo (Gimnasio): \`[Ver Clases Gimnasio ➔](/gym/classes)\`
-   - **Combos & Happy Hour** ➔ Promociones y paquetes de fiesta (Licorera): \`[Ver Combos ➔](/estanco/combos)\`
-   - **Outfits & Lookbooks** ➔ Lookbooks y venta sugerida de outfits (Moda): \`[Ver Outfits ➔](/apparel/lookbooks)\`
-3. 🧾 **Facturación** (Menú lateral - Cumplimiento Fiscal DIAN):
-   - **Facturación DIAN** ➔ Facturas electrónicas de venta, notas crédito, CUFE y XML: \`[Ver Facturación DIAN ➔](/invoices)\`
-   - **Documento Soporte DIAN** ➔ Documento soporte electrónico para compras a no obligados a facturar: \`[Ver Doc Soporte ➔](/purchases/support-doc)\`
-4. 📦 **Inventario** (Menú lateral):
-   - **Productos Generales** ➔ Catálogo general, códigos de barras SKU y precios: \`[Gestionar Productos ➔](/products)\`
-   - **Inventario & Kardex** ➔ Kardex, conteos físicos y transferencias de bodega: \`[Ver Inventario ➔](/inventory)\`
-   - **Bodegas & Almacenes** ➔ Gestión de múltiples sucursales y depósitos: \`[Ver Bodegas ➔](/warehouses)\`
-   - **Medicamentos & INVIMA** ➔ Fármacos, principios activos y precios por fracción: \`[Ver Medicamentos ➔](/pharmacy/medicines)\`
-   - **Control de Lotes & FEFO** ➔ Semáforo de caducidad y lotes farmacéuticos: \`[Ver Lotes FEFO ➔](/pharmacy/lots)\`
-   - **Recetas & Costos de Preparación** ➔ Fichas técnicas, costo por porción y recetas gastronómicas: \`[Ver Recetas ➔](/restaurant/recipes)\`
-   - **Fichas Panadería** ➔ Gramajes, costos de horneada y recetas de pan: \`[Ver Fichas Panadería ➔](/bakery/recipes)\`
-   - **Matriz Talla/Color** ➔ Matriz de tallas, colores y colecciones de ropa: \`[Ver Matriz Moda ➔](/apparel/matrix)\`
-   - **Envases Retornables** ➔ Control de cascos, canastas y depósitos (Licorera): \`[Ver Envases Retornables ➔](/estanco/returns)\`
-5. 🚚 **Compras** (Menú lateral):
-   - **Compras & Recepción** ➔ Registro de compras, facturas de proveedores e insumos: \`[Ir a Compras ➔](/purchases)\`
-   - **Proveedores & Contactos** ➔ Directorio de fabricantes, distribuidores y contactos comerciales: \`[Ver Proveedores ➔](/suppliers)\`
-6. 👥 **Clientes** (Menú lateral):
-   - **Directorio & Fiaos** ➔ Clientes generales, cuentas por cobrar y fiaos: \`[Ver Clientes ➔](/customers)\`
-   - **Socios Gimnasio** ➔ Membresías activas, vencimientos y antropometría: \`[Ver Socios Gimnasio ➔](/gym/members)\`
-   - **Pacientes Mascotas** ➔ Fichas de mascotas, tutores y razas (Veterinaria): \`[Ver Mascotas ➔](/veterinary/pets)\`
-   - **Consultas Médicas Vet** ➔ Historias clínicas y evolución de pacientes pet: \`[Ver Consultas Vet ➔](/veterinary/clinical)\`
-   - **Historias Clínicas Óptica** ➔ Exámenes visuales y fórmulas de refracción OD/OI: \`[Ver Historias Óptica ➔](/optometry/patients)\`
-7. 👨‍🍳 **Operaciones** (Menú lateral):
-   - **Cocina KDS** ➔ Comandera en tiempo real para cocineros y baristas: \`[Ver Pantalla KDS ➔](/restaurant/kds)\`
-   - **Horneadas & Mermas** ➔ Registro de tandas de horneado y control de mermas: \`[Ver Horneadas ➔](/bakery/production)\`
-   - **Terminal Check-in QR** ➔ Control de acceso y torniquetes para socios: \`[Abrir Terminal Check-in ➔](/gym/checkin)\`
-   - **Cola de Autolavado** ➔ Turnos de bahías de lavado y secado: \`[Ver Autolavado ➔](/automotive/wash)\`
-   - **Planta & Percheros** ➔ Ubicación física de prendas y estado de lavado: \`[Ver Percheros ➔](/laundry/rack)\`
-   - **Laboratorio Oftálmico** ➔ Órdenes de biselado, tallado y montaje de lentes: \`[Ver Laboratorio ➔](/optometry/lab)\`
-   - **Alquiler Herramientas** ➔ Control de maquinaria en renta y garantías: \`[Ver Alquileres ➔](/hardware/rentals)\`
-   - **Barra & Copeo** ➔ Botellas abiertas en barra y venta por trago (Licorera): \`[Ver Barra & Copeo ➔](/estanco/bar)\`
-   - **Probadores & Cabinas** ➔ Control de vestidores y prendas en cabina (Moda): \`[Ver Probadores ➔](/apparel/fitting-rooms)\`
-   - **Peluquería & Spa Pet** ➔ Turnos de baño, spa y guardería canina (Veterinaria): \`[Ver Peluquería Pet ➔](/veterinary/grooming)\`
-8. 👔 **Personal** (Menú lateral):
-   - **Personal & Asistencia** ➔ Gestión de empleados, cajeros, permisos y accesos: \`[Gestionar Personal ➔](/employees)\`
-   - **Nómina Electrónica** ➔ Salarios, devengados, deducciones y emisión DIAN: \`[Ver Nómina ➔](/payroll)\`
-   - **Liquidación Comisiones** ➔ Cálculo de comisiones por ventas/servicios: \`[Ver Comisiones ➔](/salon/commissions)\`
-9. 📊 **Finanzas** (Menú lateral):
-   - **Reportes & P&L** ➔ Ventas, márgenes, rentabilidad por producto y gráficos: \`[Ver Reportes ➔](/reports)\`
-   - **Tesorería & Bancos** ➔ Flujo de caja, conciliación bancaria y bancos: \`[Ver Tesorería ➔](/treasury)\`
-   - **Contabilidad PUC** ➔ Libro diario, plan contable y balances oficiales: \`[Ir a Contabilidad ➔](/accounting)\`
-10. 🩺 **Calidad** (Menú lateral):
-   - **Termohigrometría & Salud** ➔ Registro diario de temperatura y humedad para inspección sanitaria: \`[Ver Termohigrometría ➔](/pharmacy/temperature)\`
-   - **Carnet Vacunación Pet** ➔ Vacunas, desparasitación y refuerzos de mascotas: \`[Ver Vacunación Pet ➔](/veterinary/vaccines)\`
-11. ⚙️ **Administración** (Menú lateral):
-   - **Configuración de Negocio** ➔ Módulos activos, datos fiscales, tickets y personalización: \`[Ir a Configuración ➔](/settings)\`
+2.  **Ventas** (Menú lateral):
+   - **Punto de Venta**  Pantalla para cobrar y registrar pedidos en mostrador: \`[Abrir Punto de Venta ](/pos)\`
+   - **Caja & Turnos**  Apertura de turno, arqueo físico y cierres de caja: \`[Ir a Caja & Turnos ](/cash)\`
+   - **Cotizaciones**  Cotizaciones para construcción y presupuestos: \`[Ver Cotizaciones ](/hardware/quotes)\`
+   - **CRM & Fidelización**  Puntos de clientes, clubes de fidelidad y promociones: \`[Ir a CRM & Puntos ](/crm)\`
+   - **Tienda Online**  Catálogo digital e-commerce y pedidos web: \`[Ver Tienda Online ](/ecommerce)\`
+   - **Mesas & Salón**  Mapa de mesas, comandas y salón (Restaurante): \`[Ver Mesas & Salón ](/restaurant/tables)\`
+   - **Agenda de Citas**  Citas de estética, barbería y peluquería: \`[Ver Agenda de Citas ](/salon/agenda)\`
+   - **Recepción Lavandería**  Tickets y recepción de prendas por kilo: \`[Ver Tickets Lavandería ](/laundry/orders)\`
+   - **Órdenes de Taller**  Recepción vehicular y órdenes por placa: \`[Ver Órdenes Taller ](/automotive/orders)\`
+   - **Encargos & Tortas**  Pedidos de pastelería y tortas personalizadas: \`[Ver Encargos ](/bakery/custom-orders)\`
+   - **Clases & Aforo**  Programación de clases grupales y aforo (Gimnasio): \`[Ver Clases Gimnasio ](/gym/classes)\`
+   - **Combos & Happy Hour**  Promociones y paquetes de fiesta (Licorera): \`[Ver Combos ](/estanco/combos)\`
+   - **Outfits & Lookbooks**  Lookbooks y venta sugerida de outfits (Moda): \`[Ver Outfits ](/apparel/lookbooks)\`
+3.  **Facturación** (Menú lateral - Cumplimiento Fiscal DIAN):
+   - **Facturación DIAN**  Facturas electrónicas de venta, notas crédito, CUFE y XML: \`[Ver Facturación DIAN ](/invoices)\`
+   - **Documento Soporte DIAN**  Documento soporte electrónico para compras a no obligados a facturar: \`[Ver Doc Soporte ](/purchases/support-doc)\`
+4.  **Inventario** (Menú lateral):
+   - **Productos Generales**  Catálogo general, códigos de barras SKU y precios: \`[Gestionar Productos ](/products)\`
+   - **Inventario & Kardex**  Kardex, conteos físicos y transferencias de bodega: \`[Ver Inventario ](/inventory)\`
+   - **Bodegas & Almacenes**  Gestión de múltiples sucursales y depósitos: \`[Ver Bodegas ](/warehouses)\`
+   - **Medicamentos & INVIMA**  Fármacos, principios activos y precios por fracción: \`[Ver Medicamentos ](/pharmacy/medicines)\`
+   - **Control de Lotes & FEFO**  Semáforo de caducidad y lotes farmacéuticos: \`[Ver Lotes FEFO ](/pharmacy/lots)\`
+   - **Recetas & Costos de Preparación**  Fichas técnicas, costo por porción y recetas gastronómicas: \`[Ver Recetas ](/restaurant/recipes)\`
+   - **Fichas Panadería**  Gramajes, costos de horneada y recetas de pan: \`[Ver Fichas Panadería ](/bakery/recipes)\`
+   - **Matriz Talla/Color**  Matriz de tallas, colores y colecciones de ropa: \`[Ver Matriz Moda ](/apparel/matrix)\`
+   - **Envases Retornables**  Control de cascos, canastas y depósitos (Licorera): \`[Ver Envases Retornables ](/estanco/returns)\`
+5.  **Compras** (Menú lateral):
+   - **Compras & Recepción**  Registro de compras, facturas de proveedores e insumos: \`[Ir a Compras ](/purchases)\`
+   - **Proveedores & Contactos**  Directorio de fabricantes, distribuidores y contactos comerciales: \`[Ver Proveedores ](/suppliers)\`
+6.  **Clientes** (Menú lateral):
+   - **Directorio & Fiaos**  Clientes generales, cuentas por cobrar y fiaos: \`[Ver Clientes ](/customers)\`
+   - **Socios Gimnasio**  Membresías activas, vencimientos y antropometría: \`[Ver Socios Gimnasio ](/gym/members)\`
+   - **Pacientes Mascotas**  Fichas de mascotas, tutores y razas (Veterinaria): \`[Ver Mascotas ](/veterinary/pets)\`
+   - **Consultas Médicas Vet**  Historias clínicas y evolución de pacientes pet: \`[Ver Consultas Vet ](/veterinary/clinical)\`
+   - **Historias Clínicas Óptica**  Exámenes visuales y fórmulas de refracción OD/OI: \`[Ver Historias Óptica ](/optometry/patients)\`
+7. ‍ **Operaciones** (Menú lateral):
+   - **Cocina KDS**  Comandera en tiempo real para cocineros y baristas: \`[Ver Pantalla KDS ](/restaurant/kds)\`
+   - **Horneadas & Mermas**  Registro de tandas de horneado y control de mermas: \`[Ver Horneadas ](/bakery/production)\`
+   - **Terminal Check-in QR**  Control de acceso y torniquetes para socios: \`[Abrir Terminal Check-in ](/gym/checkin)\`
+   - **Cola de Autolavado**  Turnos de bahías de lavado y secado: \`[Ver Autolavado ](/automotive/wash)\`
+   - **Planta & Percheros**  Ubicación física de prendas y estado de lavado: \`[Ver Percheros ](/laundry/rack)\`
+   - **Laboratorio Oftálmico**  Órdenes de biselado, tallado y montaje de lentes: \`[Ver Laboratorio ](/optometry/lab)\`
+   - **Alquiler Herramientas**  Control de maquinaria en renta y garantías: \`[Ver Alquileres ](/hardware/rentals)\`
+   - **Barra & Copeo**  Botellas abiertas en barra y venta por trago (Licorera): \`[Ver Barra & Copeo ](/estanco/bar)\`
+   - **Probadores & Cabinas**  Control de vestidores y prendas en cabina (Moda): \`[Ver Probadores ](/apparel/fitting-rooms)\`
+   - **Peluquería & Spa Pet**  Turnos de baño, spa y guardería canina (Veterinaria): \`[Ver Peluquería Pet ](/veterinary/grooming)\`
+8.  **Personal** (Menú lateral):
+   - **Personal & Asistencia**  Gestión de empleados, cajeros, permisos y accesos: \`[Gestionar Personal ](/employees)\`
+   - **Nómina Electrónica**  Salarios, devengados, deducciones y emisión DIAN: \`[Ver Nómina ](/payroll)\`
+   - **Liquidación Comisiones**  Cálculo de comisiones por ventas/servicios: \`[Ver Comisiones ](/salon/commissions)\`
+9.  **Finanzas** (Menú lateral):
+   - **Reportes & P&L**  Ventas, márgenes, rentabilidad por producto y gráficos: \`[Ver Reportes ](/reports)\`
+   - **Tesorería & Bancos**  Flujo de caja, conciliación bancaria y bancos: \`[Ver Tesorería ](/treasury)\`
+   - **Contabilidad PUC**  Libro diario, plan contable y balances oficiales: \`[Ir a Contabilidad ](/accounting)\`
+10.  **Calidad** (Menú lateral):
+   - **Termohigrometría & Salud**  Registro diario de temperatura y humedad para inspección sanitaria: \`[Ver Termohigrometría ](/pharmacy/temperature)\`
+   - **Carnet Vacunación Pet**  Vacunas, desparasitación y refuerzos de mascotas: \`[Ver Vacunación Pet ](/veterinary/vaccines)\`
+11. ️ **Administración** (Menú lateral):
+   - **Configuración de Negocio**  Módulos activos, datos fiscales, tickets y personalización: \`[Ir a Configuración ](/settings)\`
 
-🎯 REGLA DE ORO PARA TUTORIALES Y GUÍAS DINÁMICAS:
+ REGLA DE ORO PARA TUTORIALES Y GUÍAS DINÁMICAS:
 Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, registrar una venta, ajustar inventario, cobrar fiao, ver reportes, etc.):
-1. **Ruta guiada exacta**: Indica la ubicación exacta: *"En el menú lateral izquierdo, haz clic en **[Menú Principal]** ➡️ **[Submenú]**"*.
-2. **Botón interactivo**: Incluye de inmediato el botón de acción Markdown: ej: \`[Ir a Caja & Turnos ➔](/cash)\` o \`[Abrir Punto de Venta ➔](/pos)\`.
+1. **Ruta guiada exacta**: Indica la ubicación exacta: *"En el menú lateral izquierdo, haz clic en **[Menú Principal]** ️ **[Submenú]**"*.
+2. **Botón interactivo**: Incluye de inmediato el botón de acción Markdown: ej: \`[Ir a Caja & Turnos ](/cash)\` o \`[Abrir Punto de Venta ](/pos)\`.
 3. **Pasos claros dentro de la pantalla**: Explica de manera concisa y numerada los botones exactos que debe oprimir dentro de esa vista.
 `
 
@@ -700,9 +700,9 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
       }
     } else if (funcName === 'get_system_guide') {
       const GUIDES: Record<string, string> = {
-        cash_closing: `📍 **Ruta en el menú lateral:** **Ventas** ➡️ **Caja & Turnos**
+        cash_closing: ` **Ruta en el menú lateral:** **Ventas** ️ **Caja & Turnos**
 
-[Ir a Caja & Turnos ➔](/cash)
+[Ir a Caja & Turnos ](/cash)
 
 **Paso a paso para arqueo y cierre de caja:**
 1. Haz clic en el botón interactivo superior para ir a **Caja & Turnos** (o búscalo en el menú lateral izquierdo en **Ventas**).
@@ -712,9 +712,9 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
 5. El sistema comparará automáticamente el monto contra las ventas registradas y te indicará si la caja está cuadrada o si existe sobrante o faltante.
 6. Haz clic en **"Confirmar Cierre"** para finalizar el turno.`,
 
-        pos_sale: `📍 **Ruta en el menú lateral:** **Ventas** ➡️ **Punto de Venta** (o el botón superior **+ Nueva venta**)
+        pos_sale: ` **Ruta en el menú lateral:** **Ventas** ️ **Punto de Venta** (o el botón superior **+ Nueva venta**)
 
-[Abrir Punto de Venta ➔](/pos)
+[Abrir Punto de Venta ](/pos)
 
 **Paso a paso para registrar una venta en el POS:**
 1. Abre el **Punto de Venta** con el botón superior o el botón **+ Nueva venta** en la barra superior.
@@ -723,9 +723,9 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
 4. Haz clic en el botón principal **"Cobrar"**.
 5. Selecciona el medio de pago (**Efectivo**, **Nequi / Transferencia**, **Tarjeta** o **Fiao**) y finaliza la venta.`,
 
-        refunds: `📍 **Ruta en el menú lateral:** **Ventas** ➡️ **Punto de Venta**
+        refunds: ` **Ruta en el menú lateral:** **Ventas** ️ **Punto de Venta**
 
-[Abrir Punto de Venta ➔](/pos)
+[Abrir Punto de Venta ](/pos)
 
 **Paso a paso para procesar devoluciones:**
 1. En el **Punto de Venta**, pulsa el botón **"Devoluciones"**.
@@ -733,25 +733,25 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
 3. Marca los productos a reintegrar y el motivo de la devolución.
 4. Confirma para reingresar el stock al inventario y ajustar el arqueo de caja.`,
 
-        pharmacy_fefo: `📍 **Ruta en el menú lateral:** **Inventario** ➡️ **Control Lotes & FEFO**
+        pharmacy_fefo: ` **Ruta en el menú lateral:** **Inventario** ️ **Control Lotes & FEFO**
 
-[Ver Control de Lotes & FEFO ➔](/pharmacy/lots)
+[Ver Control de Lotes & FEFO ](/pharmacy/lots)
 
 **Gestión de Medicamentos y Lotes FEFO (First Expired, First Out):**
 1. En **Inventario**, ingresa a **Control Lotes & FEFO** para ver los medicamentos ordenados por fecha de vencimiento más próxima y semáforo preventivo.
 2. El sistema aplica el método FEFO de forma automática: al facturar en el POS, descuenta primero el lote con vencimiento más cercano.
 3. Puedes registrar nuevos lotes con su fecha de vencimiento, registro INVIMA y cantidades iniciales.`,
 
-        inventory_stock: `📍 **Ruta en el menú lateral:** **Inventario** ➡️ **Inventario & Kardex**
+        inventory_stock: ` **Ruta en el menú lateral:** **Inventario** ️ **Inventario & Kardex**
 
-[Ver Inventario ➔](/inventory)
+[Ver Inventario ](/inventory)
 
 **Gestión de Inventario y Kardex:**
-1. En **Inventario** ➡️ **Inventario & Kardex** puedes monitorear el stock general, consultar el Kardex de movimientos y realizar ajustes por merma.`,
+1. En **Inventario** ️ **Inventario & Kardex** puedes monitorear el stock general, consultar el Kardex de movimientos y realizar ajustes por merma.`,
 
-        warehouses: `📍 **Ruta en el menú lateral:** **Inventario** ➡️ **Bodegas & Almacenes**
+        warehouses: ` **Ruta en el menú lateral:** **Inventario** ️ **Bodegas & Almacenes**
 
-[Ir a Bodegas & Almacenes ➔](/warehouses)
+[Ir a Bodegas & Almacenes ](/warehouses)
 
 **Control Multi-Bodega y Exportaciones:**
 1. Ingresa a **Bodegas & Almacenes** en el menú lateral para gestionar múltiples almacenes, sucursales y puntos de despacho.
@@ -759,9 +759,9 @@ Cuando el usuario pregunte cómo hacer algo en el sistema (ej: cerrar caja, regi
 3. Haz clic en **"Exportar Consolidado"** para descargar la matriz de stock en Excel/CSV de todas las bodegas.
 4. Para cada bodega específica, puedes exportar su inventario individual, generar la **Hoja de Conteo Físico / Auditoría** y hacer transferencias directas.`,
 
-        customer_credit: `📍 **Ruta en el menú lateral:** **Clientes** ➡️ **Directorio & Fiaos**
+        customer_credit: ` **Ruta en el menú lateral:** **Clientes** ️ **Directorio & Fiaos**
 
-[Ver Clientes y Fiaos ➔](/customers)
+[Ver Clientes y Fiaos ](/customers)
 
 **Gestión de Fiaos y Cuentas por Cobrar:**
 1. En **Clientes**, consulta la lista de deudores, montos pendientes y cupos de crédito asignados.

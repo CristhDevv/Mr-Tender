@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency, formatDate } from '@/lib/utils'
@@ -497,7 +497,7 @@ export default function PurchasesPage() {
                   Proveedor: {selectedPoForReceive.suppliers?.company_name || 'General'}
                 </p>
               </div>
-              <button className="btn-neu btn-ghost" onClick={() => setSelectedPoForReceive(null)} style={{ padding: '2px 6px' }}>✕</button>
+              <button className="btn-neu btn-ghost" onClick={() => setSelectedPoForReceive(null)} style={{ padding: '2px 6px' }}></button>
             </div>
 
             <form onSubmit={handleConfirmReception} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

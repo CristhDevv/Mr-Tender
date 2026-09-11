@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect, useMemo } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
@@ -72,19 +72,19 @@ const PRESET_COLORS = [
 ]
 
 const MODULE_LABELS: Record<string, { label: string; icon: string }> = {
-  pos: { label: 'Punto de Venta (POS)', icon: '🛒' },
-  cash: { label: 'Caja y Turnos', icon: '💵' },
-  inventory: { label: 'Inventario & Bodega', icon: '📦' },
-  products: { label: 'Productos & Catálogo', icon: '🏷️' },
-  customers: { label: 'Clientes & Crédito', icon: '👥' },
-  suppliers: { label: 'Proveedores', icon: '🚚' },
-  purchases: { label: 'Compras & Recepción', icon: '🛍️' },
-  reports: { label: 'Reportes & Finanzas', icon: '📊' },
-  accounting: { label: 'Contabilidad', icon: '📖' },
-  employees: { label: 'Personal & Empleados', icon: '👤' },
-  bakery: { label: 'Panadería & Producción', icon: '🥐' },
-  settings: { label: 'Configuración', icon: '⚙️' },
-  users: { label: 'Usuarios del Sistema', icon: '🔐' },
+  pos: { label: 'Punto de Venta (POS)', icon: '' },
+  cash: { label: 'Caja y Turnos', icon: '' },
+  inventory: { label: 'Inventario & Bodega', icon: '' },
+  products: { label: 'Productos & Catálogo', icon: '️' },
+  customers: { label: 'Clientes & Crédito', icon: '' },
+  suppliers: { label: 'Proveedores', icon: '' },
+  purchases: { label: 'Compras & Recepción', icon: '️' },
+  reports: { label: 'Reportes & Finanzas', icon: '' },
+  accounting: { label: 'Contabilidad', icon: '' },
+  employees: { label: 'Personal & Empleados', icon: '' },
+  bakery: { label: 'Panadería & Producción', icon: '' },
+  settings: { label: 'Configuración', icon: '️' },
+  users: { label: 'Usuarios del Sistema', icon: '' },
 }
 
 export default function EmployeesAndRolesPage() {
@@ -330,7 +330,7 @@ export default function EmployeesAndRolesPage() {
         throw new Error(res?.message || rpcErr?.message || 'No se pudo restablecer la contraseña')
       }
 
-      alert(`✅ Contraseña actualizada con éxito para ${resetModalEmp.full_name}`)
+      alert(` Contraseña actualizada con éxito para ${resetModalEmp.full_name}`)
       setResetModalEmp(null)
       setNewResetPassword('')
     } catch (err: any) {
@@ -588,7 +588,7 @@ export default function EmployeesAndRolesPage() {
                       onClick={generatePassword}
                       style={{ background: 'none', border: 'none', color: 'var(--accent-blue)', fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer', padding: 0 }}
                     >
-                      🎲 Generar otra
+                       Generar otra
                     </button>
                   </div>
                   <div style={{ position: 'relative' }}>
@@ -1026,7 +1026,7 @@ export default function EmployeesAndRolesPage() {
               {/* Scrollable Permissions List by Module */}
               <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, padding: '10px 18px' }}>
                 {Object.entries(permissionsByModule).map(([module, modulePerms]) => {
-                  const info = MODULE_LABELS[module] || { label: module.toUpperCase(), icon: '📁' }
+                  const info = MODULE_LABELS[module] || { label: module.toUpperCase(), icon: '' }
                   const allInModuleSelected = modulePerms.every(p => selectedPermissions.has(p.id))
 
                   return (

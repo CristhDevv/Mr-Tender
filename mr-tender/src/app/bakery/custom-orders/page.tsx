@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -240,7 +240,7 @@ export default function BakeryCustomOrdersPage() {
 
                 <div style={{ background: 'var(--bg-deep)', padding: 10, borderRadius: 8, fontSize: '0.8rem', display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <div><strong>Producto:</strong> {ord.cake_type} ({ord.portions} porciones)</div>
-                  <div><strong>Entrega:</strong> 📅 {formatDate(ord.delivery_date)} a las {ord.delivery_time}</div>
+                  <div><strong>Entrega:</strong>  {formatDate(ord.delivery_date)} a las {ord.delivery_time}</div>
                   {ord.decor_details && <div style={{ color: 'var(--text-muted)', fontSize: '0.74rem' }}><strong>Decoración:</strong> {ord.decor_details}</div>}
                 </div>
 

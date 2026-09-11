@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { formatCurrency } from '@/lib/utils'
 import { getColombiaDateString } from '@/lib/date-utils'
@@ -707,7 +707,7 @@ export default function WarehousesPage() {
               <span>{w.name}</span>
               {w.is_main && (
                 <span style={{ fontSize: '0.62rem', padding: '1px 5px', borderRadius: 4, background: isSelected ? 'rgba(255,255,255,0.25)' : 'var(--accent-blue-lt)', color: isSelected ? '#fff' : 'var(--accent-blue)', fontWeight: 800 }}>
-                  ★ Principal
+                   Principal
                 </span>
               )}
             </button>
@@ -748,7 +748,7 @@ export default function WarehousesPage() {
                     <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                       {wh.is_main && (
                         <span className="badge badge-blue" style={{ fontSize: '0.66rem', fontWeight: 800 }}>
-                          ★ Principal
+                           Principal
                         </span>
                       )}
                       <span className={`badge ${wh.is_active !== false ? 'badge-green' : 'badge-coral'}`} style={{ fontSize: '0.66rem' }}>
@@ -773,7 +773,7 @@ export default function WarehousesPage() {
                         {totalUnits} <span style={{ fontSize: '0.72rem', fontWeight: 500, color: 'var(--text-secondary)' }}>uds ({whItems.length} prods)</span>
                       </div>
                       <div style={{ fontSize: '0.68rem', color: lowStockCount > 0 ? 'var(--accent-amber)' : 'var(--text-muted)', marginTop: 2 }}>
-                        {lowStockCount > 0 ? `⚠️ ${lowStockCount} stock bajo` : 'Stock normal'}
+                        {lowStockCount > 0 ? `️ ${lowStockCount} stock bajo` : 'Stock normal'}
                       </div>
                     </div>
 
@@ -783,7 +783,7 @@ export default function WarehousesPage() {
                         {formatCurrency(totalVal)}
                       </div>
                       <div style={{ fontSize: '0.68rem', color: outStockCount > 0 ? 'var(--accent-coral)' : 'var(--accent-green)', marginTop: 2 }}>
-                        {outStockCount > 0 ? `🛑 ${outStockCount} agotados` : '✓ 100% disponible'}
+                        {outStockCount > 0 ? ` ${outStockCount} agotados` : ' 100% disponible'}
                       </div>
                     </div>
                   </div>
@@ -876,15 +876,15 @@ export default function WarehousesPage() {
                   </span>
                   {activeWarehouse.is_main && (
                     <span className="badge badge-amber" style={{ fontSize: '0.72rem', fontWeight: 800 }}>
-                      ★ Bodega Principal
+                       Bodega Principal
                     </span>
                   )}
                 </div>
                 <div style={{ fontSize: '0.76rem', color: 'var(--text-secondary)', marginTop: 2, display: 'flex', alignItems: 'center', gap: 12 }}>
-                  {activeWarehouse.address && <span>📍 {activeWarehouse.address}</span>}
-                  <span>📦 {whInventory.length} variedades de productos</span>
-                  <span>🔢 {selectedWhUnits} unidades físicas</span>
-                  <span style={{ color: 'var(--accent-blue)', fontWeight: 700 }}>💰 {formatCurrency(selectedWhValuation)}</span>
+                  {activeWarehouse.address && <span> {activeWarehouse.address}</span>}
+                  <span> {whInventory.length} variedades de productos</span>
+                  <span> {selectedWhUnits} unidades físicas</span>
+                  <span style={{ color: 'var(--accent-blue)', fontWeight: 700 }}> {formatCurrency(selectedWhValuation)}</span>
                 </div>
               </div>
             </div>

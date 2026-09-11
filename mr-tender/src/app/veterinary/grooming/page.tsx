@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -133,7 +133,7 @@ export default function VetGroomingPage() {
             <div key={s.id} className="neu-card" style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{s.pet_name} 🐾</div>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-primary)' }}>{s.pet_name} </div>
                   <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>Tutor: {s.owner_name} • Hora: {s.scheduled_time}</div>
                 </div>
 

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import React, { useState, useMemo } from 'react'
 import {
   DollarSign,
@@ -174,14 +174,14 @@ export default function PosAbonoModal({
       cleanPhone = '57' + cleanPhone
     }
 
-    const msg = `🧾 *COMPROBANTE DE ABONO A CRÉDITO (FIAO)*
-🏪 *${businessName}*
-👤 *Cliente:* ${receiptData.customerName}
-📅 *Fecha:* ${receiptData.date}
+    const msg = ` *COMPROBANTE DE ABONO A CRÉDITO (FIAO)*
+ *${businessName}*
+ *Cliente:* ${receiptData.customerName}
+ *Fecha:* ${receiptData.date}
 
-💵 *Monto Abonado:* ${formatCurrency(receiptData.amountPaid)}
-📉 *Saldo Anterior:* ${formatCurrency(receiptData.prevDebt)}
-✅ *Saldo Pendiente Actual:* ${formatCurrency(receiptData.newDebt)}
+ *Monto Abonado:* ${formatCurrency(receiptData.amountPaid)}
+ *Saldo Anterior:* ${formatCurrency(receiptData.prevDebt)}
+ *Saldo Pendiente Actual:* ${formatCurrency(receiptData.newDebt)}
 
 ¡Muchas gracias por su puntual pago y preferencia!`
 

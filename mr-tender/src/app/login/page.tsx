@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
@@ -142,7 +142,7 @@ export default function LoginPage() {
 
           {error && (
             <div style={{ background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA', padding: '10px 14px', borderRadius: 8, fontSize: '0.84rem', fontWeight: 600 }}>
-              ⚠ {error}
+               {error}
             </div>
           )}
 

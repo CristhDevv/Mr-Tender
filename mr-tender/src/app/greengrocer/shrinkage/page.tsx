@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState } from 'react'
 import Link from 'next/link'
 import { formatCurrency } from '@/lib/utils'
@@ -66,7 +66,7 @@ export default function GreengrocerShrinkagePage() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <span style={{ fontSize: '1.8rem' }}>🥦</span>
+          <span style={{ fontSize: '1.8rem' }}></span>
           <div>
             <h1 style={{ fontSize: '1.4rem', fontWeight: 900, margin: 0, color: '#fff' }}>
               Control de Merma & Clasificación de Perecederos

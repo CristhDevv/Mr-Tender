@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/utils'
@@ -268,7 +268,7 @@ export default function PlansAdminPage() {
           {/* Industry Preset Pills */}
           <div>
             <label style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-              ⚡ Cargar Plantilla Preconfigurada por Vertical:
+              Cargar Plantilla Preconfigurada por Vertical:
             </label>
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
               {INDUSTRY_PRESETS.map(preset => (
@@ -576,7 +576,7 @@ export default function PlansAdminPage() {
                           onClick={() => setEditingId(null)}
                           style={{ padding: '7px 12px', fontSize: '0.75rem' }}
                         >
-                          ✕
+                          
                         </button>
                       </div>
                     ) : (
