@@ -5,23 +5,10 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
 const BUSINESS_TYPES = [
-  { value: 'retail', label: 'Tienda / Minimercado / Supermercado' },
-  { value: 'hardware', label: 'Ferretería & Construcción' },
-  { value: 'pharmacy', label: 'Droguería y Farmacia' },
-  { value: 'optometry', label: 'Óptica, Consultorio Visual & Lentes' },
-  { value: 'veterinary', label: 'Veterinaria, Pet Shop & Grooming' },
-  { value: 'automotive', label: 'Taller Mecánico, Serviteca & Autolavado' },
-  { value: 'laundry', label: 'Lavandería, Tintorería & Planchado' },
-  { value: 'gym', label: 'Gimnasio, Fitness & Crossfit' },
-  { value: 'liquor_tobacco', label: 'Licorera, Estanco & Cigarrería' },
-  { value: 'restaurant', label: 'Restaurante / Cafetería' },
-  { value: 'bakery', label: 'Panadería, Pastelería & Repostería' },
-  { value: 'beauty_salon', label: 'Salón de Belleza, Barbería & Spa' },
-  { value: 'clothing', label: 'Ropa, Calzado & Moda' },
-  { value: 'services', label: 'Servicios' },
-  { value: 'wholesale', label: 'Mayorista / Distribuidor' },
-  { value: 'electronics', label: 'Electrónica y Tecnología' },
-  { value: 'other', label: 'Otro Comercio' },
+  { value: 'retail', label: 'Comercio & Retail (Venta de productos)' },
+  { value: 'services', label: 'Servicios Profesionales' },
+  { value: 'wholesale', label: 'Distribuidor / Mayorista' },
+  { value: 'general', label: 'Otro tipo de negocio' },
 ]
 
 const PLANS = [
@@ -89,27 +76,24 @@ export default function RegisterPage() {
         data: { tenant_id: tenantId, role: 'admin', is_owner: true }
       })
 
-      // 4. Initialize specific vertical modules in tenant_settings
+      // 4. Initialize clean general POS account modules (No vertical modules)
       const initialModules: Record<string, boolean> = {
-        pos: true, inventory: true, cash: true, customers: true,
-        suppliers: true, purchases: true, employees: true,
-        accounting: true, reports: true, ecommerce: true,
-        pharmacy: form.businessType === 'pharmacy',
-        hardware: form.businessType === 'hardware',
-        liquor_tobacco: form.businessType === 'liquor_tobacco',
-        restaurant: form.businessType === 'restaurant',
-        beauty_salon: form.businessType === 'beauty_salon',
-        veterinary: form.businessType === 'veterinary',
-        automotive: form.businessType === 'automotive',
-        laundry: form.businessType === 'laundry',
-        gym: form.businessType === 'gym',
-        apparel: form.businessType === 'clothing' || form.businessType === 'apparel',
-        optometry: form.businessType === 'optometry'
+        pos: true,
+        inventory: true,
+        cash: true,
+        customers: true,
+        suppliers: true,
+        purchases: true,
+        employees: true,
+        accounting: true,
+        reports: true,
+        ecommerce: true,
       }
 
       await supabase.from('tenant_settings').upsert({
         tenant_id: tenantId,
-        enabled_modules: initialModules
+        enabled_modules: initialModules,
+        primary_vertical: 'general'
       }, { onConflict: 'tenant_id' })
 
       window.location.href = '/dashboard?onboarding=complete'
