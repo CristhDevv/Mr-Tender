@@ -7,14 +7,13 @@ import { useState } from 'react'
 
 const NAV_LINKS = [
   { label: 'Características', href: '#features' },
-  { label: 'Sectores', href: '#verticals' },
   { label: 'Precios', href: '#pricing' },
   { label: 'Comparación', href: '#compare' },
 ]
 
 const STATS = [
   { value: '35+', label: 'módulos integrados' },
-  { value: '17', label: 'sectores especializados' },
+  { value: '100%', label: 'Cloud en tiempo real' },
   { value: '3', label: 'toques para vender' },
   { value: '100%', label: 'DIAN Colombia' },
 ]
@@ -85,26 +84,6 @@ const FEATURES = [
   },
 ]
 
-const VERTICALS = [
-  { icon: '', name: 'Restaurante & Café', desc: 'Mesas, comandas KDS cocina, split bill, recetas' },
-  { icon: '', name: 'Droguería & Farmacia', desc: 'INVIMA, lotes vencimiento, termohigrometría' },
-  { icon: '', name: 'Carnicería & Charcutería', desc: 'Desposte canales, rendimiento cárnico, frío' },
-  { icon: '', name: 'Panadería & Pastelería', desc: 'Recetas panaderas, horneadas, encargos' },
-  { icon: '️', name: 'Gimnasio & Fitness', desc: 'Membresías, torniquete QR, aforo clases' },
-  { icon: '', name: 'Veterinaria & Pet Shop', desc: 'Historias clínicas, vacunas WhatsApp, grooming' },
-  { icon: '', name: 'Taller Mecánico', desc: 'Órdenes de trabajo por placa, checklist, autolavado' },
-  { icon: '', name: 'Boutique & Ropa', desc: 'Matriz talla/color, probadores, lookbooks' },
-  { icon: '', name: 'Salón de Belleza', desc: 'Agenda citas WhatsApp, comisiones estilistas' },
-  { icon: '', name: 'Óptica', desc: 'Fórmulas OD/OI, órdenes laboratorio biselado' },
-  { icon: '', name: 'Verdulería & Frutería', desc: 'Mermas, canastas mercado, balanza PLU' },
-  { icon: '', name: 'Floristería & Eventos', desc: 'Arreglos por tallos, dedicatorias, domicilios' },
-  { icon: '', name: 'Dulcería & Piñatería', desc: 'Sorpresas por niño, venta granel, combos fiesta' },
-  { icon: '', name: 'Licorera & Estanco', desc: 'Copeo barra, retornables, combos rumberos' },
-  { icon: '', name: 'Ferretería', desc: 'Cotizaciones PDF, venta fraccionada, alquiler herramientas' },
-  { icon: '', name: 'Papelería & Variedades', desc: 'Impresiones, fotocopias, útiles escolares' },
-  { icon: '', name: 'Lavandería & Tintorería', desc: 'Tickets prenda, percheros, lavado en seco' },
-]
-
 const PLANS = [
   {
     id: 'gratis',
@@ -157,7 +136,6 @@ const PLANS = [
       'CRM Kanban & links de pago',
       'Nómina electrónica',
       'E-commerce propio',
-      'Verticales especializadas',
     ],
   },
   {
@@ -180,7 +158,7 @@ const PLANS = [
       'Nómina Electrónica DIAN (hasta 10 empleados)',
       'Tesorería & bancos',
       'E-commerce propio (tienda en tu subdominio)',
-      '1 vertical especializada (ej: restaurante, gym)',
+      'Módulos comerciales avanzados',
       'Reportes avanzados + exportación Excel/PDF',
       'Soporte prioritario por WhatsApp',
     ],
@@ -204,7 +182,7 @@ const PLANS = [
       'Usuarios ilimitados',
       'Todo el plan Pyme incluido',
       'Inventario multi-almacén ilimitado',
-      'Todas las 17 verticales especializadas',
+      'Módulos empresariales completos',
       'Nómina DIAN (empleados ilimitados)',
       'Contabilidad automatizada PUC',
       'IA Copilot (Gemini) integrado',
@@ -224,7 +202,6 @@ const COMPARE_ROWS = [
   { feature: 'POS + DIAN + Inventario en plan base', mrtender: true, alegra: false, siigo: false },
   { feature: 'Nómina DIAN incluida en plan Pyme', mrtender: true, alegra: 'extra $29.900/mes', siigo: 'extra' },
   { feature: 'E-commerce propio incluido', mrtender: true, alegra: false, siigo: false },
-  { feature: 'Verticales especializadas (17 sectores)', mrtender: true, alegra: false, siigo: false },
   { feature: 'IA Copilot integrada', mrtender: 'Plan Cadena', alegra: 'básica', siigo: 'básica' },
   { feature: 'Pago mensual sin permanencia forzada', mrtender: true, alegra: true, siigo: false },
   { feature: 'Prueba gratis 14 días sin tarjeta', mrtender: true, alegra: '15 días', siigo: false },
@@ -254,10 +231,6 @@ const FAQS = [
   {
     q: '¿Funciona sin internet?',
     a: 'El POS funciona en modo offline usando IndexedDB. Las ventas se sincronizan automáticamente cuando se restaura la conexión. La facturación DIAN requiere conexión para el timbrado.',
-  },
-  {
-    q: '¿Qué es una "vertical especializada"?',
-    a: 'Son módulos adicionales para industrias específicas: restaurantes (mesas, comandas KDS), farmacias (INVIMA, lotes), carnicerías (desposte de canales), gimnasios (membresías, torniquete QR), entre otras. En el plan Cadena están todas incluidas.',
   },
 ]
 
@@ -350,8 +323,7 @@ function HeroSection() {
         maxWidth: 600,
         margin: '0 auto 40px',
       }}>
-        POS, inventario, facturación DIAN, nómina electrónica, CRM, e-commerce
-        y 17 verticales especializadas. Todo integrado en un solo sistema.
+        POS, inventario, facturación DIAN, nómina electrónica, CRM y e-commerce. Todo integrado en un solo sistema.
       </p>
 
       <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
@@ -478,7 +450,7 @@ function FeaturesSection() {
   return (
     <section id="features" style={{ padding: 'clamp(40px, 8vw, 80px) clamp(16px, 4vw, 48px)', maxWidth: 1200, margin: '0 auto' }}>
       <div style={{ textAlign: 'center', marginBottom: 52 }}>
-        <div className="badge badge-blue" style={{ marginBottom: 14 }}>9 módulos core + 17 verticales</div>
+        <div className="badge badge-blue" style={{ marginBottom: 14 }}>Módulos integrados</div>
         <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em', marginBottom: 12 }}>
           Todo lo que tu negocio necesita, integrado
         </h2>
@@ -501,52 +473,6 @@ function FeaturesSection() {
             <p style={{ fontSize: '0.86rem', color: '#64748B', lineHeight: 1.65 }}>{f.desc}</p>
           </div>
         ))}
-      </div>
-    </section>
-  )
-}
-
-function VerticalsSection() {
-  return (
-    <section id="verticals" style={{ padding: 'clamp(40px, 8vw, 80px) clamp(16px, 4vw, 48px)', background: '#F8FAFC' }}>
-      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-        <div style={{ textAlign: 'center', marginBottom: 48 }}>
-          <div className="badge badge-purple" style={{ marginBottom: 14 }}>17 sectores especializados</div>
-          <h2 style={{ fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontWeight: 800, color: '#0F172A', letterSpacing: '-0.02em', marginBottom: 12 }}>
-            Diseñado para tu tipo de negocio
-          </h2>
-          <p style={{ color: '#475569', fontSize: '1.05rem', maxWidth: 520, margin: '0 auto' }}>
-            Módulos verticales con terminología, flujos y métricas adaptadas a cada industria.
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: 12 }}>
-          {VERTICALS.map((v) => (
-            <div key={v.name} style={{
-              background: '#FFFFFF',
-              border: '1px solid #E2E8F0',
-              borderRadius: 14,
-              padding: '18px 16px',
-              transition: 'all 0.2s',
-              cursor: 'default',
-            }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = '#00D6BC'
-                e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,214,188,0.12)'
-                e.currentTarget.style.transform = 'translateY(-2px)'
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = '#E2E8F0'
-                e.currentTarget.style.boxShadow = 'none'
-                e.currentTarget.style.transform = 'none'
-              }}
-            >
-              <div style={{ fontSize: '1.6rem', marginBottom: 8 }}>{v.icon}</div>
-              <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#0F172A', marginBottom: 4 }}>{v.name}</div>
-              <div style={{ fontSize: '0.75rem', color: '#64748B', lineHeight: 1.5 }}>{v.desc}</div>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   )
@@ -1069,7 +995,6 @@ function Footer() {
         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
           {[
             { label: 'Características', href: '#features' },
-            { label: 'Sectores', href: '#verticals' },
             { label: 'Precios', href: '#pricing' },
             { label: 'Iniciar sesión', href: '/login' },
           ].map(l => (
@@ -1098,7 +1023,6 @@ export default function LandingPage() {
       <StatsBar />
       <DashboardMockup />
       <FeaturesSection />
-      <VerticalsSection />
       <PricingSection />
       <OnboardingSection />
       <CompareSection />
